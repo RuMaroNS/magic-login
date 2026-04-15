@@ -6,34 +6,68 @@
     <title>Brainrot Case Simulator</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
 </head>
 <body>
 
     <div id="notification-container"></div>
 
     <div id="auth-container">
-    <div id="step-choice">
-        <button onclick="showAuth('reg')">Регистрация</button>
-        <button onclick="showAuth('login')">Вход</button>
-    </div>
-    <div id="step-form" style="display:none;">
-        <input type="email" id="user_email" placeholder="Email"><br>
-        <input type="password" id="user_password" placeholder="Пароль"><br>
-        <button id="btn-reg" onclick="sendOTP()" style="display:none;">Получить код</button>
-        <button id="btn-login" onclick="login()" style="display:none;">Войти</button>
-    </div>
-    <div id="step-code" style="display:none;">
-        <input type="number" id="otp_input" placeholder="Код"><br>
-        <button onclick="register()">ОК</button>
-    </div>
-</div>
+        <h1 style="color: #00d4ff; margin-bottom: 20px;">BRAINROT CASES</h1>
+        
+        <div id="step-choice">
+            <button class="main-btn" onclick="showAuth('reg')">РЕГИСТРАЦИЯ</button>
+            <button class="main-btn" onclick="showAuth('login')" style="margin-top:10px; background: none; color: #00d4ff; border: 1px solid #00d4ff;">ВХОД</button>
+        </div>
 
-<div id="game-ui" style="display:none;">
-    <nav>
-        <button onclick="switchTab('cases')">Кейсы</button>
-        <button onclick="switchTab('profile')">Профиль</button>
-        <button onclick="switchTab('support')">Поддержка</button>
-        <button onclick="logout()" style="background:#ff4444;">Выход</button>
+        <div id="step-form" style="display:none;">
+            <input type="email" id="user_email" placeholder="Твой Email">
+            <input type="password" id="user_password" placeholder="Пароль">
+            <button id="btn-reg" class="main-btn" onclick="sendOTP()" style="display:none;">ПОЛУЧИТЬ КОД</button>
+            <button id="btn-login" class="main-btn" onclick="login()" style="display:none;">ВОЙТИ В ИГРУ</button>
+            <p onclick="showAuth('choice')" class="back-link">← Назад</p>
+        </div>
+
+        <div id="step-code" style="display:none;">
+            <p style="margin-bottom: 10px;">Введи код из почты:</p>
+            <input type="number" id="otp_input" placeholder="0000">
+            <button class="main-btn" onclick="register()">ПОДТВЕРДИТЬ</button>
+        </div>
+    </div>
+
+    <div id="game-ui" style="display:none;">
+        <nav>
+            <button onclick="switchTab('cases')">КЕЙСЫ</button>
+            <button onclick="switchTab('profile')">ПРОФИЛЬ</button>
+            <button onclick="switchTab('support')">САППОРТ</button>
+            <button onclick="logout()" style="color:#ff4444;">ВЫХОД</button>
+        </nav>
+
+        <div id="tab-cases" class="tab">
+            <div id="live-board"></div>
+            <div id="case-display">🎁</div>
+            <button id="spin-btn" class="main-btn" onclick="openCase()">ОТКРЫТЬ (50$)</button>
+        </div>
+
+        <div id="tab-profile" class="tab" style="display:none;">
+            <div class="stats">
+                <div>БАЛАНС: <span id="p-balance" style="color:#2ecc71;">0</span>$</div>
+            </div>
+            <h3 style="margin: 15px 0;">ТВОЙ ИНВЕНТАРЬ:</h3>
+            <div id="inventory-list"></div>
+        </div>
+
+        <div id="tab-support" class="tab" style="display:none;">
+            <h3>ТЕХПОДДЕРЖКА</h3>
+            <p style="font-size: 12px; color: #888; margin-bottom: 10px;">По вопросам вывода: sdulimos@gmail.com</p>
+            <textarea id="support-msg" placeholder="Твой ник в Roblox и суть проблемы..."></textarea>
+            <button class="main-btn" onclick="sendSupport()">ОТПРАВИТЬ АДМИНУ</button>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
     </nav>
     <div id="tab-cases" class="tab">
         <div id="case-display">🎁</div>
