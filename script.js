@@ -92,7 +92,7 @@ async function openCase() {
         display.style.transform = "scale(1) rotate(0deg)";
         display.innerText = win.char;
         updateUI();
-        alert(Выпало: ${win.char}! Цена: ${win.price}$);
+        alert("Выпало:" ${win.char}! "Цена:" ${win.price}$);
     }, 500);
 }
 
