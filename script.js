@@ -64,7 +64,7 @@ async function verifyOTP() {
             console.log("Данные загружены:", profile);
 
         } catch (err) {
-            console.error("Ошибка Supabase:", err);
+            console.error("Ошибка supabaseClient:", err);
             alert("Проблема с базой данных. Проверь консоль (F12)");
         }
     } else {
