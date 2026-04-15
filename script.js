@@ -229,7 +229,6 @@ function logout() {
 window.onload = () => {
     listenToDrops();
     console.log("Система Realtime запущена...");
-};
     document.getElementById('btn-reg').style.display = (mode === 'reg' ? 'block' : 'none');
     document.getElementById('btn-login').style.display = (mode === 'login' ? 'block' : 'none');
 }
