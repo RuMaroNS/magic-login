@@ -88,17 +88,27 @@ async function openCase() {
 }
 
 function updateUI() {
-    document.getElementById('p-balance').innerText = currentUser.score;
+    // 1. Обновляем баланс
+    const balanceEl = document.getElementById('p-balance');
+    if (balanceEl && currentUser) {
+        balanceEl.innerText = currentUser.score;
+    }
+
+    // 2. Обновляем список инвентаря
     const list = document.getElementById('inventory-list');
-    list.innerHTML = '';
-    if (currentUser.inventory) {
+    if (!list) return; // Чтобы не было ошибки, если элемента нет на странице
+
+    list.innerHTML = ''; // Очищаем старый список
+
+    if (currentUser && currentUser.inventory) {
         currentUser.inventory.forEach(item => {
-            list.innerHTML += 
-                `<div class="inv-item">`
-                    `<img src="${GITHUB_BASE}${item.char}.png">`
-                    `<p>${item.char}</p>`
-                    `<button onclick="requestWithdraw(${item.id})">ВЫВОД</button>`
-                </div>;
+            // ВАЖНО: Весь блок ниже обернут в ОБРАТНЫЕ КАВЫЧКИ  
+            list.innerHTML += `
+                <div class="inv-item">
+                    <img src="${GITHUB_BASE}${item.char}.png">
+                    <p>${item.char}</p>
+                    <button onclick="requestWithdraw(${item.id})">ВЫВОД</button>
+                </div>`;
         });
     }
 }
