@@ -7,23 +7,31 @@ function sendOTP() {
     const email = document.getElementById('user_email').value;
     if (!email) return alert("Введите почту!");
 
+    // 1. Генерируем код
     generatedOTP = Math.floor(1000 + Math.random() * 9000);
 
+    // 2. Рассчитываем время (текущее + 15 минут) для переменной {{time}}
+    const now = new Date();
+    now.setMinutes(now.getMinutes() + 15);
+    const expirationTime = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    // 3. Сопоставляем данные с шаблоном
     const templateParams = {
-        to_email: email, 
-        passcode: generatedOTP // Теперь ключ совпадает с {{passcode}} в шаблоне
+        to_email: email,        // Чтобы EmailJS знал куда слать (проверь это в Settings шаблона)
+        passcode: generatedOTP, // Это попадет в {{passcode}}
+        time: expirationTime    // Это попадет в {{time}}
     };
 
+    // 4. Отправляем
     emailjs.send('YOUR_SERVICE_ID', 'YOUR_TEMPLATE_ID', templateParams)
         .then(() => {
-            alert("Код отправлен!");
+            alert("Код отправлен на почту!");
             document.getElementById('step-1').style.display = 'none';
             document.getElementById('step-2').style.display = 'block';
         })
         .catch((error) => {
-            console.error('Ошибка отправки:', error);
-            // Если ошибка 422 осталась, проверь правильность SERVICE_ID и TEMPLATE_ID
-            alert("Ошибка: " + JSON.stringify(error));
+            console.error('Ошибка:', error);
+            alert("Ошибка при отправке.");
         });
 }
 
