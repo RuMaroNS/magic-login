@@ -1,4 +1,4 @@
-[15.04.2026 20:08] робончикс: // НАСТРОЙКИ
+// НАСТРОЙКИ
 const SB_URL = 'https://wbkygibviddkdjxbahbg.supabase.co';
 const SB_KEY = 'sb_publishable_l5wIAt6RrAl4Uo8uZKerRQ_xBYDS-Kv';
 const EJS_KEY = 'gTrqvbOiCTqlJcDNJ';
@@ -111,7 +111,7 @@ function updateUI() {
     document.getElementById('p-email').innerText = currentUser.email;
     document.getElementById('p-balance').innerText = currentUser.score;
 }
-[15.04.2026 20:08] робончикс: function switchTab(tab) {
+function switchTab(tab) {
     document.querySelectorAll('.tab').forEach(t => t.style.display = 'none');
     document.getElementById('tab-' + tab).style.display = 'block';
 }
