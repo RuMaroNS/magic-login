@@ -21,225 +21,56 @@ const items = [
 
 function showNotify(text) {
     const container = document.getElementById('notification-container');
-    if(!container) return;
     const toast = document.createElement('div');
     toast.className = 'notification';
     toast.innerText = text;
     container.appendChild(toast);
-    setTimeout(() => toast.classList.add('show'), 100);
-    setTimeout(() => {
-        toast.classList.remove('show');
-        setTimeout(() => toast.remove(), 500);
-    }, 2500);
+    setTimeout(() => toast.remove(), 2500);
 }
 
 function showAuth(mode) {
-    const ids = ['step-choice', 'step-form', 'step-code', 'btn-reg', 'btn-login'];
-    const els = {};
-    ids.forEach(id => els[id] = document.getElementById(id));
-
-    if(els['step-choice']) els['step-choice'].style.display = (mode === 'choice' ? 'block' : 'none');
-    if(els['step-form']) els['step-form'].style.display = (mode === 'choice' ? 'none' : 'block');
-    if(els['step-code']) els['step-code'].style.display = (mode === 'otp' ? 'block' : 'none');
-
-    if(mode === 'reg') {
-        if(els['btn-reg']) els['btn-reg'].style.display = 'block';
-        if(els['btn-login']) els['btn-login'].style.display = 'none';
-    } else if(mode === 'login') {
-        if(els['btn-reg']) els['btn-reg'].style.display = 'none';
-        if(els['btn-login']) els['btn-login'].style.display = 'block';
-    }
+    document.getElementById('step-choice').style.display = (mode === 'choice') ? 'block' : 'none';
+    document.getElementById('step-form').style.display = (mode === 'choice') ? 'none' : 'block';
+    document.getElementById('step-code').style.display = 'none';
+    document.getElementById('btn-reg').style.display = (mode === 'reg') ? 'block' : 'none';
+    document.getElementById('btn-login').style.display = (mode === 'login') ? 'block' : 'none';
 }
 
 async function login() {
     const email = document.getElementById('user_email').value;
     const pass = document.getElementById('user_password').value;
-    const { data, error } = await supabaseClient.from('profiles').select('*').eq('email', email).eq('password', pass).single();
-    
-    if (data) {
-        localStorage.setItem('game_user', JSON.stringify(data));
-        loginSuccess(data);
-    } else {
-        showNotify("Ошибка входа!");
-    }
+    const { data } = await supabaseClient.from('profiles').select('*').eq('email', email).eq('password', pass).single();
+    if (data) loginSuccess(data); else showNotify("Ошибка!");
 }
 
 function loginSuccess(profile) {
     currentUser = profile;
-    const authCont = document.getElementById('auth-container');
-    const gameUI = document.getElementById('game-ui');
-    if(authCont) authCont.style.display = 'none';
-    if(gameUI) gameUI.style.display = 'block';
+    document.getElementById('auth-container').style.display = 'none';
+    document.getElementById('game-ui').style.display = 'block';
+    localStorage.setItem('game_user', JSON.stringify(profile));
     updateUI();
 }
 
 async function openCase() {
-    if (!currentUser || currentUser.score < 50) return showNotify("Нужно 50$!");
-    
-    const display = document.getElementById('case-display');
-    if(display) display.classList.add('spinning');
-    
-    let rand = Math.random();
-    let cumulative = 0;
-    let win = items[0];
-    for (let i of items) {
-        cumulative += i.chance;
-        if (rand < cumulative) { win = i; break; }
-    }
-
-    const newInv = [...(currentUser.inventory || []), { ...win, id: Date.now() }];
-    const newScore = currentUser.score - 50;
-
-    const { error } = await supabaseClient.from('profiles').update({ score: newScore, inventory: newInv }).eq('email', currentUser.email);
-    
-    if (!error) {
-        currentUser.score = newScore;
-        currentUser.inventory = newInv;
-        setTimeout(() => {
-            if(display) {
-                display.classList.remove('spinning');
-                display.innerHTML = `<img src="${GITHUB_BASE}${win.char}.png">`;
-            }
-            updateUI();
-            showNotify(`Выпал ${win.char}!`);
-        }, 800);
-    }
-}
-
-function updateUI() {
-    const balanceEl = document.getElementById('p-balance');
-    const listEl = document.getElementById('inventory-list');
-    
-    if (balanceEl) balanceEl.innerText = currentUser.score;
-    if (listEl) {
-        listEl.innerHTML = '';
-        if (currentUser.inventory) {
-            currentUser.inventory.forEach(i => {
-                listEl.innerHTML += `
-                    <div class="inv-item">
-                        <img src="${GITHUB_BASE}${i.char}.png">
-                        <p style="font-size:10px; margin:5px 0;">${i.char}</p>
-                        <button onclick="requestWithdraw(${i.id})" style="background:#2ecc71; color:white; border:none; padding:4px; border-radius:4px; cursor:pointer; width:100%; font-size:10px;">ВЫВОД</button>
-                    </div>`;
-            });
-        }
-    }
-}
-
-async function requestWithdraw(id) {
-    const nick = prompt("Твой ник в Roblox:");
-    if(!nick) return;
-    const item = currentUser.inventory.find(i => i.id === id);
-    const text = `💰 ВЫВОД\nЮзер: ${currentUser.email}\nНик: ${nick}\nДроп: ${item.char}`;
-    await fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendMessage?chat_id=${TG_CHAT_ID}&text=${encodeURIComponent(text)}`);
-    
-    const updated = currentUser.inventory.filter(i => i.id !== id);
-    await supabaseClient.from('profiles').update({ inventory: updated }).eq('email', currentUser.email);
-    currentUser.inventory = updated;
-    updateUI();
-    showNotify("Заявка у админа!");
-}
-
-async function sendOTP() {
-    const email = document.getElementById('user_email').value;
-    if(!email) return showNotify("Введи Email!");
-    generatedOTP = Math.floor(1000 + Math.random() * 9000);
-    emailjs.send('service_j9ls8lo', 'template_ebxnpr6', {to_email: email, passcode: generatedOTP})
-    .then(() => {
-        showNotify("Код на почте!");
-        const form = document.getElementById('step-form');
-        const code = document.getElementById('step-code');
-        if(form) form.style.display = 'none';
-        if(code) code.style.display = 'block';
-    });
-}
-
-async function register() {
-    const otp = document.getElementById('otp_input').value;
-    if (otp == generatedOTP) {
-        const email = document.getElementById('user_email').value;
-        const pass = document.getElementById('user_password').value;
-        const { data } = await supabaseClient.from('profiles').insert([{ email, password: pass, score: 100, inventory: [] }]).select().single();
-        if (data) loginSuccess(data);
-    } else {
-        showNotify("Неверный код!");
-    }
-}
-
-function switchTab(t) {
-    document.querySelectorAll('.tab').forEach(x => x.style.display = 'none');
-    const target = document.getElementById('tab-' + t);
-    if(target) target.style.display = 'block';
-}
-
-function logout() { localStorage.clear(); location.reload(); }
-
-window.onload = async () => {
-    const saved = localStorage.getItem('game_user');
-    if (saved) {
-        const u = JSON.parse(saved);
-        const { data } = await supabaseClient.from('profiles').select('*').eq('email', u.email).eq('password', u.password).single();
-        if (data) loginSuccess(data);
-    }
-};
-
-}
-
-async function openCase() {
-    if (currentUser.score < 50) return showNotify("Мало денег!");
+    if (currentUser.score < 50) return showNotify("Нет денег!");
     const display = document.getElementById('case-display');
     display.classList.add('spinning');
-
-    let rand = Math.random();
-    let cumulative = 0;
-    let win = items[0];
-    for (let i of items) {
-        cumulative += i.chance;
-        if (rand < cumulative) { win = i; break; }
-    }
-
+    
+    let win = items[Math.floor(Math.random() * items.length)];
     const newInv = [...(currentUser.inventory || []), { ...win, id: Date.now() }];
     const newScore = currentUser.score - 50;
 
     const { error } = await supabaseClient.from('profiles').update({ score: newScore, inventory: newInv }).eq('email', currentUser.email);
-    
     if (!error) {
         currentUser.score = newScore;
         currentUser.inventory = newInv;
         setTimeout(() => {
             display.classList.remove('spinning');
-            display.innerHTML = `<img src="${GITHUB_BASE}${win.char}.png" width="120">`;
+            display.innerHTML = <img src="${GITHUB_BASE}${win.char}.png">;
             updateUI();
-            showNotify("Выпал предмет! Проверь профиль.");
-            addLive(win.char);
+            showNotify("Выпал " + win.char);
         }, 800);
     }
-}
-
-function addLive(name) {
-    const lb = document.getElementById('live-board');
-    const e = document.createElement('div');
-    e.className = 'live-entry';
-    e.innerHTML = `🔥 Кто-то выбил <b>${name}</b>`;
-    lb.prepend(e);
-    if(lb.children.length > 2) lb.lastChild.remove();
-}
-
-async function requestWithdraw(id) {
-    const nick = prompt("Введи свой никнейм для вывода:");
-    if(!nick) return;
-
-    const item = currentUser.inventory.find(i => i.id === id);
-    const text = `💰 ЗАЯВКА НА ВЫВОД\nПочта: ${currentUser.email}\nНик: ${nick}\nПредмет: ${item.char}`;
-    
-    await fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendMessage?chat_id=${TG_CHAT_ID}&text=${encodeURIComponent(text)}`);
-    
-    const updatedInv = currentUser.inventory.filter(i => i.id !== id);
-    await supabaseClient.from('profiles').update({ inventory: updatedInv }).eq('email', currentUser.email);
-    
-    currentUser.inventory = updatedInv;
-    updateUI();
-    showNotify("Заявка ушла админу!");
 }
 
 function updateUI() {
@@ -248,14 +79,25 @@ function updateUI() {
     list.innerHTML = '';
     if (currentUser.inventory) {
         currentUser.inventory.forEach(i => {
-            list.innerHTML += `
-                <div class="inv-item">
-                    <img src="${GITHUB_BASE}${i.char}.png">
-                    <div style="font-size:10px;">${i.char}</div>
-                    <button onclick="requestWithdraw(${i.id})">Вывод</button>
-                </div>`;
+            list.innerHTML += <div class="inv-item">
+                <img src="${GITHUB_BASE}${i.char}.png">
+                <p style="font-size:10px;">${i.char}</p>
+                <button onclick="requestWithdraw(${i.id})" style="background:#2ecc71; border:none; color:white; font-size:9px; padding:3px; cursor:pointer; width:100%; border-radius:4px;">ВЫВОД</button>
+            </div>;
         });
     }
+}
+
+async function requestWithdraw(id) {
+    const nick = prompt("Ник в Roblox:");
+    if(!nick) return;
+    const item = currentUser.inventory.find(i => i.id === id);
+    await fetch(https://api.telegram.org/bot${TG_TOKEN}/sendMessage?chat_id=${TG_CHAT_ID}&text=${encodeURIComponent("ВЫВОД: " + nick + " - " + item.char)});
+    const upd = currentUser.inventory.filter(i => i.id !== id);
+    await supabaseClient.from('profiles').update({ inventory: upd }).eq('email', currentUser.email);
+    currentUser.inventory = upd;
+    updateUI();
+    showNotify("Отправлено!");
 }
 
 function switchTab(t) {
@@ -263,115 +105,10 @@ function switchTab(t) {
     document.getElementById('tab-' + t).style.display = 'block';
 }
 
-function showAuth(m) {
-    document.getElementById('step-choice').style.display = m === 'choice' ? 'block' : 'none';
-    document.getElementById('step-form').style.display = m === 'choice' ? 'none' : 'block';
-}
-
-function logout() { localStorage.clear(); location.reload(); }
-window.onload = async () => {
-    const savedUser = localStorage.getItem('game_user');
-    if (savedUser) {
-        try {
-            const userData = JSON.parse(savedUser);
-            const { data } = await supabaseClient.from('profiles').select('*').eq('email', userData.email).eq('password', userData.password).single();
-            if (data) loginSuccess(data);
-        } catch (e) { console.log("Кеш пуст"); }
-    }
-};
-
-function showAuth(mode) {
-    document.getElementById('step-choice').style.display = (mode === 'choice') ? 'block' : 'none';
-    document.getElementById('step-form').style.display = (mode === 'choice') ? 'none' : 'block';
-    document.getElementById('step-code').style.display = 'none';
-    if(mode !== 'choice') {
-        document.getElementById('auth-title').innerText = (mode === 'reg') ? "Регистрация" : "Вход";
-        document.getElementById('btn-reg').style.display = (mode === 'reg') ? 'block' : 'none';
-        document.getElementById('btn-login').style.display = (mode === 'login') ? 'block' : 'none';
-    }
-}
-
-async function login() {
-    const email = document.getElementById('user_email').value;
-    const pass = document.getElementById('user_password').value;
-    const { data } = await supabaseClient.from('profiles').select('*').eq('email', email).eq('password', pass).single();
-    if (data) {
-        localStorage.setItem('game_user', JSON.stringify(data));
-        loginSuccess(data);
-    } else {
-        showNotify("Ошибка входа!");
-    }
-}
-
-function loginSuccess(profile) {
-    currentUser = profile;
-    document.getElementById('auth-container').style.display = 'none';
-    document.getElementById('game-ui').style.display = 'block';
-    updateUI();
-    showNotify("С возвращением!");
-}
-
-function logout() {
-    localStorage.removeItem('game_user');
-    location.reload();
-}
-
-async function openCase() {
-    if (currentUser.score < 50) return showNotify("Нужно 50$!");
-    
-    const display = document.getElementById('case-display');
-    display.classList.add('spinning');
-    
-    let rand = Math.random();
-    let cumulative = 0;
-    let win = items[0];
-
-    for (let item of items) {
-        cumulative += item.chance;
-        if (rand < cumulative) { win = item; break; }
-    }
-
-    currentUser.score = currentUser.score - 50 + win.price;
-    await supabaseClient.from('profiles').update({ score: currentUser.score }).eq('email', currentUser.email);
-    
-    setTimeout(() => {
-        display.classList.remove('spinning');
-        // Формируем прямую ссылку на картинку в GitHub
-        const fullPath = GITHUB_BASE + win.char + ".png";
-        display.innerHTML = '<img src="' + fullPath + '" style="width:100px; height:100px; object-fit:contain;">';
-        updateUI();
-        showNotify("Выпало: " + win.char + "! Цена: " + win.price + "$");
-    }, 800);
-}
-
-async function sendSupport() {
-    const msg = document.getElementById('support-msg').value;
-    if (!msg) return showNotify("Напиши текст!");
-    const text = "⚠️ ПОДДЕРЖКА\nЮзер: " + currentUser.email + "\nСообщение: " + msg;
-    
-    const url = "https://api.telegram.org/bot" + TG_TOKEN + "/sendMessage?chat_id=" + TG_CHAT_ID + "&text=" + encodeURIComponent(text);
-    
-    await fetch(url);
-    showNotify("Отправлено админу!");
-    document.getElementById('support-msg').value = "";
-}
-
-function updateUI() {
-    document.getElementById('p-email').innerText = currentUser.email;
-    document.getElementById('p-balance').innerText = currentUser.score;
-}
-
-function switchTab(tab) {
-    document.querySelectorAll('.tab').forEach(t => t.style.display = 'none');
-    document.getElementById('tab-' + tab).style.display = 'block';
-}
-
 async function sendOTP() {
-    const email = document.getElementById('user_email').value;
     generatedOTP = Math.floor(1000 + Math.random() * 9000);
-    emailjs.send('service_j9ls8lo', 'template_ebxnpr6', {to_email: email, passcode: generatedOTP})
+    emailjs.send('service_j9ls8lo', 'template_ebxnpr6', {to_email: document.getElementById('user_email').value, passcode: generatedOTP})
     .then(() => {
-        showNotify("Код отправлен!");
         document.getElementById('step-form').style.display = 'none';
         document.getElementById('step-code').style.display = 'block';
     });
@@ -379,14 +116,23 @@ async function sendOTP() {
 
 async function register() {
     if (document.getElementById('otp_input').value == generatedOTP) {
-        const email = document.getElementById('user_email').value;
-        const pass = document.getElementById('user_password').value;
-        const { data } = await supabaseClient.from('profiles').insert([{ email, password: pass, score: 100, level: 1 }]).select().single();
-        if (data) {
-            localStorage.setItem('game_user', JSON.stringify(data));
-            loginSuccess(data);
-        }
-    } else {
-        showNotify("Неверный код!");
+        const { data } = await supabaseClient.from('profiles').insert([{ email: document.getElementById('user_email').value, password: document.getElementById('user_password').value, score: 100, inventory: [] }]).select().single();
+        if (data) loginSuccess(data);
     }
 }
+
+async function sendSupport() {
+    await fetch(https://api.telegram.org/bot${TG_TOKEN}/sendMessage?chat_id=${TG_CHAT_ID}&text=${encodeURIComponent("Support: " + document.getElementById('support-msg').value)});
+    showNotify("Отправлено!");
+}
+
+function logout() { localStorage.clear(); location.reload(); }
+
+window.onload = async () => {
+    const saved = localStorage.getItem('game_user');
+    if (saved) {
+        const u = JSON.parse(saved);
+        const { data } = await supabaseClient.from('profiles').select('*').eq('email', u.email).single();
+        if (data) loginSuccess(data);
+    }
+};
