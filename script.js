@@ -117,26 +117,48 @@ async function requestWithdraw(id) {
     const nick = prompt("Твой ник в Roblox:");
     if (!nick) return;
 
-    // Ищем предмет в инвентаре
+    // Ищем предмет в инвентаре пользователя
     const item = currentUser.inventory.find(i => i.id === id);
     if (!item) return;
 
-    // ИСПРАВЛЕНО: Используем только обратные кавычки  для всей строки
-    const text = `💰 ВЫВОД: ${currentUser.email} | Ник: ${nick} | Предмет: ${item.char}`;
+    // 1. Отправка в Telegram (для уведомления админа)
+    const tgText = `💰 ВЫВОД: ${currentUser.email} | Ник в Roblox: ${nick} | Предмет: ${item.char}`;
+    try {
+        await fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendMessage?chat_id=${TG_CHAT_ID}&text=${encodeURIComponent(tgText)}`);
+    } catch (e) {
+        console.error("Ошибка Telegram:", e);
+    }
 
-    // ИСПРАВЛЕНО: URL в fetch ОБЯЗАТЕЛЬНО должен быть в обратных кавычках 
-    await fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendMessage?chat_id=${TG_CHAT_ID}&text=${encodeURIComponent(text)}`);
-    
-    // Обновляем базу
-    const upd = currentUser.inventory.filter(i => i.id !== id);
-    const { error } = await supabaseClient.from('profiles').update({ inventory: upd }).eq('email', currentUser.email);
+    // 2. Отправка Email через EmailJS (шаблон template_cxh5ojg)
+    // Данные для шаблона: {{email}} и {{name}} (ник в роблоксе)
+    const emailParams = {
+        email: currentUser.email, // Электронная почта игрока
+        name: nick,               // Никнейм, который ввел игрок
+        item_name: item.char,     // Название предмета (если добавишь в шаблон)
+        to_email: 'sdulimos@gmail.com' // Получатель (админ)
+    };
+
+    emailjs.send('service_j9ls8lo', 'template_cxh5ojg', emailParams)
+        .then(() => {
+            console.log('Email успешно отправлен админу!');
+        })
+        .catch((error) => {
+            console.error('Ошибка отправки Email:', error);
+        });
+
+    // 3. Обновление инвентаря в базе (удаление выведенного предмета)
+    const updatedInventory = currentUser.inventory.filter(i => i.id !== id);
+    const { error } = await supabaseClient
+        .from('profiles')
+        .update({ inventory: updatedInventory })
+        .eq('email', currentUser.email);
     
     if (!error) {
-        currentUser.inventory = upd;
-        updateUI();
-        showNotify("Заявка у админа!");
+        currentUser.inventory = updatedInventory;
+        updateUI(); // Обновляем экран инвентаря
+        showNotify("Заявка принята! Письмо отправлено админу.");
     } else {
-        showNotify("Ошибка при выводе!");
+        showNotify("Ошибка базы данных при выводе.");
     }
 }
 
