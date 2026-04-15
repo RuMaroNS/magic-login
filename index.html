@@ -33,7 +33,7 @@
                 </div>
 
                 <div id="step-code" style="display:none;">
-                    <p class="otp-text">Код отправлен в Telegram / Почту</p>
+                    <p class="otp-text">Код отправлен в Telegram</p>
                     <input type="number" id="otp_input" placeholder="0000">
                     <button class="main-btn" onclick="register()">ПОДТВЕРДИТЬ</button>
                 </div>
@@ -71,43 +71,6 @@
                 <div id="drops-feed"></div>
             </div>
         </div>
-    </div>
-
-    <script src="script.js"></script>
-</body>
-</html>
-
-    <div id="game-ui" style="display:none;">
-        <nav>
-            <button onclick="switchTab('cases')">КЕЙСЫ</button>
-            <button onclick="switchTab('profile')">ПРОФИЛЬ</button>
-            <button onclick="switchTab('support')">САППОРТ</button>
-            <button onclick="logout()" class="logout-btn">X</button>
-        </nav>
-
-        <div id="tab-cases" class="tab">
-            <div id="case-display">🎁</div>
-            <button class="main-btn" onclick="openCase()">КРУТИТЬ (50$)</button>
-        </div>
-
-        <div id="tab-profile" class="tab" style="display:none;">
-            <div class="balance-card">
-                БАЛАНС: <span id="p-balance">0</span>$
-            </div>
-            <h3 class="title">ИНВЕНТАРЬ:</h3>
-            <div id="inventory-list"></div>
-        </div>
-
-        <div id="tab-support" class="tab" style="display:none;">
-            <h3 class="title">ТЕХПОДДЕРЖКА</h3>
-            <textarea id="support-msg" placeholder="Ник в Roblox и суть проблемы..."></textarea>
-            <button class="main-btn" onclick="sendSupport()">ОТПРАВИТЬ</button>
-        </div>
-    </div>
-
-    <div class="live-board-container">
-        <div class="live-title"><span class="dot"></span> LIVE DROPS</div>
-        <div id="drops-feed"></div>
     </div>
 
     <script src="script.js"></script>
