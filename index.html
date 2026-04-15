@@ -2,30 +2,29 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Magic Login</title>
+    <title>Magic Login & Save</title>
     <link rel="stylesheet" href="style.css">
-    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
 
-<div class="login-card">
-    <div id="step-1">
-        <h2>Вход</h2>
-        <p>Введи почту, чтобы получить магический код</p>
-        <input type="email" id="user_email" placeholder="example@mail.com">
-        <button onclick="sendOTP()">Отправить код</button>
-    </div>
-
-    <div id="step-2" style="display: none;">
-        <h2>Проверка</h2>
-        <p>Мы отправили код на почту</p>
-        <div class="otp-inputs">
-            <input type="text" id="otp_input" placeholder="0000" maxlength="4">
+    <div class="login-card">
+        <div id="step-1">
+            <h2>Вход в игру</h2>
+            <input type="email" id="user_email" placeholder="Твоя почта">
+            <button onclick="sendOTP()">Получить код</button>
         </div>
-        <button onclick="verifyOTP()">Войти</button>
-    </div>
-</div>
 
-<script src="script.js"></script>
+        <div id="step-2" style="display: none;">
+            <h2>Введите код</h2>
+            <input type="text" id="otp_input" placeholder="0000" maxlength="4">
+            <button onclick="verifyOTP()">Войти и загрузить прогресс</button>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
 </body>
 </html>
