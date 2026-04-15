@@ -117,7 +117,7 @@ async function requestWithdraw(id) {
     const nick = prompt("Твой ник в Roblox:");
     if (!nick) return;
     const item = currentUser.inventory.find(i => i.id === id);
-    const text = 💰 ВЫВОД: ${currentUser.email} | Ник: ${nick} | Предмет: ${item.char};
+    const text = ("💰 ВЫВОД:" + ${currentUser.email} "| Ник:" + ${nick} "| Предмет:" + ${item.char});
     await fetch(https://api.telegram.org/bot${TG_TOKEN}/sendMessage?chat_id=${TG_CHAT_ID}&text=${encodeURIComponent(text)});
     
     const upd = currentUser.inventory.filter(i => i.id !== id);
