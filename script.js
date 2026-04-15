@@ -41,30 +41,28 @@ async function verifyOTP() {
             .eq('email', email)
             .single();
 
-        // 2. Если игрока нет (ошибка 406 или пустой результат) — создаем его
+        // 2. Если игрока нет — создаем его
         if (!profile) {
             console.log("Игрок не найден, создаем новый профиль...");
-            
-            const { data: newData, error: insertError } = await supabaseClient
+            const { data: newData, error: insError } = await supabaseClient
                 .from('profiles')
                 .insert([{ email: email, score: 0, level: 1 }])
                 .select()
                 .single();
             
-            if (insertError) {
-                console.error("Ошибка при создании игрока:", insertError);
-                return alert("Не удалось создать профиль в базе.");
+            if (insError) {
+                console.error("Ошибка вставки:", insError);
+                return alert("Ошибка при создании профиля");
             }
             profile = newData;
         }
 
-        // 3. Успешный вход! Выводим данные через обратные кавычки (клавиша Ё)
+        // 3. УСПЕХ! Используем обратные кавычки (клавиша Ё), чтобы вставить переменные
         alert(Успех! Твой уровень: ${profile.level}, Очки: ${profile.score});
         
-        // Здесь можно скрыть форму входа и показать саму игру
-        console.log("Данные успешно загружены:", profile);
-
+        console.log("Профиль загружен:", profile);
+        // Здесь можно переключать экран на саму игру
     } else {
-        alert("Неверный код! Попробуй еще раз.");
+        alert("Неверный код!");
     }
 }
