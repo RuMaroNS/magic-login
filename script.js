@@ -3,8 +3,9 @@ const SB_KEY = 'sb_publishable_l5wIAt6RrAl4Uo8uZKerRQ_xBYDS-Kv';
 const EJS_KEY = 'gTrqvbOiCTqlJcDNJ';
 const TG_TOKEN = '8503277013:AAHK1uBNYc4f8zhchfXdPxwFBJ-eExGONvw';
 const TG_CHAT_ID = '6176762600';
-// Ссылка на твою папку Drops в Supabase
-const STORAGE_URL = "https://wbkygibviddkdjxbahbg.supabase.co/storage/files/buckets/Drops/";
+
+// Ссылка на твой репозиторий GitHub (ветка main)
+const GITHUB_BASE = "https://raw.githubusercontent.com/RuMaroNS/magic-login/main/img/";
 
 const supabaseClient = supabase.createClient(SB_URL, SB_KEY);
 emailjs.init(EJS_KEY);
@@ -20,7 +21,6 @@ const items = [
     {char: 'LosAdminBlocks', price: 67, chance: 0.055}
 ];
 
-// УВЕДОМЛЕНИЯ
 function showNotify(text) {
     const container = document.getElementById('notification-container');
     const toast = document.createElement('div');
@@ -34,7 +34,6 @@ function showNotify(text) {
     }, 2500);
 }
 
-// АВТО-ВХОД
 window.onload = async () => {
     const savedUser = localStorage.getItem('game_user');
     if (savedUser) {
@@ -82,7 +81,6 @@ function logout() {
     location.reload();
 }
 
-// ОТКРЫТИЕ КЕЙСА
 async function openCase() {
     if (currentUser.score < 50) return showNotify("Нужно 50$!");
     
@@ -103,19 +101,22 @@ async function openCase() {
     
     setTimeout(() => {
         display.classList.remove('spinning');
-        const fullPath = STORAGE_URL + win.char + ".png";
-        display.innerHTML = <img src="${fullPath}" style="width:100px; height:100px; object-fit:contain;">;
+        // Формируем прямую ссылку на картинку в GitHub
+        const fullPath = GITHUB_BASE + win.char + ".png";
+        display.innerHTML = '<img src="' + fullPath + '" style="width:100px; height:100px; object-fit:contain;">';
         updateUI();
-        showNotify(Выпало: ${win.char}! Цена: ${win.price}$);
+        showNotify("Выпало: " + win.char + "! Цена: " + win.price + "$");
     }, 800);
 }
 
-// ПОДДЕРЖКА
 async function sendSupport() {
     const msg = document.getElementById('support-msg').value;
-    if (!msg) return showNotify("Напиши что-нибудь!");
-    const text = ⚠️ ПОДДЕРЖКА\nЮзер: ${currentUser.email}\nСообщение: ${msg};
-    await fetch(https://api.telegram.org/bot${TG_TOKEN}/sendMessage?chat_id=${TG_CHAT_ID}&text=${encodeURIComponent(text)});
+    if (!msg) return showNotify("Напиши текст!");
+    const text = "⚠️ ПОДДЕРЖКА\nЮзер: " + currentUser.email + "\nСообщение: " + msg;
+    
+    const url = "https://api.telegram.org/bot" + TG_TOKEN + "/sendMessage?chat_id=" + TG_CHAT_ID + "&text=" + encodeURIComponent(text);
+    
+    await fetch(url);
     showNotify("Отправлено админу!");
     document.getElementById('support-msg').value = "";
 }
