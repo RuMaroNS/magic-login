@@ -3,12 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Emoji Case Simulator</title>
+    <title>Brainrot Case Simulator</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
 </head>
 <body>
+
+    <div id="notification-container"></div>
 
     <div id="auth-container">
         <div id="step-choice">
@@ -23,7 +25,7 @@
             <input type="password" id="user_password" placeholder="Пароль"><br>
             <button id="btn-reg" onclick="sendOTP()" style="display:none;">Получить код</button>
             <button id="btn-login" onclick="login()" style="display:none;">Войти в игру</button>
-            <p onclick="showAuth('choice')" style="cursor:pointer;">← Назад</p>
+            <p onclick="showAuth('choice')" class="back-link">← Назад</p>
         </div>
 
         <div id="step-code" style="display:none;">
@@ -38,13 +40,13 @@
             <button onclick="switchTab('cases')">🎁 Кейсы</button>
             <button onclick="switchTab('profile')">👤 Профиль</button>
             <button onclick="switchTab('support')">🛠 Поддержка</button>
-            <button onclick="logout()" style="background: #ff4444;">Выйти</button>
+            <button onclick="logout()" style="background: #ff4444;">Выход</button>
         </nav>
 
         <div id="tab-cases" class="tab">
             <h1>ОТКРЫВАЙ КЕЙС</h1>
             <div id="case-display">🎁</div>
-            <button id="spin-btn" onclick="openCase()">Открыть (50$)</button>
+            <button id="spin-btn" onclick="openCase()">Открыть за 50$</button>
         </div>
 
         <div id="tab-profile" class="tab" style="display:none;">
@@ -55,7 +57,7 @@
 
         <div id="tab-support" class="tab" style="display:none;">
             <h2>Техподдержка</h2>
-            <textarea id="support-msg" placeholder="Опиши свою проблему админу..."></textarea>
+            <textarea id="support-msg" placeholder="Опиши проблему админу..."></textarea>
             <button onclick="sendSupport()">Отправить в Telegram</button>
         </div>
     </div>
