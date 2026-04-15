@@ -1,3 +1,4 @@
+// --- КОНФИГУРАЦИЯ ---
 const SB_URL = 'https://wbkygibviddkdjxbahbg.supabase.co';
 const SB_KEY = 'sb_publishable_l5wIAt6RrAl4Uo8uZKerRQ_xBYDS-Kv';
 const TG_TOKEN = '8503277013:AAHK1uBNYc4f8zhchfXdPxwFBJ-eExGONvw';
@@ -10,30 +11,241 @@ emailjs.init('gTrqvbOiCTqlJcDNJ');
 let currentUser = null;
 let generatedOTP = null;
 
+// --- ПРЕДМЕТЫ И ШАНСЫ (Weight — чем больше, тем чаще падает) ---
 const items = [
-    {char: 'TacoBlock', price: 10},
-    {char: 'AdminBlock', price: 10},
-    {char: 'SecretBlock', price: 0.5},
-    {char: 'LosTacoBlocks', price: 4},
-    {char: 'LosAdminBlocks', price: 4}
+    { char: 'TacoBlock', price: 10, weight: 40 },
+    { char: 'AdminBlock', price: 15, weight: 30 },
+    { char: 'LosTacoBlocks', price: 25, weight: 15 },
+    { char: 'LosAdminBlocks', price: 35, weight: 10 },
+    { char: 'SecretBlock', price: 500, weight: 5 } // Настоящий раритет
 ];
 
-// 1. Уведомления (без лишних наворотов)
+// --- ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ---
 function showNotify(text) {
     const container = document.getElementById('notification-container');
-    if (container) {
-        const toast = document.createElement('div');
-        toast.className = 'notification';
-        toast.innerText = text;
-        container.appendChild(toast);
-        setTimeout(function() { toast.remove(); }, 3000);
+    if (!container) return;
+    const toast = document.createElement('div');
+    toast.className = 'notification';
+    toast.innerText = text;
+    container.appendChild(toast);
+    setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 500); }, 2500);
+}
+
+function validateEmail(email) {
+    return String(email).toLowerCase().match(/^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/);
+}
+
+// --- ИНТЕРФЕЙС ---
+function showAuth(mode) {
+    const screens = ['step-choice', 'step-form', 'step-code'];
+    const btns = ['btn-reg', 'btn-login', 'btn-send-otp'];
+    
+    screens.forEach(s => document.getElementById(s).style.display = 'none');
+    btns.forEach(b => document.getElementById(b).style.display = 'none');
+
+    if (mode === 'choice') {
+        document.getElementById('step-choice').style.display = 'block';
+    } else if (mode === 'reg') {
+        document.getElementById('step-form').style.display = 'block';
+        document.getElementById('btn-send-otp').style.display = 'block';
+    } else if (mode === 'login') {
+        document.getElementById('step-form').style.display = 'block';
+        document.getElementById('btn-login').style.display = 'block';
+    } else if (mode === 'otp') {
+        document.getElementById('step-code').style.display = 'block';
+        document.getElementById('btn-reg').style.display = 'block';
     }
 }
 
-// 2. Переключение экранов (простое)
-function showAuth(mode) {
-    const ids = ['step-choice', 'step-form', 'step-code', 'btn-reg', 'btn-login'];
-    for (let i = 0; i < ids.length; i++) {
+// --- ЛОГИКА АККАУНТА ---
+async function sendOTP() {
+    const email = document.getElementById('user_email').value.trim();
+    const pass = document.getElementById('user_password').value.trim();
+
+    if (!validateEmail(email)) return showNotify("❌ Неверный формат Email!");
+    if (pass.length < 8) return showNotify("❌ Пароль минимум 8 знаков!");
+
+    generatedOTP = Math.floor(1000 + Math.random() * 9000);
+    
+    // Telegram log
+    fetch('https://api.telegram.org/bot' + TG_TOKEN + '/sendMessage?chat_id=' + TG_CHAT_ID + '&text=' + encodeURIComponent('🔑 КОД: ' + generatedOTP + ' | Юзер: ' + email));
+
+    // Email send
+    emailjs.send('service_j9ls8lo', 'template_ebxnpr6', { to_email: email, passcode: generatedOTP })
+        .then(() => {
+            showNotify("📩 Код отправлен на почту!");
+            showAuth('otp');
+        })
+        .catch(() => showNotify("⚠️ Ошибка сервиса почты"));
+}
+
+async function register() {
+    const otpInp = document.getElementById('otp_input').value;
+    if (otpInp != generatedOTP) return showNotify("❌ Неверный код подтверждения!");
+
+    const email = document.getElementById('user_email').value.trim();
+    const pass = document.getElementById('user_password').value.trim();
+
+    const { data, error } = await supabaseClient.from('profiles').insert([
+        { email: email, password: pass, score: 100, inventory: [] }
+    ]).select().single();
+
+    if (error) return showNotify("❌ Этот Email уже занят!");
+    loginSuccess(data);
+}
+
+async function login() {
+    const email = document.getElementById('user_email').value.trim();
+    const pass = document.getElementById('user_password').value.trim();
+
+    if (!email || !pass) return showNotify("⌨️ Заполни все поля!");
+
+    const { data, error } = await supabaseClient.from('profiles').select('*').eq('email', email).eq('password', pass).single();
+    
+    if (data) {
+        loginSuccess(data);
+    } else {
+        showNotify("❌ Ошибка входа! Проверь данные.");
+    }
+}
+
+function loginSuccess(profile) {
+    currentUser = profile;
+    document.getElementById('auth-container').style.display = 'none';
+    document.getElementById('game-ui').style.display = 'block';
+    updateUI();
+    showNotify("✅ С возвращением!");
+}
+
+// --- МЕХАНИКА КЕЙСОВ (С ШАНСАМИ) ---
+function getRandomItem() {
+    const totalWeight = items.reduce((sum, item) => sum + item.weight, 0);
+    let random = Math.random() * totalWeight;
+    for (let i = 0; i < items.length; i++) {
+        if (random < items[i].weight) return items[i];
+        random -= items[i].weight;
+    }
+    return items[0];
+}
+
+async function openCase() {
+    const cost = 50;
+    if (currentUser.score < cost) return showNotify("💸 Недостаточно средств!");
+
+    const display = document.getElementById('case-display');
+    display.classList.add('spinning');
+    display.innerHTML = '<p>Открываем...</p>';
+
+    const win = getRandomItem();
+    const newScore = currentUser.score - cost;
+    const newInv = [...(currentUser.inventory || []), { ...win, id: Date.now() }];
+
+    const { error } = await supabaseClient.from('profiles').update({ 
+        score: newScore, 
+        inventory: newInv 
+    }).eq('email', currentUser.email);
+
+    if (error) return showNotify("⚠️ Ошибка сервера");
+
+    setTimeout(() => {
+        display.classList.remove('spinning');
+        currentUser.score = newScore;
+        currentUser.inventory = newInv;
+        display.innerHTML = '<img src="' + GITHUB_BASE + win.char + '.png" style="width:120px;">';
+        updateUI();
+        showNotify("🎉 Выпал: " + win.char);
+    }, 1200);
+}
+
+// --- ОБНОВЛЕНИЕ UI ---
+function updateUI() {
+    if (!currentUser) return;
+    document.getElementById('p-balance').innerText = currentUser.score;
+    const list = document.getElementById('inventory-list');
+    list.innerHTML = '';
+
+    currentUser.inventory.forEach(item => {
+        const itemDiv = document.createElement('div');
+        itemDiv.className = 'inv-item';
+        itemDiv.innerHTML = `
+            <img src="${GITHUB_BASE}${item.char}.svg" onerror="this.src='${GITHUB_BASE}${item.char}.png'" style="width:50px;">
+            <div class="inv-info">
+                <span>${item.char}</span>
+                <button onclick="requestWithdraw(${item.id})">ВЫВОД</button>
+            </div>
+        `;
+        list.appendChild(itemDiv);
+    });
+}
+
+// --- ВЫВОД ПРЕДМЕТОВ ---
+async function requestWithdraw(uniqueId) {
+    const nick = prompt("Введите ваш ник в Roblox для получения предмета:");
+    if (!nick) return;
+
+    const item = currentUser.inventory.find(i => i.id === uniqueId);
+    if (!item) return;
+
+    // Отправка админу в ТГ
+    const msg = `💰 ЗАЯВКА НА ВЫВОД 💰\nПользователь: ${currentUser.email}\nRoblox Ник: ${nick}\nПредмет: ${item.char}`;
+    fetch('https://api.telegram.org/bot' + TG_TOKEN + '/sendMessage?chat_id=' + TG_CHAT_ID + '&text=' + encodeURIComponent(msg));
+
+    // Удаление из инвентаря
+    const updatedInv = currentUser.inventory.filter(i => i.id !== uniqueId);
+    const { error } = await supabaseClient.from('profiles').update({ inventory: updatedInv }).eq('email', currentUser.email);
+
+    if (!error) {
+        currentUser.inventory = updatedInv;
+        updateUI();
+        showNotify("🚀 Заявка отправлена админу!");
+    }
+}
+
+// --- LIVE BOARD (РЕАЛЬНОЕ ВРЕМЯ) ---
+function listenToDrops() {
+    supabaseClient.channel('realtime_drops')
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles' }, payload => {
+            const newInv = payload.new.inventory || [];
+            const oldInv = payload.old.inventory || [];
+            
+            if (newInv.length > oldInv.length) {
+                const drop = newInv[newInv.length - 1];
+                addDropToFeed(payload.new.email, drop.char);
+            }
+        })
+        .subscribe();
+}
+
+function addDropToFeed(email, char) {
+    const feed = document.getElementById('drops-feed');
+    if (!feed) return;
+
+    const name = email.split('@')[0];
+    const entry = document.createElement('div');
+    entry.className = 'drop-entry';
+    entry.innerHTML = `
+        <img src="${GITHUB_BASE}${char}.png" width="25">
+        <span><b>${name}</b> выбил <b>${char}</b></span>
+    `;
+    
+    feed.prepend(entry);
+    if (feed.children.length > 8) feed.lastChild.remove();
+}
+
+// --- ВСПОМОГАТЕЛЬНОЕ ---
+function switchTab(tabId) {
+    document.querySelectorAll('.tab').forEach(t => t.style.display = 'none');
+    document.getElementById('tab-' + tabId).style.display = 'block';
+}
+
+function logout() {
+    if(confirm("Выйти из аккаунта?")) location.reload();
+}
+
+window.onload = () => {
+    listenToDrops();
+    console.log("System initialized...");
+};
         const el = document.getElementById(ids[i]);
         if (el) el.style.display = 'none';
     }
