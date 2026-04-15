@@ -33,7 +33,6 @@ function showNotify(text) {
     }, 2500);
 }
 
-// Показ вкладок авторизации
 function showAuth(mode) {
     const ids = ['step-choice', 'step-form', 'step-code', 'btn-reg', 'btn-login'];
     const els = {};
@@ -183,87 +182,7 @@ window.onload = async () => {
         if (data) loginSuccess(data);
     }
 };
-mponent(text)}`);
-    
-    const updatedInv = currentUser.inventory.filter(i => i.id !== id);
-    await supabaseClient.from('profiles').update({ inventory: updatedInv }).eq('email', currentUser.email);
-    
-    currentUser.inventory = updatedInv;
-    updateUI();
-    showNotify("Заявка отправлена!");
-}
 
-function updateUI() {
-    const balanceEl = document.getElementById('p-balance');
-    const listEl = document.getElementById('inventory-list');
-    
-    if (balanceEl) balanceEl.innerText = currentUser.score;
-    if (listEl) {
-        listEl.innerHTML = '';
-        if (currentUser.inventory) {
-            currentUser.inventory.forEach(i => {
-                listEl.innerHTML += `
-                    <div class="inv-item">
-                        <img src="${GITHUB_BASE}${i.char}.png">
-                        <p>${i.char}</p>
-                        <button onclick="requestWithdraw(${i.id})">Вывод</button>
-                    </div>`;
-            });
-        }
-    }
-}
-
-async function sendOTP() {
-    const email = document.getElementById('user_email').value;
-    if(!email) return showNotify("Введите Email!");
-    generatedOTP = Math.floor(1000 + Math.random() * 9000);
-    emailjs.send('service_j9ls8lo', 'template_ebxnpr6', {to_email: email, passcode: generatedOTP})
-    .then(() => {
-        showNotify("Код отправлен!");
-        document.getElementById('step-form').style.display = 'none';
-        document.getElementById('step-code').style.display = 'block';
-    });
-}
-
-async function register() {
-    const otp = document.getElementById('otp_input').value;
-    if (otp == generatedOTP) {
-        const email = document.getElementById('user_email').value;
-        const pass = document.getElementById('user_password').value;
-        const { data } = await supabaseClient.from('profiles').insert([{ email, password: pass, score: 100, inventory: [] }]).select().single();
-        if (data) loginSuccess(data);
-    } else {
-        showNotify("Неверный код!");
-    }
-}
-
-function switchTab(t) {
-    document.querySelectorAll('.tab').forEach(x => x.style.display = 'none');
-    document.getElementById('tab-' + t).style.display = 'block';
-}
-
-function logout() { 
-    localStorage.clear(); location.reload(); 
-    if (data) loginSuccess(data);
-};
-
-async function login() {
-    const email = document.getElementById('user_email').value;
-    const pass = document.getElementById('user_password').value;
-    const { data } = await supabaseClient.from('profiles').select('*').eq('email', email).eq('password', pass).single();
-    if (data) {
-        localStorage.setItem('game_user', JSON.stringify(data));
-        loginSuccess(data);
-    } else {
-        showNotify("Ошибка входа!");
-    }
-}
-
-function loginSuccess(profile) {
-    currentUser = profile;
-    document.getElementById('auth-container').style.display = 'none';
-    document.getElementById('game-ui').style.display = 'block';
-    updateUI();
 }
 
 async function openCase() {
