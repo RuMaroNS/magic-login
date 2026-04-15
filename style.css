@@ -1,8 +1,7 @@
-/* ОБЩИЙ СТИЛЬ */
 body {
-    background: radial-gradient(circle, #1a1a2e 0%, #0f0f1a 100%);
-    color: #ffffff;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: #0f0f1a;
+    color: white;
+    font-family: 'Segoe UI', sans-serif;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -11,29 +10,80 @@ body {
 }
 
 #auth-container, #game-ui {
-    background: rgba(30, 30, 50, 0.95);
+    background: #1c1c2e;
     padding: 25px;
-    border-radius: 20px;
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.7);
-    width: 400px; /* Фиксированная ширина, чтобы не ехало */
+    border-radius: 15px;
+    width: 380px;
     text-align: center;
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
 }
 
-/* НАВИГАЦИЯ (ИСПРАВЛЕННАЯ) */
+/* ФИКС НАВИГАЦИИ */
 nav {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr); /* 4 равных колонки */
+    display: flex;
+    justify-content: space-between;
     gap: 5px;
     margin-bottom: 20px;
-    background: #0a0a15;
-    padding: 5px;
-    border-radius: 12px;
 }
 
 nav button {
-    padding: 8px 2px;
+    flex: 1;
+    padding: 10px 2px;
     font-size: 10px;
+    background: #2a2a40;
+    color: #fff;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+nav button:hover { background: #3a3a55; }
+
+/* КЕЙС */
+#case-display {
+    font-size: 80px;
+    height: 130px;
+    margin: 20px 0;
+    background: rgba(0,0,0,0.2);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* ИНВЕНТАРЬ (СЕТКА) */
+#inventory-list {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-top: 15px;
+    max-height: 250px;
+    overflow-y: auto;
+}
+
+.inv-item {
+    background: #252538;
+    padding: 10px;
+    border-radius: 10px;
+    font-size: 11px;
+}
+
+.inv-item img { width: 50px; }
+
+/* УВЕДОМЛЕНИЯ */
+.notification {
+    position: fixed;
+    top: 20px;
+    background: #00d4ff;
+    color: black;
+    padding: 10px 20px;
+    border-radius: 20px;
+    font-weight: bold;
+    transition: 0.4s;
+}
+
+.spinning { animation: shake 0.1s infinite; }
+@keyframes shake { 0% { transform: rotate(-2deg); } 50% { transform: rotate(2deg); } }
     text-transform: uppercase;
     font-weight: bold;
     border-radius: 8px;
