@@ -15,9 +15,9 @@ let generatedOTP = null;
 const items = [
     {char: 'TacoBlock', price: 10},
     {char: 'AdminBlock', price: 10},
-    {char: 'SecretBlock', price: 89},
-    {char: 'LosTacoBlocks', price: 67},
-    {char: 'LosAdminBlocks', price: 67}
+    {char: 'SecretBlock', price: 0.5},
+    {char: 'LosTacoBlocks', price: 4},
+    {char: 'LosAdminBlocks', price: 4}
 ];
 
 // --- ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ---
