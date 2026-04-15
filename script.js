@@ -183,8 +183,8 @@ function addDropToFeed(userEmail, charName) {
     const entry = document.createElement('div');
     entry.className = 'drop-entry';
     entry.innerHTML = 
-        <img src="${GITHUB_BASE}${charName}.png" style="width:20px;">
-        <span><b>${name}</b> выбил ${charName}</span>;
+        `<img src="${GITHUB_BASE}${charName}.png" style="width:20px;">
+        <span><b>${name}</b> выбил ${charName}</span>`;
     feed.prepend(entry);
     if (feed.children.length > 5) feed.lastChild.remove();
 }
