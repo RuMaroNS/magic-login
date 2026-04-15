@@ -181,7 +181,6 @@ function logout() { location.reload(); }
 
 window.onload = () => { 
     listenToDrops(); 
-};
     const ids = ['step-choice', 'step-form', 'step-code', 'btn-reg', 'btn-login'];
     ids.forEach(id => {
         const el = document.getElementById(id);
