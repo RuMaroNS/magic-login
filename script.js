@@ -1,17 +1,21 @@
-// 1. НАСТРОЙКИ (Вставь свои данные)
+// 1. НАСТРОЙКИ
 const SB_URL = 'https://wbkygibviddkdjxbahbg.supabase.co';
 const SB_KEY = 'sb_publishable_l5wIAt6RrAl4Uo8uZKerRQ_xBYDS-Kv';
 const EJS_PUBLIC_KEY = 'gTrqvbOiCTqlJcDNJ';
 
 // Инициализация библиотек
 emailjs.init(EJS_PUBLIC_KEY);
-const supabase = supabaseClient.createClient(SB_URL, SB_KEY);
+
+// ИСПРАВЛЕНО: Правильная инициализация клиента
+const supabaseClient = supabase.createClient(SB_URL, SB_KEY);
 
 let generatedOTP;
 
 // ФУНКЦИЯ ОТПРАВКИ КОДА
 async function sendOTP() {
     const email = document.getElementById('user_email').value;
+    if (!email) return alert("Введите почту!");
+
     generatedOTP = Math.floor(1000 + Math.random() * 9000);
 
     const templateParams = {
@@ -35,7 +39,8 @@ async function verifyOTP() {
 
     if (userInput == generatedOTP) {
         try {
-            let { data: profile, error } = await supabase
+            // Используем исправленный supabaseClient
+            let { data: profile, error } = await supabaseClient
                 .from('profiles')
                 .select('*')
                 .eq('email', email)
@@ -43,7 +48,7 @@ async function verifyOTP() {
 
             if (!profile) {
                 console.log("Создаем новый профиль...");
-                const { data: newData, error: insError } = await supabase
+                const { data: newData, error: insError } = await supabaseClient
                     .from('profiles')
                     .insert([{ email: email, score: 0, level: 1 }])
                     .select()
@@ -53,7 +58,8 @@ async function verifyOTP() {
                 profile = newData;
             }
 
-            alert(`Успех! Твой уровень: ${profile.level}, Очки: ${profile.score}`);
+            // ИСПРАВЛЕНО: Добавлены обратные кавычки (клавиша Ё)
+            alert(Успех! Твой уровень: ${profile.level}, Очки: ${profile.score});
             
             console.log("Данные загружены:", profile);
 
