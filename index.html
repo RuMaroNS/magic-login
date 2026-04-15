@@ -12,48 +12,38 @@
     <div id="notification-container"></div>
 
     <div id="auth-container">
-        <h1>БРАЙНРОТ КЕЙСЫ</h1>
-        <div id="step-choice">
-            <button onclick="showAuth('reg')">Регистрация</button>
-            <button onclick="showAuth('login')" style="margin-top:10px;">Войти</button>
-        </div>
-        <div id="step-form" style="display:none;">
-            <input type="email" id="user_email" placeholder="Email"><br>
-            <input type="password" id="user_password" placeholder="Пароль"><br>
-            <button id="btn-login" onclick="login()">Войти в игру</button>
-            <p onclick="showAuth('choice')" style="cursor:pointer; font-size:12px; margin-top:10px;">← Назад</p>
-        </div>
+    <div id="step-choice">
+        <button onclick="showAuth('reg')">Регистрация</button>
+        <button onclick="showAuth('login')">Вход</button>
     </div>
-
-    <div id="game-ui" style="display:none;">
-        <nav>
-            <button onclick="switchTab('cases')">Кейсы</button>
-            <button onclick="switchTab('profile')">Профиль</button>
-            <button onclick="switchTab('support')">Поддержка</button>
-            <button onclick="logout()" style="color:#ff4444;">Выход</button>
-        </nav>
-
-        <div id="tab-cases" class="tab">
-            <div id="live-board"></div>
-            <div id="case-display">🎁</div>
-            <button onclick="openCase()" style="background:#00d4ff; color:#000;">ОТКРЫТЬ ЗА 50$</button>
-        </div>
-
-        <div id="tab-profile" class="tab" style="display:none;">
-            <h2>Профиль</h2>
-            <p>Баланс: <span id="p-balance" style="color:#2ecc71;"></span>$</p>
-            <hr>
-            <h3>Инвентарь</h3>
-            <div id="inventory-list"></div>
-        </div>
-
-        <div id="tab-support" class="tab" style="display:none;">
-            <h2>Поддержка</h2>
-            <textarea id="support-msg" style="width:90%; height:80px;" placeholder="Ваш ник и проблема..."></textarea>
-            <button onclick="sendSupport()">Отправить админу</button>
-        </div>
+    <div id="step-form" style="display:none;">
+        <input type="email" id="user_email" placeholder="Email"><br>
+        <input type="password" id="user_password" placeholder="Пароль"><br>
+        <button id="btn-reg" onclick="sendOTP()" style="display:none;">Получить код</button>
+        <button id="btn-login" onclick="login()" style="display:none;">Войти</button>
     </div>
+    <div id="step-code" style="display:none;">
+        <input type="number" id="otp_input" placeholder="Код"><br>
+        <button onclick="register()">ОК</button>
+    </div>
+</div>
 
+<div id="game-ui" style="display:none;">
+    <nav>
+        <button onclick="switchTab('cases')">Кейсы</button>
+        <button onclick="switchTab('profile')">Профиль</button>
+        <button onclick="switchTab('support')">Поддержка</button>
+        <button onclick="logout()" style="background:#ff4444;">Выход</button>
+    </nav>
+    <div id="tab-cases" class="tab">
+        <div id="case-display">🎁</div>
+        <button onclick="openCase()">Крутить за 50$</button>
+    </div>
+    <div id="tab-profile" class="tab" style="display:none;">
+        <p>Баланс: <span id="p-balance"></span>$</p>
+        <div id="inventory-list"></div>
+    </div>
+    </div>
     <script src="script.js"></script>
 </body>
 </html>
