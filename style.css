@@ -1,136 +1,75 @@
-/* 1. ОБЩИЙ СТИЛЬ (ТЕМНАЯ ТЕМА) */
 body {
-    background: radial-gradient(circle, #1a1a2e 0%, #0f0f1a 100%);
-    color: #ffffff;
-    font-family: 'Segoe UI', Roboto, sans-serif;
+    background: #0f0f1a;
+    color: white;
+    font-family: sans-serif;
     display: flex;
     justify-content: center;
     align-items: center;
     min-height: 100vh;
     margin: 0;
-    overflow: hidden;
 }
 
-/* 2. КОНТЕЙНЕРЫ */
 #auth-container, #game-ui {
-    background: rgba(45, 45, 68, 0.9);
-    backdrop-filter: blur(10px);
+    background: #1c1c2e;
     padding: 30px;
-    border-radius: 20px;
-    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.8);
-    width: 380px;
+    border-radius: 15px;
+    width: 350px;
     text-align: center;
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
 }
 
-/* 3. НАВИГАЦИЯ (ВКЛАДКИ) */
-nav {
-    display: flex;
-    justify-content: space-between;
-    gap: 5px;
-    margin-bottom: 25px;
-    background: #121212;
-    padding: 5px;
-    border-radius: 12px;
-}
-
-nav button {
-    flex: 1;
-    padding: 8px 5px;
-    font-size: 12px;
-    background: transparent;
-    border-radius: 8px;
-    color: #ccc;
-}
-
-nav button:hover {
-    background: rgba(0, 212, 255, 0.2);
-    color: #fff;
-}
-
-/* 4. КЕЙС И АНИМАЦИЯ */
-#case-display {
-    font-size: 100px;
-    height: 150px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    margin: 20px 0;
-    text-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
-    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-}
-
-/* Анимация при нажатии (тряска) */
-.spinning {
-    animation: shake 0.1s infinite;
-}
-
-@keyframes shake {
-    0% { transform: rotate(0deg); }
-    25% { transform: rotate(5deg); }
-    50% { transform: rotate(0eg); }
-    75% { transform: rotate(-5deg); }
-    100% { transform: rotate(0deg); }
-}
-
-/* 5. КНОПКИ И ПОЛЯ */
-button {
-    width: 100%;
-    padding: 14px;
-    background: linear-gradient(45deg, #00d4ff, #0055ff);
-    color: white;
-    border: none;
-    border-radius: 10px;
-    font-weight: bold;
-    cursor: pointer;
-    transition: 0.2s;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-}
-
-button:hover {
-    filter: brightness(1.2);
-    transform: translateY(-2px);
-    box-shadow: 0 5px 15px rgba(0, 212, 255, 0.4);
-}
+nav { display: flex; gap: 5px; margin-bottom: 20px; }
+nav button { flex: 1; padding: 10px 5px; font-size: 11px; }
 
 input, textarea {
     width: 90%;
-    padding: 12px;
-    margin-bottom: 15px;
+    padding: 10px;
+    margin-bottom: 10px;
     background: #0a0a0a;
-    border: 1px solid #333;
-    border-radius: 8px;
     color: white;
-    font-size: 16px;
+    border: 1px solid #333;
 }
 
-textarea {
-    height: 100px;
-    resize: none;
-}
-
-/* 6. ПРОФИЛЬ */
-.tab h2 {
-    color: #00d4ff;
-    border-bottom: 1px solid #444;
-    padding-bottom: 10px;
-}
-
-#p-balance {
-    font-size: 24px;
+button {
+    background: #00d4ff;
+    border: none;
+    padding: 12px;
+    color: black;
     font-weight: bold;
-    color: #2ecc71;
-}
-
-.back-link {
-    display: block;
-    margin-top: 15px;
-    color: #777;
-    font-size: 13px;
     cursor: pointer;
+    width: 100%;
 }
 
-.back-link:hover {
-    color: #fff;
+#case-display {
+    font-size: 80px;
+    height: 120px;
+    margin: 20px 0;
 }
+
+.spinning { animation: shake 0.1s infinite; }
+@keyframes shake {
+    0% { transform: rotate(0deg); }
+    50% { transform: rotate(5deg); }
+    100% { transform: rotate(0deg); }
+}
+
+/* Уведомления */
+#notification-container {
+    position: fixed;
+    top: 20px;
+    z-index: 9999;
+}
+
+.notification {
+    background: #00d4ff;
+    color: black;
+    padding: 10px 20px;
+    border-radius: 20px;
+    margin-bottom: 10px;
+    font-weight: bold;
+    opacity: 0;
+    transform: translateY(-20px);
+    transition: 0.4s;
+}
+
+.notification.show { opacity: 1; transform: translateY(0); }
