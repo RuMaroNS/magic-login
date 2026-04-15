@@ -3,10 +3,10 @@ const SB_URL = 'https://wbkygibviddkdjxbahbg.supabase.co';
 const SB_KEY = 'sb_publishable_l5wIAt6RrAl4Uo8uZKerRQ_xBYDS-Kv';
 const EJS_PUBLIC_KEY = 'gTrqvbOiCTqlJcDNJ';
 
-// Инициализация библиотек
+// Инициализация EmailJS
 emailjs.init(EJS_PUBLIC_KEY);
 
-// ИСПРАВЛЕНО: Правильная инициализация клиента
+// ИСПРАВЛЕНО: Используем supabaseClient, чтобы не было конфликта имен
 const supabaseClient = supabase.createClient(SB_URL, SB_KEY);
 
 let generatedOTP;
@@ -39,13 +39,14 @@ async function verifyOTP() {
 
     if (userInput == generatedOTP) {
         try {
-            // Используем исправленный supabaseClient
+            // Загружаем данные игрока
             let { data: profile, error } = await supabaseClient
                 .from('profiles')
                 .select('*')
                 .eq('email', email)
                 .single();
 
+            // Если игрока нет — создаем его
             if (!profile) {
                 console.log("Создаем новый профиль...");
                 const { data: newData, error: insError } = await supabaseClient
@@ -58,14 +59,14 @@ async function verifyOTP() {
                 profile = newData;
             }
 
-            // ИСПРАВЛЕНО: Добавлены обратные кавычки (клавиша Ё)
-            alert(Успех! Твой уровень: ${profile.level}, Очки: ${profile.score});
+            // ИСПРАВЛЕНО: Обратные кавычки (клавиша Ё) расставлены верно
+            alert(`Успех! Твой уровень: ${profile.level}, Очки: ${profile.score}`);
             
             console.log("Данные загружены:", profile);
 
         } catch (err) {
-            console.error("Ошибка supabaseClient:", err);
-            alert("Проблема с базой данных. Проверь консоль (F12)");
+            console.error("Ошибка базы данных:", err);
+            alert("Проблема с подключением к Supabase. Проверь консоль (F12)");
         }
     } else {
         alert("Неверный код!");
