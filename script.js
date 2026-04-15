@@ -93,7 +93,7 @@ async function openCase() {
         display.innerText = win.char;
         updateUI();
         // Правильная строка с использованием обратных кавычек:
-        alert('Выпало: ${win.char}! Цена: ${win.price}$');
+        alert("Выпало: ${win.char}! Цена: ${win.price}$");
     }, 500);
 }
 
