@@ -2,6 +2,7 @@ const SB_URL = 'https://wbkygibviddkdjxbahbg.supabase.co';
 const SB_KEY = 'sb_publishable_l5wIAt6RrAl4Uo8uZKerRQ_xBYDS-Kv';
 const TG_TOKEN = '8503277013:AAHK1uBNYc4f8zhchfXdPxwFBJ-eExGONvw';
 const TG_CHAT_ID = '6176762600';
+const EJS_KEY = 'gTrqvbOiCTqlJcDNJ';
 const GITHUB_BASE = "https://raw.githubusercontent.com/marons/magic-login/main/Drops/";
 
 const supabaseClient = supabase.createClient(SB_URL, SB_KEY);
