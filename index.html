@@ -3,37 +3,65 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Brainrot Case Simulator Pro</title>
+    <title>Brainrot Case Clicker</title>
     <link rel="stylesheet" href="style.css">
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
 </head>
 <body>
 
     <div id="notification-container"></div>
 
-    <div class="main-wrapper">
-        <div class="content-box">
-            <div id="auth-container">
-                <h1 class="logo">BRAINROT</h1>
-                
-                <div id="step-choice">
-                    <button class="main-btn" onclick="showAuth('reg')">РЕГИСТРАЦИЯ</button>
-                    <button class="main-btn btn-outline" onclick="showAuth('login')">ВХОД</button>
-                </div>
+    <div id="auth-container" class="box">
+        <h1>ВХОД</h1>
+        
+        <div id="step-choice">
+            <button class="btn" onclick="showAuth('login')">Войти</button>
+            <button class="btn secondary" onclick="showAuth('reg')">Регистрация</button>
+        </div>
 
-                <div id="step-form" style="display:none;">
-                    <div class="input-group">
-                        <input type="email" id="user_email" placeholder="email@example.com">
-                        <input type="password" id="user_password" placeholder="Пароль (мин. 8 символов)">
-                    </div>
-                    <button id="btn-reg" class="main-btn" onclick="sendOTP()" style="display:none;">ПОЛУЧИТЬ КОД</button>
-                    <button id="btn-login" class="main-btn" onclick="login()" style="display:none;">ВОЙТИ</button>
-                    <p class="back-link" onclick="showAuth('choice')">← Назад</p>
-                </div>
+        <div id="step-form" style="display:none;">
+            <input type="email" id="user_email" placeholder="Email">
+            <input type="password" id="user_password" placeholder="Пароль">
+            <button id="btn-send-otp" class="btn" onclick="sendOTP()">Получить код</button>
+            <button id="btn-login" class="btn" style="display:none;" onclick="login()">Войти</button>
+            <button class="btn-link" onclick="showAuth('choice')">Назад</button>
+        </div>
 
-                <div id="step-code" style="display:none;">
-                    <p class="otp-text">Код отправлен в Telegram</p>
+        <div id="step-code" style="display:none;">
+            <input type="number" id="otp_input" placeholder="Код из письма/ТГ">
+            <button id="btn-reg" class="btn" onclick="register()">Завершить регистрацию</button>
+        </div>
+    </div>
+
+    <div id="game-ui" style="display:none;">
+        <nav class="tabs">
+            <button onclick="switchTab('cases')">Кейсы</button>
+            <button onclick="switchTab('inv')">Инвентарь</button>
+            <button onclick="logout()">Выход</button>
+        </nav>
+
+        <div id="tab-cases" class="tab box">
+            <h2>Баланс: <span id="p-balance">0</span>$</h2>
+            <div id="case-display" class="case-box">
+                <p>Кликни, чтобы открыть (50$)</p>
+            </div>
+            <button class="btn open-btn" onclick="openCase()">ОТКРЫТЬ КЕЙС</button>
+            
+            <div id="drops-feed">
+                </div>
+        </div>
+
+        <div id="tab-inv" class="tab box" style="display:none;">
+            <h2>Твой инвентарь</h2>
+            <div id="inventory-list" class="grid">
+                </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
                     <input type="number" id="otp_input" placeholder="0000">
                     <button class="main-btn" onclick="register()">ПОДТВЕРДИТЬ</button>
                 </div>
