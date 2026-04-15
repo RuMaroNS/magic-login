@@ -13,27 +13,55 @@
     <div id="notification-container"></div>
 
     <div id="auth-container">
-        <h1 style="color: #00d4ff; margin-bottom: 20px;">BRAINROT CASES</h1>
-        
+        <h1 style="color:#00d4ff; margin-bottom:20px;">BRAINROT CASES</h1>
         <div id="step-choice">
             <button class="main-btn" onclick="showAuth('reg')">РЕГИСТРАЦИЯ</button>
-            <button class="main-btn" onclick="showAuth('login')" style="margin-top:10px; background: none; color: #00d4ff; border: 1px solid #00d4ff;">ВХОД</button>
+            <button class="main-btn" onclick="showAuth('login')" style="margin-top:10px; background:none; color:#00d4ff; border:1px solid #00d4ff;">ВХОД</button>
         </div>
-
         <div id="step-form" style="display:none;">
-            <input type="email" id="user_email" placeholder="Твой Email">
+            <input type="email" id="user_email" placeholder="Email">
             <input type="password" id="user_password" placeholder="Пароль">
             <button id="btn-reg" class="main-btn" onclick="sendOTP()" style="display:none;">ПОЛУЧИТЬ КОД</button>
-            <button id="btn-login" class="main-btn" onclick="login()" style="display:none;">ВОЙТИ В ИГРУ</button>
-            <p onclick="showAuth('choice')" class="back-link">← Назад</p>
+            <button id="btn-login" class="main-btn" onclick="login()" style="display:none;">ВОЙТИ</button>
+            <span class="back-link" onclick="showAuth('choice')">← Назад</span>
         </div>
-
         <div id="step-code" style="display:none;">
-            <p style="margin-bottom: 10px;">Введи код из почты:</p>
-            <input type="number" id="otp_input" placeholder="0000">
+            <input type="number" id="otp_input" placeholder="Код из письма">
             <button class="main-btn" onclick="register()">ПОДТВЕРДИТЬ</button>
         </div>
     </div>
+
+    <div id="game-ui" style="display:none;">
+        <nav>
+            <button onclick="switchTab('cases')">КЕЙСЫ</button>
+            <button onclick="switchTab('profile')">ПРОФИЛЬ</button>
+            <button onclick="switchTab('support')">САППОРТ</button>
+            <button onclick="logout()" style="color:#ff4444;">ВЫХОД</button>
+        </nav>
+        
+        <div id="tab-cases" class="tab">
+            <div id="case-display">🎁</div>
+            <button class="main-btn" onclick="openCase()">КРУТИТЬ ЗА 50$</button>
+        </div>
+
+        <div id="tab-profile" class="tab" style="display:none;">
+            <p>Баланс: <span id="p-balance" style="color:#2ecc71; font-weight:bold;">0</span>$</p>
+            <hr style="border:1px solid #2a2a45; margin:15px 0;">
+            <h3>ИНВЕНТАРЬ</h3>
+            <div id="inventory-list"></div>
+        </div>
+
+        <div id="tab-support" class="tab" style="display:none;">
+            <h3>ПОДДЕРЖКА</h3>
+            <p style="font-size:11px; color:#555; margin-bottom:10px;">Вопросы по выводу: sdulimos@gmail.com</p>
+            <textarea id="support-msg" rows="4" placeholder="Твой ник и вопрос..."></textarea>
+            <button class="main-btn" onclick="alert('Отправлено (функционал в script.js)')">ОТПРАВИТЬ</button>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
 
     <div id="game-ui" style="display:none;">
         <nav>
