@@ -7,23 +7,23 @@ function sendOTP() {
     const email = document.getElementById('user_email').value;
     if (!email) return alert("Введите почту!");
 
-    // Генерируем 4-значный код
     generatedOTP = Math.floor(1000 + Math.random() * 9000);
 
     const templateParams = {
-        to_email: email,
-        otp_code: generatedOTP
+        to_email: email, 
+        passcode: generatedOTP // Теперь ключ совпадает с {{passcode}} в шаблоне
     };
 
-    // Отправка через EmailJS
-    emailjs.send('service_j9ls8lo', 'template_ebxnpr6', templateParams)
+    emailjs.send('YOUR_SERVICE_ID', 'YOUR_TEMPLATE_ID', templateParams)
         .then(() => {
             alert("Код отправлен!");
             document.getElementById('step-1').style.display = 'none';
             document.getElementById('step-2').style.display = 'block';
-        }, (error) => {
-            console.log('Ошибка:', error);
-            alert("Не удалось отправить код.");
+        })
+        .catch((error) => {
+            console.error('Ошибка отправки:', error);
+            // Если ошибка 422 осталась, проверь правильность SERVICE_ID и TEMPLATE_ID
+            alert("Ошибка: " + JSON.stringify(error));
         });
 }
 
