@@ -9,31 +9,58 @@
     <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
 </head>
 <body>
-
     <div id="notification-container"></div>
 
-    <div id="auth-container" class="box">
-        <h1>ВХОД</h1>
+    <div id="auth-container" class="box shadow">
+        <h1 class="logo">BRAINROT <span>CASES</span></h1>
         
         <div id="step-choice">
-            <button class="btn" onclick="showAuth('login')">Войти</button>
-            <button class="btn secondary" onclick="showAuth('reg')">Регистрация</button>
+            <button class="btn main-btn" onclick="showAuth('login')">ВОЙТИ</button>
+            <button class="btn sub-btn" onclick="showAuth('reg')">РЕГИСТРАЦИЯ</button>
         </div>
 
         <div id="step-form" style="display:none;">
-            <input type="email" id="user_email" placeholder="Email">
-            <input type="password" id="user_password" placeholder="Пароль">
-            <button id="btn-send-otp" class="btn" onclick="sendOTP()">Получить код</button>
-            <button id="btn-login" class="btn" style="display:none;" onclick="login()">Войти</button>
-            <button class="btn-link" onclick="showAuth('choice')">Назад</button>
+            <input type="email" id="user_email" placeholder="Твой Email">
+            <input type="password" id="user_password" placeholder="Пароль (мин. 8 знаков)">
+            <button id="btn-send-otp" class="btn main-btn" onclick="sendOTP()">ПОЛУЧИТЬ КОД</button>
+            <button id="btn-login" class="btn main-btn" style="display:none;" onclick="login()">ВОЙТИ В АККАУНТ</button>
+            <p class="link-back" onclick="showAuth('choice')">Назад</p>
         </div>
 
         <div id="step-code" style="display:none;">
-            <input type="number" id="otp_input" placeholder="Код из письма/ТГ">
-            <button id="btn-reg" class="btn" onclick="register()">Завершить регистрацию</button>
+            <input type="number" id="otp_input" placeholder="Код из письма">
+            <button class="btn main-btn" onclick="register()">ПОДТВЕРДИТЬ</button>
         </div>
     </div>
 
+    <div id="game-ui" style="display:none;">
+        <div class="top-bar shadow">
+            <div class="balance">💰 <span id="p-balance">0</span></div>
+            <nav class="tabs">
+                <button onclick="switchTab('cases')">КЕЙСЫ</button>
+                <button onclick="switchTab('inv')">ИНВЕНТАРЬ</button>
+                <button class="logout" onclick="location.reload()">ВЫХОД</button>
+            </nav>
+        </div>
+
+        <div id="tab-cases" class="tab-content">
+            <div class="case-card box">
+                <div id="case-display" class="display-area">
+                    <img src="https://raw.githubusercontent.com/marons/magic-login/main/Drops/TacoBlock.png" width="130">
+                </div>
+                <button class="btn open-btn" onclick="openCase()">ОТКРЫТЬ (50$)</button>
+            </div>
+        </div>
+
+        <div id="tab-inv" class="tab-content" style="display:none;">
+            <h2 style="text-align:center;">Твои предметы</h2>
+            <div id="inventory-list" class="inv-grid"></div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
     <div id="game-ui" style="display:none;">
         <nav class="tabs">
             <button onclick="switchTab('cases')">Кейсы</button>
