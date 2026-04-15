@@ -60,7 +60,7 @@ async function verifyOTP() {
             }
 
             // ИСПРАВЛЕНО: Обратные кавычки (клавиша Ё) расставлены верно
-            alert(`Успех! Твой уровень: ${profile.level}, Очки: ${profile.score}`);
+            alert("Успех! Твой уровень: ${profile.level}, Очки: ${profile.score}");
             
             console.log("Данные загружены:", profile);
 
