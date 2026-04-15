@@ -23,7 +23,7 @@ function sendOTP() {
     };
 
     // 4. Отправляем
-    emailjs.send('YOUR_SERVICE_ID', 'YOUR_TEMPLATE_ID', templateParams)
+    emailjs.send('service_j9ls8lo', 'template_ebxnpr6', templateParams)
         .then(() => {
             alert("Код отправлен на почту!");
             document.getElementById('step-1').style.display = 'none';
