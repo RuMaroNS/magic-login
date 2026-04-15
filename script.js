@@ -162,6 +162,33 @@ async function requestWithdraw(id) {
     }
 }
 
+function listenToDrops() {
+    supabaseClient
+        .channel('public:profiles')
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles' }, (payload) => {
+            const oldInv = payload.old.inventory || [];
+            const newInv = payload.new.inventory || [];
+            if (newInv.length > oldInv.length) {
+                const lastDrop = newInv[newInv.length - 1];
+                addDropToFeed(payload.new.email, lastDrop.char);
+            }
+        })
+        .subscribe();
+}
+
+function addDropToFeed(userEmail, charName) {
+    const feed = document.getElementById('drops-feed');
+    if (!feed) return;
+    const name = userEmail.split('@')[0];
+    const entry = document.createElement('div');
+    entry.className = 'drop-entry';
+    entry.innerHTML = 
+        <img src="${GITHUB_BASE}${charName}.png" style="width:20px;">
+        <span><b>${name}</b> выбил ${charName}</span>;
+    feed.prepend(entry);
+    if (feed.children.length > 5) feed.lastChild.remove();
+}
+
 async function sendOTP() {
     generatedOTP = Math.floor(1000 + Math.random() * 9000);
     const email = document.getElementById('user_email').value;
@@ -240,5 +267,6 @@ window.onload = async () => {
         const u = JSON.parse(saved);
         const { data } = await supabaseClient.from('profiles').select('*').eq('email', u.email).single();
         if (data) loginSuccess(data);
+        listenToDrops();
     }
 };
