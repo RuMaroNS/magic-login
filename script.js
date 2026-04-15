@@ -174,12 +174,57 @@ async function sendOTP() {
 }
 
 async function register() {
-    if (document.getElementById('otp_input').value == generatedOTP) {
-        const email = document.getElementById('user_email').value;
-        const pass = document.getElementById('user_password').value;
-        const { data } = await supabaseClient.from('profiles').insert([{ email, password: pass, score: 50, inventory: [] }]).select().single();
-        if (data) loginSuccess(data);
-    } else showNotify("Неверный код!");
+    const otpInput = document.getElementById('otp_input');
+    const regBtn = event.target; // Кнопка, на которую нажали
+
+    // 1. Проверяем код ДО любых запросов в базу
+    if (otpInput.value != generatedOTP) {
+        return showNotify("Неверный код!");
+    }
+
+    // 2. Блокируем кнопку, чтобы не было дублей (ошибка 400)
+    regBtn.disabled = true;
+    regBtn.innerText = "РЕГИСТРАЦИЯ...";
+
+    const email = document.getElementById('user_email').value;
+    const pass = document.getElementById('user_password').value;
+
+    try {
+        // 3. Пытаемся создать юзера
+        const { data, error } = await supabaseClient
+            .from('profiles')
+            .insert([{ 
+                email: email, 
+                password: pass, 
+                score: 50, // Твои стартовые 100 монет
+                inventory: [] 
+            }])
+            .select()
+            .single();
+
+        if (error) {
+            // Если ошибка "занято" (Duplicate), Supabase вернет код 23505 или 409
+            if (error.code === '23505' || error.message.includes('unique')) {
+                showNotify("Этот Email уже зарегистрирован!");
+            } else {
+                showNotify("Ошибка: " + error.message);
+            }
+            regBtn.disabled = false;
+            regBtn.innerText = "ПОДТВЕРДИТЬ";
+            return;
+        }
+
+        if (data) {
+            showNotify("Успешная регистрация!");
+            loginSuccess(data);
+        }
+
+    } catch (err) {
+        console.error("Критическая ошибка:", err);
+        showNotify("Проблема с сетью");
+        regBtn.disabled = false;
+        regBtn.innerText = "ПОДТВЕРДИТЬ";
+    }
 }
 
 function switchTab(t) {
