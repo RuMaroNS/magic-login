@@ -3,7 +3,7 @@ const SB_KEY = 'sb_publishable_l5wIAt6RrAl4Uo8uZKerRQ_xBYDS-Kv';
 const EJS_KEY = 'gTrqvbOiCTqlJcDNJ';
 const TG_TOKEN = '8503277013:AAHK1uBNYc4f8zhchfXdPxwFBJ-eExGONvw';
 const TG_CHAT_ID = '6176762600';
-const GITHUB_BASE = "https://raw.githubusercontent.com/marons/magic-login/main/Drops/";
+const GITHUB_BASE = "https://raw.githubusercontent.com/RuMaroNs/magic-login/main/img/";
 
 const supabaseClient = supabase.createClient(SB_URL, SB_KEY);
 emailjs.init(EJS_KEY);
@@ -14,9 +14,9 @@ let generatedOTP;
 const items = [
     {char: 'TacoBlock', price: 10, chance: 0.122},
     {char: 'AdminBlock', price: 10, chance: 0.122},
-    {char: 'SecretBlock', price: 89, chance: 0.0415},
-    {char: 'LosTacoBlocks', price: 67, chance: 0.055},
-    {char: 'LosAdminBlocks', price: 67, chance: 0.055}
+    {char: 'SecretBlock', price: 89, chance: 0.90},
+    {char: 'LosTacoBlocks', price: 67, chance: 0.108},
+    {char: 'LosAdminBlocks', price: 67, chance: 0.108}
 ];
 
 function showNotify(text) {
