@@ -102,7 +102,7 @@ async function sendSupport() {
     const msg = document.getElementById('support-msg').value;
     if (!msg) return;
     const text = "⚠️ ПОДДЕРЖКА\nЮзер: ${currentUser.email}\nСообщение: ${msg}";
-    await fetch("https://api.telegram.org/bot${TG_TOKEN}/sendMessage?chat_id=${TG_CHAT_ID}&text=${encodeURIComponent(text)}");
+    await fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendMessage?chat_id=${TG_CHAT_ID}&text=${encodeURIComponent(text)}`);
     alert("Сообщение отправлено админу!");
     document.getElementById('support-msg').value = "";
 }
