@@ -29,6 +29,7 @@ async function sendOTP() {
 }
 
 // ФУНКЦИЯ ПРОВЕРКИ И ЗАГРУЗКИ ДАННЫХ
+// ФУНКЦИЯ ПРОВЕРКИ И ЗАГРУЗКИ ДАННЫХ
 async function verifyOTP() {
     const userInput = document.getElementById('otp_input').value;
     const email = document.getElementById('user_email').value;
@@ -36,7 +37,7 @@ async function verifyOTP() {
     if (userInput == generatedOTP) {
         try {
             // 1. Пытаемся получить профиль игрока
-            let { data: profile, error } = await supabaseClient
+            let { data: profile, error } = await supabase  // ← supabase, не supabaseClient
                 .from('profiles')
                 .select('*')
                 .eq('email', email)
@@ -45,7 +46,7 @@ async function verifyOTP() {
             // 2. Если профиля нет — создаем новый
             if (!profile) {
                 console.log("Создаем новый профиль...");
-                const { data: newData, error: insError } = await supabaseClient
+                const { data: newData, error: insError } = await supabase  // ← supabase, не supabaseClient
                     .from('profiles')
                     .insert([{ email: email, score: 0, level: 1 }])
                     .select()
@@ -55,7 +56,7 @@ async function verifyOTP() {
                 profile = newData;
             }
 
-            // 3. Сообщение об успехе (ВАЖНО: кавычки как на кнопке Ё)
+            // 3. Сообщение об успехе
             alert(`Успех! Твой уровень: ${profile.level}, Очки: ${profile.score}`);
             
             console.log("Данные загружены:", profile);
