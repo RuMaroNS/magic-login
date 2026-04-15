@@ -116,15 +116,28 @@ function updateUI() {
 async function requestWithdraw(id) {
     const nick = prompt("Твой ник в Roblox:");
     if (!nick) return;
+
+    // Ищем предмет в инвентаре
     const item = currentUser.inventory.find(i => i.id === id);
-    const text = ("💰 ВЫВОД:" + {currentUser.email} "| Ник:" + {nick} "| Предмет:" + {item.char});
-    await fetch(https://api.telegram.org/bot${TG_TOKEN}/sendMessage?chat_id=${TG_CHAT_ID}&text=${encodeURIComponent(text)});
+    if (!item) return;
+
+    // ИСПРАВЛЕНО: Используем только обратные кавычки  для всей строки
+    const text = `💰 ВЫВОД: ${currentUser.email} | Ник: ${nick} | Предмет: ${item.char}`;
+
+    // ИСПРАВЛЕНО: URL в fetch ОБЯЗАТЕЛЬНО должен быть в обратных кавычках 
+    await fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendMessage?chat_id=${TG_CHAT_ID}&text=${encodeURIComponent(text)}`);
     
+    // Обновляем базу
     const upd = currentUser.inventory.filter(i => i.id !== id);
-    await supabaseClient.from('profiles').update({ inventory: upd }).eq('email', currentUser.email);
-    currentUser.inventory = upd;
-    updateUI();
-    showNotify("Заявка у админа!");
+    const { error } = await supabaseClient.from('profiles').update({ inventory: upd }).eq('email', currentUser.email);
+    
+    if (!error) {
+        currentUser.inventory = upd;
+        updateUI();
+        showNotify("Заявка у админа!");
+    } else {
+        showNotify("Ошибка при выводе!");
+    }
 }
 
 async function sendOTP() {
