@@ -1,4 +1,3 @@
-// НАСТРОЙКИ
 const SB_URL = 'https://wbkygibviddkdjxbahbg.supabase.co';
 const SB_KEY = 'sb_publishable_l5wIAt6RrAl4Uo8uZKerRQ_xBYDS-Kv';
 const EJS_KEY = 'gTrqvbOiCTqlJcDNJ';
