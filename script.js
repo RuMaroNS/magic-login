@@ -9,66 +9,65 @@ emailjs.init(EJS_PUBLIC_KEY);
 // ИСПРАВЛЕНО: Используем supabaseClient, чтобы не было конфликта имен
 const supabaseClient = supabase.createClient(SB_URL, SB_KEY);
 
-let generatedOTP;
+let currentMode = ''; 
 
-// ФУНКЦИЯ ОТПРАВКИ КОДА
-async function sendOTP() {
-    const email = document.getElementById('user_email').value;
-    if (!email) return alert("Введите почту!");
+function showAuth(mode) {
+    currentMode = mode;
+    document.getElementById('step-choice').style.display = 'none';
+    document.getElementById('step-form').style.display = 'block';
+    document.getElementById('step-code').style.display = 'none';
 
-    generatedOTP = Math.floor(1000 + Math.random() * 9000);
-
-    const templateParams = {
-        to_email: email,
-        passcode: generatedOTP
-    };
-
-    emailjs.send('service_j9ls8lo', 'template_ebxnpr6', templateParams)
-        .then(() => {
-            alert("Код отправлен!");
-            document.getElementById('step-1').style.display = 'none';
-            document.getElementById('step-2').style.display = 'block';
-        })
-        .catch(err => alert("Ошибка EmailJS: " + err));
+    if (mode === 'reg') {
+        document.getElementById('auth-title').innerText = "Регистрация";
+        document.getElementById('btn-reg').style.display = 'block';
+        document.getElementById('btn-login').style.display = 'none';
+    } else {
+        document.getElementById('auth-title').innerText = "Вход";
+        document.getElementById('btn-reg').style.display = 'none';
+        document.getElementById('btn-login').style.display = 'block';
+    }
 }
 
-// ФУНКЦИЯ ПРОВЕРКИ И ЗАГРУЗКИ ДАННЫХ
-async function verifyOTP() {
+// --- ВХОД (БЕЗ КОДА) ---
+async function login() {
+    const email = document.getElementById('user_email').value;
+    const pass = document.getElementById('user_password').value;
+
+    const { data: profile, error } = await supabaseClient
+        .from('profiles')
+        .select('*')
+                .eq('email', email)
+        .eq('password', pass) // Проверяем и почту, и пароль
+        .single();
+
+    if (profile) {
+        alert("Вход выполнен! Уровень: " + profile.level);
+        document.getElementById('auth-container').style.display = 'none';
+        // Запуск игры
+    } else {
+        alert("Неверный email или пароль!");
+    }
+}
+
+// --- РЕГИСТРАЦИЯ (С КОДОМ) ---
+async function register() {
     const userInput = document.getElementById('otp_input').value;
     const email = document.getElementById('user_email').value;
+    const pass = document.getElementById('user_password').value;
 
     if (userInput == generatedOTP) {
-        try {
-            // Загружаем данные игрока
-            let { data: profile, error } = await supabaseClient
-                .from('profiles')
-                .select('*')
-                .eq('email', email)
-                .single();
+        const { data, error } = await supabaseClient
+            .from('profiles')
+            .insert([{ email: email, password: pass, score: 0, level: 1 }])
+            .select();
 
-            // Если игрока нет — создаем его
-            if (!profile) {
-                console.log("Создаем новый профиль...");
-                const { data: newData, error: insError } = await supabaseClient
-                    .from('profiles')
-                    .insert([{ email: email, score: 0, level: 1 }])
-                    .select()
-                    .single();
-                
-                if (insError) throw insError;
-                profile = newData;
-            }
-
-            // ИСПРАВЛЕНО: Обратные кавычки (клавиша Ё) расставлены верно
-            alert("Успех! Твой уровень: ${profile.level}, Очки: ${profile.score}");
-            
-            console.log("Данные загружены:", profile);
-
-        } catch (err) {
-            console.error("Ошибка базы данных:", err);
-            alert("Проблема с подключением к Supabase. Проверь консоль (F12)");
+        if (error) {
+            alert("Ошибка: возможно, такой email уже занят.");
+        } else {
+            alert("Аккаунт создан! Теперь можно играть.");
+            document.getElementById('auth-container').style.display = 'none';
         }
     } else {
-        alert("Неверный код!");
+        alert("Неверный код подтверждения!");
     }
 }
