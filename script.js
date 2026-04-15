@@ -34,34 +34,36 @@ async function verifyOTP() {
     const email = document.getElementById('user_email').value;
 
     if (userInput == generatedOTP) {
-        // 1. Ищем игрока в таблице profiles
-        let { data: profile, error: selectError } = await supabaseClient
-            .from('profiles')
-            .select('*')
-            .eq('email', email)
-            .single();
-
-        // 2. Если игрока нет — создаем его
-        if (!profile) {
-            console.log("Игрок не найден, создаем новый профиль...");
-            const { data: newData, error: insError } = await supabaseClient
+        try {
+            // 1. Пытаемся получить профиль игрока
+            let { data: profile, error } = await supabaseClient
                 .from('profiles')
-                .insert([{ email: email, score: 0, level: 1 }])
-                .select()
+                .select('*')
+                .eq('email', email)
                 .single();
-            
-            if (insError) {
-                console.error("Ошибка вставки:", insError);
-                return alert("Ошибка при создании профиля");
-            }
-            profile = newData;
-        }
 
-        // 3. УСПЕХ! Используем обратные кавычки (клавиша Ё), чтобы вставить переменные
-        alert(Успех! Твой уровень: ${profile.level}, Очки: ${profile.score});
-        
-        console.log("Профиль загружен:", profile);
-        // Здесь можно переключать экран на саму игру
+            // 2. Если профиля нет — создаем новый
+            if (!profile) {
+                console.log("Создаем новый профиль...");
+                const { data: newData, error: insError } = await supabaseClient
+                    .from('profiles')
+                    .insert([{ email: email, score: 0, level: 1 }])
+                    .select()
+                    .single();
+                
+                if (insError) throw insError;
+                profile = newData;
+            }
+
+            // 3. Сообщение об успехе (ВАЖНО: кавычки как на кнопке Ё)
+            alert(Успех! Твой уровень: ${profile.level}, Очки: ${profile.score});
+            
+            console.log("Данные загружены:", profile);
+
+        } catch (err) {
+            console.error("Ошибка Supabase:", err);
+            alert("Проблема с базой данных. Проверь консоль (F12)");
+        }
     } else {
         alert("Неверный код!");
     }
