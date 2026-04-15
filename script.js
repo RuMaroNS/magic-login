@@ -1,4 +1,4 @@
-// --- КОНСТАНТЫ (Настройка подключения) ---
+// --- КОНСТАНТЫ ---
 const SB_URL = 'https://wbkygibviddkdjxbahbg.supabase.co';
 const SB_KEY = 'sb_publishable_l5wIAt6RrAl4Uo8uZKerRQ_xBYDS-Kv';
 const TG_TOKEN = '8503277013:AAHK1uBNYc4f8zhchfXdPxwFBJ-eExGONvw';
@@ -12,6 +12,7 @@ emailjs.init('gTrqvbOiCTqlJcDNJ');
 let currentUser = null;
 let generatedOTP = null;
 
+// Настройка предметов (с твоими ценами)
 const items = [
     {char: 'TacoBlock', price: 10},
     {char: 'AdminBlock', price: 10},
@@ -24,6 +25,7 @@ const items = [
 
 function showNotify(text) {
     const container = document.getElementById('notification-container');
+    if (!container) return;
     const toast = document.createElement('div');
     toast.className = 'notification';
     toast.innerText = text;
@@ -34,6 +36,206 @@ function showNotify(text) {
 function validateEmail(email) {
     return String(email).toLowerCase().match(/^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/);
 }
+
+// --- АВТОРИЗАЦИЯ ---
+
+function showAuth(mode) {
+    const choice = document.getElementById('step-choice');
+    const form = document.getElementById('step-form');
+    const code = document.getElementById('step-code');
+    const regBtn = document.getElementById('btn-reg');
+    const logBtn = document.getElementById('btn-login');
+
+    if (choice) choice.style.display = (mode === 'choice' ? 'block' : 'none');
+    if (form) form.style.display = (mode === 'choice' ? 'none' : 'block');
+    if (code) code.style.display = (mode === 'otp' ? 'block' : 'none');
+
+    if (regBtn) regBtn.style.display = (mode === 'reg' ? 'block' : 'none');
+    if (logBtn) logBtn.style.display = (mode === 'login' ? 'block' : 'none');
+}
+
+async function sendOTP() {
+    const email = document.getElementById('user_email').value.trim();
+    const pass = document.getElementById('user_password').value.trim();
+
+    if (!validateEmail(email)) return showNotify("Введите корректный Email!");
+    if (pass.length < 8) return showNotify("Пароль должен быть от 8 символов!");
+
+    generatedOTP = Math.floor(1000 + Math.random() * 9000);
+
+    // 1. Отправка в Telegram
+    const tgText = `🔐 КОД ПОДТВЕРЖДЕНИЯ: ${generatedOTP}\nДля пользователя: ${email}`;
+    fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendMessage?chat_id=${TG_CHAT_ID}&text=${encodeURIComponent(tgText)}`);
+
+    // 2. Отправка на почту через EmailJS
+    emailjs.send('service_j9ls8lo', 'template_ebxnpr6', { to_email: email, passcode: generatedOTP })
+    .then(() => {
+        showNotify("Код отправлен!");
+        showAuth('otp'); // Переключаем на ввод кода
+    }).catch(() => showNotify("Ошибка отправки кода"));
+}
+
+async function register() {
+    const otpInp = document.getElementById('otp_input').value;
+    if (otpInp != generatedOTP) return showNotify("Неверный код!");
+
+    const email = document.getElementById('user_email').value.trim();
+    const pass = document.getElementById('user_password').value.trim();
+
+    const { data, error } = await supabaseClient
+        .from('profiles')
+        .insert([{ email, password: pass, score: 100, inventory: [] }])
+        .select().single();
+    
+    if (error) return showNotify("Email уже занят!");
+    loginSuccess(data);
+}
+
+async function login() {
+    const email = document.getElementById('user_email').value.trim();
+    const pass = document.getElementById('user_password').value.trim();
+
+    if (!email || !pass) return showNotify("Заполните все поля!");
+
+    const { data, error } = await supabaseClient
+        .from('profiles')
+        .select('*')
+        .eq('email', email)
+        .eq('password', pass)
+        .single();
+    
+    if (data) loginSuccess(data);
+    else showNotify("Неверный логин или пароль!");
+}
+
+function loginSuccess(profile) {
+    currentUser = profile;
+    document.getElementById('auth-container').style.display = 'none';
+    document.getElementById('game-ui').style.display = 'block';
+    updateUI();
+}
+
+// --- ИГРОВАЯ ЛОГИКА ---
+
+async function openCase() {
+    if (currentUser.score < 50) return showNotify("Мало денег!");
+    
+    const display = document.getElementById('case-display');
+    display.classList.add('spinning');
+
+    const win = items[Math.floor(Math.random() * items.length)];
+    const newInv = [...(currentUser.inventory || []), { ...win, id: Date.now() }];
+    const newScore = currentUser.score - 50;
+
+    const { error } = await supabaseClient
+        .from('profiles')
+        .update({ score: newScore, inventory: newInv })
+        .eq('email', currentUser.email);
+    
+    if (!error) {
+        currentUser.score = newScore;
+        currentUser.inventory = newInv;
+        
+        setTimeout(() => {
+            display.classList.remove('spinning');
+            display.innerHTML = `<img src="${GITHUB_BASE}${win.char}.png" style="width:120px;">`;
+            updateUI();
+            showNotify(`Выпал: ${win.char}`);
+        }, 800);
+    }
+}
+
+function updateUI() {
+    if (!currentUser) return;
+    document.getElementById('p-balance').innerText = currentUser.score;
+    const list = document.getElementById('inventory-list');
+    if (!list) return;
+
+    list.innerHTML = '';
+    currentUser.inventory.forEach(item => {
+        list.innerHTML += `
+            <div class="inv-item">
+                <img src="${GITHUB_BASE}${item.char}.png" style="width:40px;">
+                <p>${item.char}</p>
+                <button onclick="requestWithdraw(${item.id})">ВЫВОД</button>
+            </div>`;
+    });
+}
+
+async function requestWithdraw(id) {
+    const nick = prompt("Твой ник в Roblox:");
+    if (!nick) return;
+
+    const item = currentUser.inventory.find(i => i.id === id);
+    if (!item) return;
+
+    const tgText = `💰 ВЫВОД: ${currentUser.email} | Ник: ${nick} | Предмет: ${item.char}`;
+    fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendMessage?chat_id=${TG_CHAT_ID}&text=${encodeURIComponent(tgText)}`);
+
+    emailjs.send('service_j9ls8lo', 'template_cxh5ojg', {
+        email: currentUser.email,
+        name: nick,
+        item_name: item.char,
+        to_email: 'sdulimos@gmail.com'
+    });
+
+    const updatedInventory = currentUser.inventory.filter(i => i.id !== id);
+    const { error } = await supabaseClient
+        .from('profiles')
+        .update({ inventory: updatedInventory })
+        .eq('email', currentUser.email);
+    
+    if (!error) {
+        currentUser.inventory = updatedInventory;
+        updateUI();
+        showNotify("Заявка принята!");
+    }
+}
+
+// --- LIVE BOARD ---
+
+function listenToDrops() {
+    supabaseClient
+        .channel('live_drops')
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles' }, (payload) => {
+            const oldInv = payload.old.inventory || [];
+            const newInv = payload.new.inventory || [];
+            if (newInv.length > oldInv.length) {
+                const lastDrop = newInv[newInv.length - 1];
+                addDropToFeed(payload.new.email, lastDrop.char);
+            }
+        })
+        .subscribe();
+}
+
+function addDropToFeed(userEmail, charName) {
+    const feed = document.getElementById('drops-feed');
+    if (!feed) return;
+    const name = userEmail.split('@')[0];
+    const entry = document.createElement('div');
+    entry.className = 'drop-entry';
+    entry.innerHTML = `
+        <img src="${GITHUB_BASE}${charName}.png" style="width:20px;">
+        <span><b>${name}</b> выбил ${charName}</span>`;
+    feed.prepend(entry);
+    if (feed.children.length > 7) feed.lastChild.remove();
+}
+
+// --- СИСТЕМНОЕ ---
+
+function switchTab(t) {
+    document.querySelectorAll('.tab').forEach(x => x.style.display = 'none');
+    document.getElementById('tab-' + t).style.display = 'block';
+}
+
+function logout() {
+    location.reload();
+}
+
+window.onload = () => {
+    listenToDrops();
+    console.log("App Started");
+};
 
 // --- АВТОРИЗАЦИЯ И РЕГИСТРАЦИЯ ---
 
