@@ -11,19 +11,29 @@
 </head>
 <body>
 
-    <div class="login-card">
-        <div id="step-1">
-            <h2>Вход в игру</h2>
-            <input type="email" id="user_email" placeholder="Твоя почта">
-            <button onclick="sendOTP()">Получить код</button>
-        </div>
-
-        <div id="step-2" style="display: none;">
-            <h2>Введите код</h2>
-            <input type="text" id="otp_input" placeholder="0000" maxlength="4">
-            <button onclick="verifyOTP()">Войти и загрузить прогресс</button>
-        </div>
+    <div id="auth-container">
+    <div id="step-choice">
+        <button onclick="showAuth('reg')">Регистрация</button>
+        <button onclick="showAuth('login')">Вход</button>
     </div>
+
+    <div id="step-form" style="display:none;">
+        <h2 id="auth-title">Регистрация</h2>
+        <input type="email" id="user_email" placeholder="Email">
+        <input type="password" id="user_password" placeholder="Пароль">
+        
+        <button id="btn-reg" onclick="sendOTP()" style="display:none;">Получить код и создать</button>
+        <button id="btn-login" onclick="login()" style="display:none;">Войти</button>
+        
+        <p onclick="showAuth('choice')" style="cursor:pointer; color:gray;">Назад</p>
+    </div>
+
+    <div id="step-code" style="display:none;">
+        <h2>Введите код из письма</h2>
+        <input type="number" id="otp_input" placeholder="0000">
+        <button onclick="register()">Подтвердить и создать</button>
+    </div>
+</div>
 
     <script src="script.js"></script>
 </body>
