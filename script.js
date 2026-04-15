@@ -12,12 +12,11 @@ let generatedOTP;
 
 // ЭМОДЗИ И ШАНСЫ (0.5 = 50%, 0.01 = 1%)
 const items = [
-    {char: '💩', price: 1, chance: 0.4},
-    {char: '💀', price: 10, chance: 0.2},
-    {char: '😎', price: 60, chance: 0.15},
-    {char: '⚡', price: 200, chance: 0.05},
-    {char: '🔥', price: 500, chance: 0.02},
-    {char: '❤️‍🔥', price: 1000, chance: 0.01}
+    {char: 'TacoBlock', price: 10, chance: 12.2},
+    {char: 'AdminBlock', price: 10, chance: 12.2},
+    {char: 'SecretBlock', price: 89, chance: 4.15},
+    {char: 'LosTacoBlocks', price: 67, chance: 5.5},
+    {char: 'LosAdminBlocks', price: 67, chance: 5.5},
 ];
 
 // ПРОВЕРКА КЕША ПРИ ЗАГРУЗКЕ СТРАНИЦЫ
@@ -89,13 +88,16 @@ async function openCase() {
     await supabaseClient.from('profiles').update({ score: currentUser.score }).eq('email', currentUser.email);
     
     setTimeout(() => {
-        display.style.transform = "scale(1) rotate(0deg)";
-        display.innerText = win.char;
-        updateUI();
+        display.classList.remove('spinning');
     
-        // Склеиваем всё плюсиками:
-        alert("Выпало: " + win.char + "! Цена: " + win.price + "$");
-    }, 500);
+        // Склеиваем путь: папка "img/" + имя файла из массива
+        const path = "Drops/" + win.file;
+    
+        display.innerHTML = "<img src='img/" + win.char + ".png' style='width:100px; height:100px;'>";
+    
+        updateUI();
+        alert("Выпало: " + win.name + "! Цена: " + win.price + "$");
+    }, 800);
 }
 
 // ПОДДЕРЖКА В ТЕЛЕГРАМ
