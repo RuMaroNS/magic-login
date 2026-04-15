@@ -6,59 +6,51 @@
     <title>Brainrot Case Simulator</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
 </head>
 <body>
 
     <div id="notification-container"></div>
 
     <div id="auth-container">
+        <h1>БРАЙНРОТ КЕЙСЫ</h1>
         <div id="step-choice">
-            <h1>БРАЙНРОТ КЕЙСЫ</h1>
             <button onclick="showAuth('reg')">Регистрация</button>
-            <button onclick="showAuth('login')">Войти</button>
+            <button onclick="showAuth('login')" style="margin-top:10px;">Войти</button>
         </div>
-
         <div id="step-form" style="display:none;">
-            <h2 id="auth-title">Вход</h2>
             <input type="email" id="user_email" placeholder="Email"><br>
             <input type="password" id="user_password" placeholder="Пароль"><br>
-            <button id="btn-reg" onclick="sendOTP()" style="display:none;">Получить код</button>
-            <button id="btn-login" onclick="login()" style="display:none;">Войти в игру</button>
-            <p onclick="showAuth('choice')" class="back-link">← Назад</p>
-        </div>
-
-        <div id="step-code" style="display:none;">
-            <h2>Введите код из письма</h2>
-            <input type="number" id="otp_input" placeholder="0000"><br>
-            <button onclick="register()">Подтвердить</button>
+            <button id="btn-login" onclick="login()">Войти в игру</button>
+            <p onclick="showAuth('choice')" style="cursor:pointer; font-size:12px; margin-top:10px;">← Назад</p>
         </div>
     </div>
 
     <div id="game-ui" style="display:none;">
         <nav>
-            <button onclick="switchTab('cases')">🎁 Кейсы</button>
-            <button onclick="switchTab('profile')">👤 Профиль</button>
-            <button onclick="switchTab('support')">🛠 Поддержка</button>
-            <button onclick="logout()" style="background: #ff4444;">Выход</button>
+            <button onclick="switchTab('cases')">Кейсы</button>
+            <button onclick="switchTab('profile')">Профиль</button>
+            <button onclick="switchTab('support')">Поддержка</button>
+            <button onclick="logout()" style="color:#ff4444;">Выход</button>
         </nav>
 
         <div id="tab-cases" class="tab">
-            <h1>ОТКРЫВАЙ КЕЙС</h1>
+            <div id="live-board"></div>
             <div id="case-display">🎁</div>
-            <button id="spin-btn" onclick="openCase()">Открыть за 50$</button>
+            <button onclick="openCase()" style="background:#00d4ff; color:#000;">ОТКРЫТЬ ЗА 50$</button>
         </div>
 
         <div id="tab-profile" class="tab" style="display:none;">
-            <h2>Твой профиль</h2>
-            <p>Email: <span id="p-email"></span></p>
-            <p>Баланс: <span id="p-balance"></span>$</p>
+            <h2>Профиль</h2>
+            <p>Баланс: <span id="p-balance" style="color:#2ecc71;"></span>$</p>
+            <hr>
+            <h3>Инвентарь</h3>
+            <div id="inventory-list"></div>
         </div>
 
         <div id="tab-support" class="tab" style="display:none;">
-            <h2>Техподдержка</h2>
-            <textarea id="support-msg" placeholder="Опиши проблему админу..."></textarea>
-            <button onclick="sendSupport()">Отправить в Telegram</button>
+            <h2>Поддержка</h2>
+            <textarea id="support-msg" style="width:90%; height:80px;" placeholder="Ваш ник и проблема..."></textarea>
+            <button onclick="sendSupport()">Отправить админу</button>
         </div>
     </div>
 
