@@ -34,25 +34,37 @@ async function verifyOTP() {
     const email = document.getElementById('user_email').value;
 
     if (userInput == generatedOTP) {
-        // Ищем игрока в Supabase
-        let { data: profile, error } = await supabase
+        // 1. Ищем игрока в таблице profiles
+        let { data: profile, error: selectError } = await supabaseClient
             .from('profiles')
             .select('*')
             .eq('email', email)
             .single();
 
-        // Если игрока нет — создаем его
+        // 2. Если игрока нет (ошибка 406 или пустой результат) — создаем его
         if (!profile) {
-            const { data, error: insError } = await supabase
+            console.log("Игрок не найден, создаем новый профиль...");
+            
+            const { data: newData, error: insertError } = await supabaseClient
                 .from('profiles')
                 .insert([{ email: email, score: 0, level: 1 }])
-                .select().single();
-            profile = data;
+                .select()
+                .single();
+            
+            if (insertError) {
+                console.error("Ошибка при создании игрока:", insertError);
+                return alert("Не удалось создать профиль в базе.");
+            }
+            profile = newData;
         }
 
-        alert(Успех! Уровень: ${profile.level}, Очки: ${profile.score});
-        // Тут можно запускать саму игру
+        // 3. Успешный вход! Выводим данные через обратные кавычки (клавиша Ё)
+        alert(Успех! Твой уровень: ${profile.level}, Очки: ${profile.score});
+        
+        // Здесь можно скрыть форму входа и показать саму игру
+        console.log("Данные успешно загружены:", profile);
+
     } else {
-        alert("Неверный код!");
+        alert("Неверный код! Попробуй еще раз.");
     }
 }
