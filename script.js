@@ -56,7 +56,7 @@ async function verifyOTP() {
             }
 
             // 3. Сообщение об успехе (ВАЖНО: кавычки как на кнопке Ё)
-            alert(Успех! Твой уровень: ${profile.level}, Очки: ${profile.score});
+            alert(`Успех! Твой уровень: ${profile.level}, Очки: ${profile.score}`);
             
             console.log("Данные загружены:", profile);
 
