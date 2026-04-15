@@ -1,39 +1,154 @@
 const SB_URL = 'https://wbkygibviddkdjxbahbg.supabase.co';
 const SB_KEY = 'sb_publishable_l5wIAt6RrAl4Uo8uZKerRQ_xBYDS-Kv';
-const EJS_KEY = 'gTrqvbOiCTqlJcDNJ';
 const TG_TOKEN = '8503277013:AAHK1uBNYc4f8zhchfXdPxwFBJ-eExGONvw';
 const TG_CHAT_ID = '6176762600';
-const GITHUB_BASE = "https://raw.githubusercontent.com/RuMaroNs/magic-login/main/img/";
+const GITHUB_BASE = "https://raw.githubusercontent.com/marons/magic-login/main/Drops/";
 
 const supabaseClient = supabase.createClient(SB_URL, SB_KEY);
-emailjs.init(EJS_KEY);
+emailjs.init('gTrqvbOiCTqlJcDNJ');
 
 let currentUser = null;
 let generatedOTP;
 
 const items = [
-    {char: 'TacoBlock', price: 10, chance: 0.122},
-    {char: 'AdminBlock', price: 10, chance: 0.122},
-    {char: 'SecretBlock', price: 89, chance: 0.20},
-    {char: 'LosTacoBlocks', price: 67, chance: 0.108},
-    {char: 'LosAdminBlocks', price: 67, chance: 0.108}
+    {char: 'TacoBlock', price: 10},
+    {char: 'AdminBlock', price: 10},
+    {char: 'SecretBlock', price: 89},
+    {char: 'LosTacoBlocks', price: 67},
+    {char: 'LosAdminBlocks', price: 67}
 ];
 
 function showNotify(text) {
     const container = document.getElementById('notification-container');
-    if (!container) return;
     const toast = document.createElement('div');
     toast.className = 'notification';
     toast.innerText = text;
     container.appendChild(toast);
-    setTimeout(() => { toast.classList.add('show'); }, 100);
-    setTimeout(() => {
-        toast.classList.remove('show');
-        setTimeout(() => toast.remove(), 500);
-    }, 2500);
+    setTimeout(() => toast.remove(), 3000);
+}
+
+function validateEmail(email) {
+    return String(email).toLowerCase().match(/^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/);
 }
 
 function showAuth(mode) {
+    document.getElementById('step-choice').style.display = (mode === 'choice' ? 'block' : 'none');
+    document.getElementById('step-form').style.display = (mode === 'choice' ? 'none' : 'block');
+    document.getElementById('btn-reg').style.display = (mode === 'reg' ? 'block' : 'none');
+    document.getElementById('btn-login').style.display = (mode === 'login' ? 'block' : 'none');
+}
+
+async function sendOTP() {
+    const email = document.getElementById('user_email').value;
+    const pass = document.getElementById('user_password').value;
+
+    if (!validateEmail(email)) return showNotify("Введите корректный Email!");
+    if (pass.length < 8) return showNotify("Пароль должен быть от 8 символов!");
+
+    generatedOTP = Math.floor(1000 + Math.random() * 9000);
+
+    // 1. Отправка в Telegram (чтобы не тратить лимит почты)
+    const tgText = `🔐 КОД ПОДТВЕРЖДЕНИЯ: ${generatedOTP}\nДля пользователя: ${email}`;
+    fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendMessage?chat_id=${TG_CHAT_ID}&text=${encodeURIComponent(tgText)}`);
+
+    // 2. Отправка на почту (резерв)
+    emailjs.send('service_j9ls8lo', 'template_ebxnpr6', {to_email: email, passcode: generatedOTP})
+    .then(() => {
+        showNotify("Код отправлен!");
+        document.getElementById('step-form').style.display = 'none';
+        document.getElementById('step-code').style.display = 'block';
+    }).catch(() => showNotify("Ошибка отправки кода"));
+}
+
+async function register() {
+    const inp = document.getElementById('otp_input').value;
+    if (inp != generatedOTP) return showNotify("Неверный код!");
+
+    const email = document.getElementById('user_email').value;
+    const pass = document.getElementById('user_password').value;
+
+    const { data, error } = await supabaseClient.from('profiles').insert([{ email, password: pass, score: 100, inventory: [] }]).select().single();
+    
+    if (error) return showNotify("Email уже занят!");
+    loginSuccess(data);
+}
+
+async function login() {
+    const email = document.getElementById('user_email').value;
+    const pass = document.getElementById('user_password').value;
+
+    const { data, error } = await supabaseClient.from('profiles').select('*').eq('email', email).eq('password', pass).single();
+    
+    if (data) loginSuccess(data);
+    else showNotify("Неверный логин или пароль!");
+}
+
+function loginSuccess(profile) {
+    currentUser = profile;
+    document.getElementById('auth-container').style.display = 'none';
+    document.getElementById('game-ui').style.display = 'block';
+    updateUI();
+}
+
+async function openCase() {
+    if (currentUser.score < 50) return showNotify("Недостаточно средств!");
+    
+    const win = items[Math.floor(Math.random() * items.length)];
+    const newInv = [...(currentUser.inventory || []), { ...win, id: Date.now() }];
+    const newScore = currentUser.score - 50;
+
+    const { error } = await supabaseClient.from('profiles').update({ score: newScore, inventory: newInv }).eq('email', currentUser.email);
+    
+    if (!error) {
+        currentUser.score = newScore;
+        currentUser.inventory = newInv;
+        document.getElementById('case-display').innerHTML = `<img src="${GITHUB_BASE}${win.char}.png" width="120">`;
+        updateUI();
+    }
+}
+
+function updateUI() {
+    document.getElementById('p-balance').innerText = currentUser.score;
+    const list = document.getElementById('inventory-list');
+    list.innerHTML = '';
+    currentUser.inventory.forEach(item => {
+        list.innerHTML += `
+            <div class="inv-item">
+                <img src="${GITHUB_BASE}${item.char}.png" width="40">
+                <button onclick="requestWithdraw(${item.id})">ВЫВОД</button>
+            </div>`;
+    });
+}
+
+function listenToDrops() {
+    supabaseClient.channel('any').on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles' }, payload => {
+        const newInv = payload.new.inventory || [];
+        const oldInv = payload.old.inventory || [];
+        if (newInv.length > oldInv.length) {
+            const drop = newInv[newInv.length - 1];
+            addDropToFeed(payload.new.email, drop.char);
+        }
+    }).subscribe();
+}
+
+function addDropToFeed(email, char) {
+    const feed = document.getElementById('drops-feed');
+    const name = email.split('@')[0];
+    const div = document.createElement('div');
+    div.className = 'drop-entry';
+    div.innerHTML = `<img src="${GITHUB_BASE}${char}.png"> <span><b>${name}</b> выбил ${char}</span>`;
+    feed.prepend(div);
+    if (feed.children.length > 6) feed.lastChild.remove();
+}
+
+function switchTab(t) {
+    document.querySelectorAll('.tab').forEach(x => x.style.display = 'none');
+    document.getElementById('tab-' + t).style.display = 'block';
+}
+
+function logout() { location.reload(); }
+
+window.onload = () => { listenToDrops(); };
     const choice = document.getElementById('step-choice');
     const form = document.getElementById('step-form');
     const code = document.getElementById('step-code');
