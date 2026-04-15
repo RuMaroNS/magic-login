@@ -180,7 +180,6 @@ function switchTab(t) {
 
 function logout() { localStorage.clear(); location.reload(); }
         if (data) loginSuccess(data);
-    }
 };
 
 async function login() {
