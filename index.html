@@ -2,39 +2,37 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Magic Login & Save</title>
-    <link rel="stylesheet" href="style.css">
-    
-    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
-    
+    <title>Игра: Авторизация</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
 </head>
 <body>
 
-    <div id="auth-container">
+<div id="auth-container">
     <div id="step-choice">
+        <h2>Добро пожаловать</h2>
         <button onclick="showAuth('reg')">Регистрация</button>
-        <button onclick="showAuth('login')">Вход</button>
+        <button onclick="showAuth('login')">У меня есть аккаунт</button>
     </div>
 
     <div id="step-form" style="display:none;">
         <h2 id="auth-title">Регистрация</h2>
-        <input type="email" id="user_email" placeholder="Email">
-        <input type="password" id="user_password" placeholder="Пароль">
+        <input type="email" id="user_email" placeholder="Email"><br><br>
+        <input type="password" id="user_password" placeholder="Пароль"><br><br>
         
         <button id="btn-reg" onclick="sendOTP()" style="display:none;">Получить код и создать</button>
         <button id="btn-login" onclick="login()" style="display:none;">Войти</button>
         
-        <p onclick="showAuth('choice')" style="cursor:pointer; color:gray;">Назад</p>
+        <p onclick="showAuth('choice')" style="cursor:pointer; color:gray; text-decoration: underline;">Назад</p>
     </div>
 
     <div id="step-code" style="display:none;">
         <h2>Введите код из письма</h2>
-        <input type="number" id="otp_input" placeholder="0000">
-        <button onclick="register()">Подтвердить и создать</button>
+        <input type="number" id="otp_input" placeholder="0000"><br><br>
+        <button onclick="register()">Подтвердить регистрацию</button>
     </div>
 </div>
 
-    <script src="script.js"></script>
+<script src="script.js"></script>
 </body>
 </html>
