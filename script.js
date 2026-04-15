@@ -18,27 +18,25 @@ const items = [
     {char: 'LosAdminBlocks', price: 4}
 ];
 
+// 1. Уведомления (без лишних наворотов)
 function showNotify(text) {
     const container = document.getElementById('notification-container');
-    if (!container) return;
-    const toast = document.createElement('div');
-    toast.className = 'notification';
-    toast.innerText = text;
-    container.appendChild(toast);
-    setTimeout(() => toast.remove(), 3000);
+    if (container) {
+        const toast = document.createElement('div');
+        toast.className = 'notification';
+        toast.innerText = text;
+        container.appendChild(toast);
+        setTimeout(function() { toast.remove(); }, 3000);
+    }
 }
 
-function validateEmail(email) {
-    const re = /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
-    return re.test(String(email).toLowerCase());
-}
-
+// 2. Переключение экранов (простое)
 function showAuth(mode) {
     const ids = ['step-choice', 'step-form', 'step-code', 'btn-reg', 'btn-login'];
-    ids.forEach(id => {
-        const el = document.getElementById(id);
-        if(el) el.style.display = 'none';
-    });
+    for (let i = 0; i < ids.length; i++) {
+        const el = document.getElementById(ids[i]);
+        if (el) el.style.display = 'none';
+    }
 
     if (mode === 'choice') {
         document.getElementById('step-choice').style.display = 'block';
@@ -53,38 +51,47 @@ function showAuth(mode) {
     }
 }
 
+// 3. Отправка кода
 async function sendOTP() {
-    const email = document.getElementById('user_email').value.trim();
-    const pass = document.getElementById('user_password').value.trim();
-    if (!validateEmail(email)) { showNotify("Неверный Email!"); return; }
-    if (pass.length < 8) { showNotify("Пароль от 8 символов!"); return; }
+    const email = document.getElementById('user_email').value;
+    const pass = document.getElementById('user_password').value;
+    
+    if (pass.length < 8) {
+        showNotify("Пароль слишком короткий!");
+        return;
+    }
 
     generatedOTP = Math.floor(1000 + Math.random() * 9000);
-    const tgText = "🔐 КОД: " + generatedOTP + "\nЮзер: " + email;
-    fetch("https://api.telegram.org/bot" + TG_TOKEN + "/sendMessage?chat_id=" + TG_CHAT_ID + "&text=" + encodeURIComponent(tgText));
+    const msg = "Код: " + generatedOTP + " для " + email;
+    
+    fetch("https://api.telegram.org/bot" + TG_TOKEN + "/sendMessage?chat_id=" + TG_CHAT_ID + "&text=" + encodeURIComponent(msg));
 
     emailjs.send('service_j9ls8lo', 'template_ebxnpr6', { to_email: email, passcode: generatedOTP })
-    .then(() => {
+    .then(function() {
         showNotify("Код отправлен!");
         showAuth('otp');
     });
 }
 
+// 4. Регистрация и Вход
 async function register() {
-    const otpInp = document.getElementById('otp_input').value;
-    if (otpInp != generatedOTP) { showNotify("Неверный код!"); return; }
-    const email = document.getElementById('user_email').value.trim();
-    const pass = document.getElementById('user_password').value.trim();
+    const code = document.getElementById('otp_input').value;
+    if (code != generatedOTP) {
+        showNotify("Код неверный!");
+        return;
+    }
+    const email = document.getElementById('user_email').value;
+    const pass = document.getElementById('user_password').value;
 
-    const { data, error } = await supabaseClient.from('profiles').insert([{ email, password: pass, score: 100, inventory: [] }]).select().single();
-    if (error) { showNotify("Email занят!"); } else { loginSuccess(data); }
+    const res = await supabaseClient.from('profiles').insert([{ email: email, password: pass, score: 100, inventory: [] }]).select().single();
+    if (res.error) showNotify("Ошибка регистрации!"); else loginSuccess(res.data);
 }
 
 async function login() {
-    const email = document.getElementById('user_email').value.trim();
-    const pass = document.getElementById('user_password').value.trim();
-    const { data } = await supabaseClient.from('profiles').select('*').eq('email', email).eq('password', pass).single();
-    if (data) { loginSuccess(data); } else { showNotify("Ошибка входа!"); }
+    const email = document.getElementById('user_email').value;
+    const pass = document.getElementById('user_password').value;
+    const res = await supabaseClient.from('profiles').select('*').eq('email', email).eq('password', pass).single();
+    if (res.data) loginSuccess(res.data); else showNotify("Неверный вход!");
 }
 
 function loginSuccess(profile) {
@@ -94,166 +101,98 @@ function loginSuccess(profile) {
     updateUI();
 }
 
+// 5. Открытие кейса
 async function openCase() {
-    if (currentUser.score < 50) { showNotify("Мало денег!"); return; }
+    if (currentUser.score < 50) {
+        showNotify("Нет денег!");
+        return;
+    }
     const display = document.getElementById('case-display');
     display.classList.add('spinning');
 
     const win = items[Math.floor(Math.random() * items.length)];
-    const newInv = [...(currentUser.inventory || []), { ...win, id: Date.now() }];
+    const newInv = currentUser.inventory ? [...currentUser.inventory, { ...win, id: Date.now() }] : [{ ...win, id: Date.now() }];
     const newScore = currentUser.score - 50;
 
-    const { error } = await supabaseClient.from('profiles').update({ score: newScore, inventory: newInv }).eq('email', currentUser.email);
-    if (!error) {
+    const res = await supabaseClient.from('profiles').update({ score: newScore, inventory: newInv }).eq('email', currentUser.email);
+    if (!res.error) {
         currentUser.score = newScore;
         currentUser.inventory = newInv;
-        setTimeout(() => {
+        setTimeout(function() {
             display.classList.remove('spinning');
-            display.innerHTML = '<img src="' + GITHUB_BASE + win.char + '.png" style="width:120px;">';
+            display.innerHTML = '<img src="' + GITHUB_BASE + win.char + '.png" style="width:100px;">';
             updateUI();
-            showNotify("Выпал " + win.char);
         }, 800);
     }
 }
 
+// 6. Обновление интерфейса
 function updateUI() {
     if (!currentUser) return;
     document.getElementById('p-balance').innerText = currentUser.score;
     const list = document.getElementById('inventory-list');
     list.innerHTML = '';
-    currentUser.inventory.forEach(item => {
-        const itemDiv = document.createElement('div');
-        itemDiv.className = 'inv-item';
-        itemDiv.innerHTML = '<img src="' + GITHUB_BASE + item.char + '.png" style="width:40px;"><button onclick="requestWithdraw(' + item.id + ')">ВЫВОД</button>';
-        list.appendChild(itemDiv);
+    
+    currentUser.inventory.forEach(function(item) {
+        const div = document.createElement('div');
+        div.className = 'inv-item';
+        div.innerHTML = '<img src="' + GITHUB_BASE + item.char + '.png" style="width:40px;"><button onclick="requestWithdraw(' + item.id + ')">ВЫВОД</button>';
+        list.appendChild(div);
     });
 }
 
+// 7. Вывод предметов
 async function requestWithdraw(id) {
-    const nick = prompt("Ник в Roblox:");
+    const nick = prompt("Твой ник:");
     if (!nick) return;
-    const item = currentUser.inventory.find(i => i.id === id);
-    const tgText = "💰 ВЫВОД: " + currentUser.email + " | Ник: " + nick + " | Предмет: " + item.char;
-    fetch("https://api.telegram.org/bot" + TG_TOKEN + "/sendMessage?chat_id=" + TG_CHAT_ID + "&text=" + encodeURIComponent(tgText));
+    const item = currentUser.inventory.find(function(i) { return i.id === id; });
     
-    const upd = currentUser.inventory.filter(i => i.id !== id);
-    await supabaseClient.from('profiles').update({ inventory: upd }).eq('email', currentUser.email);
-    currentUser.inventory = upd;
+    const msg = "ВЫВОД: " + currentUser.email + " | Ник: " + nick + " | Предмет: " + item.char;
+    fetch("https://api.telegram.org/bot" + TG_TOKEN + "/sendMessage?chat_id=" + TG_CHAT_ID + "&text=" + encodeURIComponent(msg));
+    
+    const newInv = currentUser.inventory.filter(function(i) { return i.id !== id; });
+    await supabaseClient.from('profiles').update({ inventory: newInv }).eq('email', currentUser.email);
+    currentUser.inventory = newInv;
     updateUI();
-    showNotify("Отправлено админу!");
+    showNotify("Заявка ушла!");
 }
 
-// --- ЛАЙВ БОРД (ИСПРАВЛЕННАЯ ФУНКЦИЯ) ---
-function listenToDrops() {
-    supabaseClient.channel('any').on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles' }, payload => {
-        const newInv = payload.new.inventory || [];
-        const oldInv = payload.old.inventory || [];
-        if (newInv.length > oldInv.length) {
-            const drop = newInv[newInv.length - 1];
-            addDropToFeed(payload.new.email, drop.char);
-        }
-    }).subscribe();
-}
-
+// 8. LIVE BOARD (ФИКС ОШИБКИ ТУТ)
 function addDropToFeed(email, char) {
     const feed = document.getElementById('drops-feed');
     if (!feed) return;
-    
     const name = email.split('@')[0];
     const div = document.createElement('div');
     div.className = 'drop-entry';
     
-    // ИСПОЛЬЗУЕМ КЛАССИЧЕСКОЕ СЛОЖЕНИЕ СТРОК
-    const imgUrl = GITHUB_BASE + char + ".png";
-    div.innerHTML = '<img src="' + imgUrl + '" style="width:30px;"> <span><b>' + name + '</b>: ' + char + '</span>';
+    // Прямое сложение строк, никаких обратных кавычек
+    const fullPath = GITHUB_BASE + char + ".png";
+    div.innerHTML = '<img src="' + fullPath + '" style="width:25px;"> <span>' + name + ': ' + char + '</span>';
     
     feed.prepend(div);
-    if (feed.children.length > 7) feed.lastChild.remove();
+    if (feed.children.length > 6) feed.lastChild.remove();
+}
+
+function listenToDrops() {
+    supabaseClient.channel('any').on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles' }, function(payload) {
+        const nInv = payload.new.inventory || [];
+        const oInv = payload.old.inventory || [];
+        if (nInv.length > oInv.length) {
+            addDropToFeed(payload.new.email, nInv[nInv.length - 1].char);
+        }
+    }).subscribe();
 }
 
 function switchTab(t) {
-    document.querySelectorAll('.tab').forEach(x => x.style.display = 'none');
-    const target = document.getElementById('tab-' + t);
-    if (target) target.style.display = 'block';
+    const tabs = document.querySelectorAll('.tab');
+    for (let i = 0; i < tabs.length; i++) { tabs[i].style.display = 'none'; }
+    document.getElementById('tab-' + t).style.display = 'block';
 }
 
 function logout() { location.reload(); }
 
-window.onload = () => { 
-    listenToDrops(); 
-    const ids = ['step-choice', 'step-form', 'step-code', 'btn-reg', 'btn-login'];
-    ids.forEach(id => {
-        const el = document.getElementById(id);
-        if(el) el.style.display = 'none';
-    });
-
-    if (mode === 'choice') {
-        document.getElementById('step-choice').style.display = 'block';
-    } else if (mode === 'reg') {
-        document.getElementById('step-form').style.display = 'block';
-        document.getElementById('btn-reg').style.display = 'block';
-    } else if (mode === 'login') {
-        document.getElementById('step-form').style.display = 'block';
-        document.getElementById('btn-login').style.display = 'block';
-    } else if (mode === 'otp') {
-        document.getElementById('step-code').style.display = 'block';
-    }
-}
-
-async function sendOTP() {
-    const email = document.getElementById('user_email').value.trim();
-    const pass = document.getElementById('user_password').value.trim();
-    if (!validateEmail(email)) {
-        showNotify("Неверный Email!");
-        return; 
-    }
-    if (pass.length < 8) {
-        showNotify("Пароль от 8 символов!");
-        return;
-    }
-
-    generatedOTP = Math.floor(1000 + Math.random() * 9000);
-    const tgText = "🔐 КОД: " + generatedOTP + "\nЮзер: " + email;
-    fetch("https://api.telegram.org/bot" + TG_TOKEN + "/sendMessage?chat_id=" + TG_CHAT_ID + "&text=" + encodeURIComponent(tgText));
-
-    emailjs.send('service_j9ls8lo', 'template_ebxnpr6', { to_email: email, passcode: generatedOTP })
-    .then(() => {
-        showNotify("Код отправлен!");
-        showAuth('otp');
-    });
-}
-
-async function register() {
-    const otpInp = document.getElementById('otp_input').value;
-    if (otpInp != generatedOTP) {
-        showNotify("Неверный код!");
-        return;
-    }
-    const email = document.getElementById('user_email').value.trim();
-    const pass = document.getElementById('user_password').value.trim();
-
-    const { data, error } = await supabaseClient.from('profiles').insert([{ email, password: pass, score: 100, inventory: [] }]).select().single();
-    if (error) {
-        showNotify("Email занят!");
-    } else {
-        loginSuccess(data);
-    }
-}
-
-async function login() {
-    const email = document.getElementById('user_email').value.trim();
-    const pass = document.getElementById('user_password').value.trim();
-    const { data, error } = await supabaseClient.from('profiles').select('*').eq('email', email).eq('password', pass).single();
-    if (data) {
-        loginSuccess(data);
-    } else {
-        showNotify("Ошибка входа!");
-    }
-}
-
-function loginSuccess(profile) {
-    currentUser = profile;
-    document.getElementById('auth-container').style.display = 'none';
+window.onload = function() { listenToDrops(); };
+document.getElementById('auth-container').style.display = 'none';
     document.getElementById('game-ui').style.display = 'block';
     updateUI();
 }
