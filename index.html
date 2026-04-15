@@ -1,31 +1,37 @@
 <!DOCTYPE html>
-<html>
+<html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Brainrot Cases</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Brainrot Case Simulator</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
 </head>
 <body>
+
     <div id="notification-container"></div>
 
     <div id="auth-container">
-        <h2 style="color:#00d4ff; margin-bottom:15px;">BRAINROT</h2>
+        <h1 class="logo">BRAINROT</h1>
+        
         <div id="step-choice">
             <button class="main-btn" onclick="showAuth('reg')">РЕГИСТРАЦИЯ</button>
-            <button class="main-btn" onclick="showAuth('login')" style="margin-top:10px; background:none; color:#00d4ff; border:1px solid #00d4ff;">ВХОД</button>
+            <button class="main-btn btn-outline" onclick="showAuth('login')">ВХОД</button>
         </div>
+
         <div id="step-form" style="display:none;">
-            <input type="email" id="user_email" placeholder="Email">
+            <input type="email" id="user_email" placeholder="Твой Email">
             <input type="password" id="user_password" placeholder="Пароль">
-            <button id="btn-reg" class="main-btn" onclick="sendOTP()">ПОЛУЧИТЬ КОД</button>
-            <button id="btn-login" class="main-btn" onclick="login()">ВОЙТИ</button>
-            <p onclick="showAuth('choice')" style="font-size:10px; cursor:pointer; margin-top:10px;">Назад</p>
+            <button id="btn-reg" class="main-btn" onclick="sendOTP()" style="display:none;">ПОЛУЧИТЬ КОД</button>
+            <button id="btn-login" class="main-btn" onclick="login()" style="display:none;">ВОЙТИ</button>
+            <p class="back-link" onclick="showAuth('choice')">← Назад</p>
         </div>
+
         <div id="step-code" style="display:none;">
-            <input type="number" id="otp_input" placeholder="Код">
-            <button class="main-btn" onclick="register()">ОК</button>
+            <p style="margin-bottom: 10px; font-size: 12px;">Код отправлен на почту!</p>
+            <input type="number" id="otp_input" placeholder="0000">
+            <button class="main-btn" onclick="register()">ПОДТВЕРДИТЬ</button>
         </div>
     </div>
 
@@ -34,21 +40,29 @@
             <button onclick="switchTab('cases')">КЕЙСЫ</button>
             <button onclick="switchTab('profile')">ПРОФИЛЬ</button>
             <button onclick="switchTab('support')">САППОРТ</button>
-            <button onclick="logout()" style="color:#ff4444; background:none;">X</button>
+            <button onclick="logout()" class="logout-btn">X</button>
         </nav>
+
         <div id="tab-cases" class="tab">
             <div id="case-display">🎁</div>
-            <button class="main-btn" onclick="openCase()">КРУТИТЬ ЗА 50$</button>
+            <button class="main-btn" onclick="openCase()">КРУТИТЬ (50$)</button>
         </div>
+
         <div id="tab-profile" class="tab" style="display:none;">
-            <p style="margin-bottom:10px;">Баланс: <span id="p-balance" style="color:#2ecc71;">0</span>$</p>
+            <div class="balance-card">
+                БАЛАНС: <span id="p-balance">0</span>$
+            </div>
+            <h3 class="title">ИНВЕНТАРЬ:</h3>
             <div id="inventory-list"></div>
         </div>
+
         <div id="tab-support" class="tab" style="display:none;">
-            <textarea id="support-msg" rows="4" placeholder="Ник и вопрос..."></textarea>
+            <h3 class="title">ТЕХПОДДЕРЖКА</h3>
+            <textarea id="support-msg" placeholder="Ник в Roblox и суть проблемы..."></textarea>
             <button class="main-btn" onclick="sendSupport()">ОТПРАВИТЬ</button>
         </div>
     </div>
+
     <script src="script.js"></script>
 </body>
 </html>
