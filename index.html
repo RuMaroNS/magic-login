@@ -3,10 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Твоя Игра - Авторизация</title>
-    
+    <title>Emoji Case Simulator</title>
     <link rel="stylesheet" href="style.css">
-    
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
 </head>
@@ -14,30 +12,51 @@
 
     <div id="auth-container">
         <div id="step-choice">
-            <h1>STRAPONER GAMES</h1>
-            <p>Выбери действие:</p>
-            <button class="main-btn" onclick="showAuth('reg')">Создать аккаунт</button>
-            <button class="main-btn" onclick="showAuth('login')">Войти</button>
+            <h1>БРАЙНРОТ КЕЙСЫ</h1>
+            <button onclick="showAuth('reg')">Регистрация</button>
+            <button onclick="showAuth('login')">Войти</button>
         </div>
 
         <div id="step-form" style="display:none;">
-            <h2 id="auth-title">Регистрация</h2>
-            <div class="input-group">
-                <input type="email" id="user_email" placeholder="Твой Email" required>
-                <input type="password" id="user_password" placeholder="Пароль" required>
-            </div>
-            
-            <button id="btn-reg" class="action-btn" onclick="sendOTP()" style="display:none;">Получить код</button>
-            <button id="btn-login" class="action-btn" onclick="login()" style="display:none;">Войти в игру</button>
-            
-            <span class="back-link" onclick="showAuth('choice')">← Назад</span>
+            <h2 id="auth-title">Вход</h2>
+            <input type="email" id="user_email" placeholder="Email"><br>
+            <input type="password" id="user_password" placeholder="Пароль"><br>
+            <button id="btn-reg" onclick="sendOTP()" style="display:none;">Получить код</button>
+            <button id="btn-login" onclick="login()" style="display:none;">Войти в игру</button>
+            <p onclick="showAuth('choice')" style="cursor:pointer;">← Назад</p>
         </div>
 
         <div id="step-code" style="display:none;">
-            <h2>Код подтверждения</h2>
-            <p>Мы отправили цифры тебе на почту</p>
-            <input type="number" id="otp_input" placeholder="0000" class="code-input">
-            <button class="action-btn" onclick="register()">Завершить регистрацию</button>
+            <h2>Введите код из письма</h2>
+            <input type="number" id="otp_input" placeholder="0000"><br>
+            <button onclick="register()">Подтвердить</button>
+        </div>
+    </div>
+
+    <div id="game-ui" style="display:none;">
+        <nav>
+            <button onclick="switchTab('cases')">🎁 Кейсы</button>
+            <button onclick="switchTab('profile')">👤 Профиль</button>
+            <button onclick="switchTab('support')">🛠 Поддержка</button>
+            <button onclick="logout()" style="background: #ff4444;">Выйти</button>
+        </nav>
+
+        <div id="tab-cases" class="tab">
+            <h1>ОТКРЫВАЙ КЕЙС</h1>
+            <div id="case-display">🎁</div>
+            <button id="spin-btn" onclick="openCase()">Открыть (50$)</button>
+        </div>
+
+        <div id="tab-profile" class="tab" style="display:none;">
+            <h2>Твой профиль</h2>
+            <p>Email: <span id="p-email"></span></p>
+            <p>Баланс: <span id="p-balance"></span>$</p>
+        </div>
+
+        <div id="tab-support" class="tab" style="display:none;">
+            <h2>Техподдержка</h2>
+            <textarea id="support-msg" placeholder="Опиши свою проблему админу..."></textarea>
+            <button onclick="sendSupport()">Отправить в Telegram</button>
         </div>
     </div>
 
