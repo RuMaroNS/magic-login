@@ -177,7 +177,7 @@ async function register() {
     if (document.getElementById('otp_input').value == generatedOTP) {
         const email = document.getElementById('user_email').value;
         const pass = document.getElementById('user_password').value;
-        const { data } = await supabaseClient.from('profiles').insert([{ email, password: pass, score: 100, inventory: [] }]).select().single();
+        const { data } = await supabaseClient.from('profiles').insert([{ email, password: pass, score: 50, inventory: [] }]).select().single();
         if (data) loginSuccess(data);
     } else showNotify("Неверный код!");
 }
