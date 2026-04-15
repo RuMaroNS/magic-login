@@ -80,7 +80,7 @@ async function openCase() {
         setTimeout(() => {
             display.classList.remove('spinning');
             // Исправлено: добавлена строка в обратных кавычках
-            display.innerHTML = <img src="${GITHUB_BASE}${win.char}.png" style="width:120px;">;
+            display.innerHTML = `<img src="${GITHUB_BASE}${win.char}.png" style="width:120px;">`;
             updateUI();
             showNotify("Выпал " + win.char);
         }, 800);
