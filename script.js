@@ -1,24 +1,18 @@
 const SB_URL = 'https://wbkygibviddkdjxbahbg.supabase.co';
 const SB_KEY = 'sb_publishable_l5wIAt6RrAl4Uo8uZKerRQ_xBYDS-Kv';
-const EJS_KEY = 'gTrqvbOiCTqlJcDNJ';
 const TG_TOKEN = '8503277013:AAHK1uBNYc4f8zhchfXdPxwFBJ-eExGONvw';
 const TG_CHAT_ID = '6176762600';
-
-// Ссылка на твой репозиторий GitHub (ветка main)
-const GITHUB_BASE = "https://raw.githubusercontent.com/RuMaroNS/magic-login/main/img/";
+const GITHUB_BASE = "https://raw.githubusercontent.com/marons/magic-login/main/Drops/";
 
 const supabaseClient = supabase.createClient(SB_URL, SB_KEY);
-emailjs.init(EJS_KEY);
-
 let currentUser = null;
-let generatedOTP;
 
 const items = [
     {char: 'TacoBlock', price: 10, chance: 0.122},
     {char: 'AdminBlock', price: 10, chance: 0.122},
-    {char: 'SecretBlock', price: 89, chance: 0.90},
-    {char: 'LosTacoBlocks', price: 67, chance: 0.108},
-    {char: 'LosAdminBlocks', price: 67, chance: 0.108}
+    {char: 'SecretBlock', price: 89, chance: 0.0415},
+    {char: 'LosTacoBlocks', price: 67, chance: 0.055},
+    {char: 'LosAdminBlocks', price: 67, chance: 0.055}
 ];
 
 function showNotify(text) {
@@ -34,6 +28,118 @@ function showNotify(text) {
     }, 2500);
 }
 
+window.onload = async () => {
+    const saved = localStorage.getItem('game_user');
+    if (saved) {
+        const u = JSON.parse(saved);
+        const { data } = await supabaseClient.from('profiles').select('*').eq('email', u.email).eq('password', u.password).single();
+        if (data) loginSuccess(data);
+    }
+};
+
+async function login() {
+    const email = document.getElementById('user_email').value;
+    const pass = document.getElementById('user_password').value;
+    const { data } = await supabaseClient.from('profiles').select('*').eq('email', email).eq('password', pass).single();
+    if (data) {
+        localStorage.setItem('game_user', JSON.stringify(data));
+        loginSuccess(data);
+    } else {
+        showNotify("Ошибка входа!");
+    }
+}
+
+function loginSuccess(profile) {
+    currentUser = profile;
+    document.getElementById('auth-container').style.display = 'none';
+    document.getElementById('game-ui').style.display = 'block';
+    updateUI();
+}
+
+async function openCase() {
+    if (currentUser.score < 50) return showNotify("Мало денег!");
+    const display = document.getElementById('case-display');
+    display.classList.add('spinning');
+
+    let rand = Math.random();
+    let cumulative = 0;
+    let win = items[0];
+    for (let i of items) {
+        cumulative += i.chance;
+        if (rand < cumulative) { win = i; break; }
+    }
+
+    const newInv = [...(currentUser.inventory || []), { ...win, id: Date.now() }];
+    const newScore = currentUser.score - 50;
+
+    const { error } = await supabaseClient.from('profiles').update({ score: newScore, inventory: newInv }).eq('email', currentUser.email);
+    
+    if (!error) {
+        currentUser.score = newScore;
+        currentUser.inventory = newInv;
+        setTimeout(() => {
+            display.classList.remove('spinning');
+            display.innerHTML = `<img src="${GITHUB_BASE}${win.char}.png" width="120">`;
+            updateUI();
+            showNotify("Выпал предмет! Проверь профиль.");
+            addLive(win.char);
+        }, 800);
+    }
+}
+
+function addLive(name) {
+    const lb = document.getElementById('live-board');
+    const e = document.createElement('div');
+    e.className = 'live-entry';
+    e.innerHTML = `🔥 Кто-то выбил <b>${name}</b>`;
+    lb.prepend(e);
+    if(lb.children.length > 2) lb.lastChild.remove();
+}
+
+async function requestWithdraw(id) {
+    const nick = prompt("Введи свой никнейм для вывода:");
+    if(!nick) return;
+
+    const item = currentUser.inventory.find(i => i.id === id);
+    const text = `💰 ЗАЯВКА НА ВЫВОД\nПочта: ${currentUser.email}\nНик: ${nick}\nПредмет: ${item.char}`;
+    
+    await fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendMessage?chat_id=${TG_CHAT_ID}&text=${encodeURIComponent(text)}`);
+    
+    const updatedInv = currentUser.inventory.filter(i => i.id !== id);
+    await supabaseClient.from('profiles').update({ inventory: updatedInv }).eq('email', currentUser.email);
+    
+    currentUser.inventory = updatedInv;
+    updateUI();
+    showNotify("Заявка ушла админу!");
+}
+
+function updateUI() {
+    document.getElementById('p-balance').innerText = currentUser.score;
+    const list = document.getElementById('inventory-list');
+    list.innerHTML = '';
+    if (currentUser.inventory) {
+        currentUser.inventory.forEach(i => {
+            list.innerHTML += `
+                <div class="inv-item">
+                    <img src="${GITHUB_BASE}${i.char}.png">
+                    <div style="font-size:10px;">${i.char}</div>
+                    <button onclick="requestWithdraw(${i.id})">Вывод</button>
+                </div>`;
+        });
+    }
+}
+
+function switchTab(t) {
+    document.querySelectorAll('.tab').forEach(x => x.style.display = 'none');
+    document.getElementById('tab-' + t).style.display = 'block';
+}
+
+function showAuth(m) {
+    document.getElementById('step-choice').style.display = m === 'choice' ? 'block' : 'none';
+    document.getElementById('step-form').style.display = m === 'choice' ? 'none' : 'block';
+}
+
+function logout() { localStorage.clear(); location.reload(); }
 window.onload = async () => {
     const savedUser = localStorage.getItem('game_user');
     if (savedUser) {
