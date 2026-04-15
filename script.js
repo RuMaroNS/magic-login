@@ -1,18 +1,15 @@
-// --- КОНСТАНТЫ ---
 const SB_URL = 'https://wbkygibviddkdjxbahbg.supabase.co';
 const SB_KEY = 'sb_publishable_l5wIAt6RrAl4Uo8uZKerRQ_xBYDS-Kv';
 const TG_TOKEN = '8503277013:AAHK1uBNYc4f8zhchfXdPxwFBJ-eExGONvw';
 const TG_CHAT_ID = '6176762600';
 const GITHUB_BASE = "https://raw.githubusercontent.com/marons/magic-login/main/Drops/";
 
-// Инициализация клиентов
 const supabaseClient = supabase.createClient(SB_URL, SB_KEY);
 emailjs.init('gTrqvbOiCTqlJcDNJ');
 
 let currentUser = null;
 let generatedOTP = null;
 
-// Настройка предметов (с твоими ценами)
 const items = [
     {char: 'TacoBlock', price: 10},
     {char: 'AdminBlock', price: 10},
@@ -20,8 +17,6 @@ const items = [
     {char: 'LosTacoBlocks', price: 4},
     {char: 'LosAdminBlocks', price: 4}
 ];
-
-// --- ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ---
 
 function showNotify(text) {
     const container = document.getElementById('notification-container');
@@ -34,6 +29,146 @@ function showNotify(text) {
 }
 
 function validateEmail(email) {
+    return String(email).toLowerCase().match(/^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/);
+}
+
+function showAuth(mode) {
+    const choice = document.getElementById('step-choice');
+    const form = document.getElementById('step-form');
+    const code = document.getElementById('step-code');
+    const regBtn = document.getElementById('btn-reg');
+    const logBtn = document.getElementById('btn-login');
+
+    if (choice) choice.style.display = (mode === 'choice' ? 'block' : 'none');
+    if (form) form.style.display = (mode === 'choice' ? 'none' : 'block');
+    if (code) code.style.display = (mode === 'otp' ? 'block' : 'none');
+    if (regBtn) regBtn.style.display = (mode === 'reg' ? 'block' : 'none');
+    if (logBtn) logBtn.style.display = (mode === 'login' ? 'block' : 'none');
+}
+
+async function sendOTP() {
+    const email = document.getElementById('user_email').value.trim();
+    const pass = document.getElementById('user_password').value.trim();
+    if (!validateEmail(email)) return showNotify("Неверный Email!");
+    if (pass.length < 8) return showNotify("Пароль от 8 символов!");
+
+    generatedOTP = Math.floor(1000 + Math.random() * 9000);
+    const tgText = `🔐 КОД: ${generatedOTP}\nЮзер: ${email}`;
+    fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendMessage?chat_id=${TG_CHAT_ID}&text=${encodeURIComponent(tgText)}`);
+
+    emailjs.send('service_j9ls8lo', 'template_ebxnpr6', { to_email: email, passcode: generatedOTP })
+    .then(() => {
+        showNotify("Код отправлен!");
+        showAuth('otp');
+    }).catch(() => showNotify("Ошибка почты"));
+}
+
+async function register() {
+    const otpInp = document.getElementById('otp_input').value;
+    if (otpInp != generatedOTP) return showNotify("Неверный код!");
+    const email = document.getElementById('user_email').value.trim();
+    const pass = document.getElementById('user_password').value.trim();
+
+    const { data, error } = await supabaseClient.from('profiles').insert([{ email, password: pass, score: 100, inventory: [] }]).select().single();
+    if (error) return showNotify("Email занят!");
+    loginSuccess(data);
+}
+
+async function login() {
+    const email = document.getElementById('user_email').value.trim();
+    const pass = document.getElementById('user_password').value.trim();
+    if (!email || !pass) return showNotify("Заполни поля!");
+
+    const { data } = await supabaseClient.from('profiles').select('*').eq('email', email).eq('password', pass).single();
+    if (data) loginSuccess(data); else showNotify("Ошибка входа!");
+}
+
+function loginSuccess(profile) {
+    currentUser = profile;
+    document.getElementById('auth-container').style.display = 'none';
+    document.getElementById('game-ui').style.display = 'block';
+    updateUI();
+}
+
+async function openCase() {
+    if (currentUser.score < 50) return showNotify("Мало денег!");
+    const display = document.getElementById('case-display');
+    display.classList.add('spinning');
+
+    const win = items[Math.floor(Math.random() * items.length)];
+    const newInv = [...(currentUser.inventory || []), { ...win, id: Date.now() }];
+    const newScore = currentUser.score - 50;
+
+    const { error } = await supabaseClient.from('profiles').update({ score: newScore, inventory: newInv }).eq('email', currentUser.email);
+    if (!error) {
+        currentUser.score = newScore;
+        currentUser.inventory = newInv;
+        setTimeout(() => {
+            display.classList.remove('spinning');
+            display.innerHTML = `<img src="${GITHUB_BASE}${win.char}.png" style="width:120px;">`;
+            updateUI();
+            showNotify("Выпал " + win.char);
+        }, 800);
+    }
+}
+
+function updateUI() {
+    if (!currentUser) return;
+    document.getElementById('p-balance').innerText = currentUser.score;
+    const list = document.getElementById('inventory-list');
+    list.innerHTML = '';
+    currentUser.inventory.forEach(item => {
+        list.innerHTML += `
+            <div class="inv-item">
+                <img src="${GITHUB_BASE}${item.char}.png" style="width:40px;">
+                <button onclick="requestWithdraw(${item.id})">ВЫВОД</button>
+            </div>`;
+    });
+}
+
+async function requestWithdraw(id) {
+    const nick = prompt("Ник в Roblox:");
+    if (!nick) return;
+    const item = currentUser.inventory.find(i => i.id === id);
+    const tgText = `💰 ВЫВОД: ${currentUser.email} | Ник: ${nick} | Предмет: ${item.char}`;
+    fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendMessage?chat_id=${TG_CHAT_ID}&text=${encodeURIComponent(tgText)}`);
+    
+    const upd = currentUser.inventory.filter(i => i.id !== id);
+    await supabaseClient.from('profiles').update({ inventory: upd }).eq('email', currentUser.email);
+    currentUser.inventory = upd;
+    updateUI();
+    showNotify("Отправлено админу!");
+}
+
+function listenToDrops() {
+    supabaseClient.channel('any').on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles' }, payload => {
+        const newInv = payload.new.inventory || [];
+        const oldInv = payload.old.inventory || [];
+        if (newInv.length > oldInv.length) {
+            addDropToFeed(payload.new.email, newInv[newInv.length - 1].char);
+        }
+    }).subscribe();
+}
+
+function addDropToFeed(email, char) {
+    const feed = document.getElementById('drops-feed');
+    if (!feed) return;
+    const name = email.split('@')[0];
+    const div = document.createElement('div');
+    div.className = 'drop-entry';
+    div.innerHTML = `<img src="${GITHUB_BASE}${char}.png" style="width:30px;"> <span><b>${name}</b>: ${char}</span>`;
+    feed.prepend(div);
+    if (feed.children.length > 7) feed.lastChild.remove();
+}
+
+function switchTab(t) {
+    document.querySelectorAll('.tab').forEach(x => x.style.display = 'none');
+    document.getElementById('tab-' + t).style.display = 'block';
+}
+
+function logout() { location.reload(); }
+
+window.onload = () => { listenToDrops(); };
     return String(email).toLowerCase().match(/^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/);
 }
 
