@@ -545,7 +545,7 @@ function switchTab(t) {
 
 function logout() { location.reload(); }
 
-window.onload = () => { listenToDrops(); };
+window.onload = () => { listenToDrops();
     const choice = document.getElementById('step-choice');
     const form = document.getElementById('step-form');
     const code = document.getElementById('step-code');
