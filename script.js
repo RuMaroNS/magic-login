@@ -178,8 +178,9 @@ function switchTab(t) {
     document.getElementById('tab-' + t).style.display = 'block';
 }
 
-function logout() { localStorage.clear(); location.reload(); }
-        if (data) loginSuccess(data);
+function logout() { 
+    localStorage.clear(); location.reload(); 
+    if (data) loginSuccess(data);
 };
 
 async function login() {
