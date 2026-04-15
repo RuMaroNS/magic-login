@@ -196,7 +196,6 @@ function logout() {
 
 window.onload = () => { 
     listenToDrops(); 
-};
     const form = document.getElementById('step-form');
     const code = document.getElementById('step-code');
     const regBtn = document.getElementById('btn-reg');
