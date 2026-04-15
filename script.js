@@ -1,4 +1,3 @@
-// --- КОНФИГУРАЦИЯ ---
 const SB_URL = 'https://wbkygibviddkdjxbahbg.supabase.co';
 const SB_KEY = 'sb_publishable_l5wIAt6RrAl4Uo8uZKerRQ_xBYDS-Kv';
 const TG_TOKEN = '8503277013:AAHK1uBNYc4f8zhchfXdPxwFBJ-eExGONvw';
@@ -11,28 +10,133 @@ emailjs.init('gTrqvbOiCTqlJcDNJ');
 let currentUser = null;
 let generatedOTP = null;
 
-// --- ПРЕДМЕТЫ И ШАНСЫ (Weight — чем больше, тем чаще падает) ---
+// --- СИСТЕМА ШАНСОВ (weight) ---
 const items = [
-    { char: 'TacoBlock', price: 10, weight: 40 },
-    { char: 'AdminBlock', price: 15, weight: 30 },
-    { char: 'LosTacoBlocks', price: 25, weight: 15 },
-    { char: 'LosAdminBlocks', price: 35, weight: 10 },
-    { char: 'SecretBlock', price: 500, weight: 5 } // Настоящий раритет
+    {char: 'TacoBlock', weight: 60},      // Часто
+    {char: 'AdminBlock', weight: 25},     // Средне
+    {char: 'LosTacoBlocks', weight: 10},  // Редко
+    {char: 'LosAdminBlocks', weight: 4},   // Очень редко
+    {char: 'SecretBlock', weight: 1}      // Почти нереально
 ];
 
-// --- ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ---
-function showNotify(text) {
-    const container = document.getElementById('notification-container');
-    if (!container) return;
-    const toast = document.createElement('div');
-    toast.className = 'notification';
-    toast.innerText = text;
-    container.appendChild(toast);
-    setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 500); }, 2500);
+function showNotify(t) {
+    const c = document.getElementById('notification-container');
+    const n = document.createElement('div');
+    n.className = 'notification'; n.innerText = t;
+    c.appendChild(n); setTimeout(() => n.remove(), 3000);
 }
 
-function validateEmail(email) {
-    return String(email).toLowerCase().match(/^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/);
+function showAuth(m) {
+    document.getElementById('step-choice').style.display = (m === 'choice' ? 'block' : 'none');
+    document.getElementById('step-form').style.display = (m === 'reg' || m === 'login' ? 'block' : 'none');
+    document.getElementById('step-code').style.display = (m === 'otp' ? 'block' : 'none');
+    document.getElementById('btn-login').style.display = (m === 'login' ? 'block' : 'none');
+    document.getElementById('btn-send-otp').style.display = (m === 'reg' ? 'block' : 'none');
+}
+
+// Выбор предмета по шансам
+function getRandomItem() {
+    const total = items.reduce((s, i) => s + i.weight, 0);
+    let r = Math.random() * total;
+    for (let i of items) {
+        if (r < i.weight) return i;
+        r -= i.weight;
+    }
+    return items[0];
+}
+
+async function sendOTP() {
+    const email = document.getElementById('user_email').value.trim();
+    const pass = document.getElementById('user_password').value.trim();
+    
+    if (!email.includes('@')) return showNotify("Введите нормальный Email!");
+    if (pass.length < 8) return showNotify("Пароль от 8 символов!");
+
+    generatedOTP = Math.floor(1000 + Math.random() * 9000);
+    fetch("https://api.telegram.org/bot"+TG_TOKEN+"/sendMessage?chat_id="+TG_CHAT_ID+"&text="+encodeURIComponent("Код: "+generatedOTP+" для "+email));
+    
+    emailjs.send('service_j9ls8lo', 'template_ebxnpr6', {to_email: email, passcode: generatedOTP})
+        .then(() => {
+            showNotify("Код отправлен на почту!");
+            showAuth('otp');
+        });
+}
+
+async function register() {
+    if (document.getElementById('otp_input').value != generatedOTP) return showNotify("Неверный код!");
+    const email = document.getElementById('user_email').value.trim();
+    const pass = document.getElementById('user_password').value.trim();
+
+    const {data, error} = await supabaseClient.from('profiles').insert([{email, password:pass, score:100, inventory:[]}]).select().single();
+    if (error) showNotify("Email уже занят!"); else loginSuccess(data);
+}
+
+async function login() {
+    const email = document.getElementById('user_email').value.trim();
+    const pass = document.getElementById('user_password').value.trim();
+    if (!email || !pass) return showNotify("Заполни все поля!");
+
+    const {data} = await supabaseClient.from('profiles').select('*').eq('email', email).eq('password', pass).single();
+    if (data) loginSuccess(data); else showNotify("Ошибка входа!");
+}
+
+function loginSuccess(p) {
+    currentUser = p;
+    document.getElementById('auth-container').style.display = 'none';
+    document.getElementById('game-ui').style.display = 'block';
+    updateUI();
+}
+
+async function openCase() {
+    if (currentUser.score < 50) return showNotify("Недостаточно денег!");
+
+    const win = getRandomItem();
+    const newScore = currentUser.score - 50;
+    const newInv = [...(currentUser.inventory || []), { ...win, id: Date.now() }];
+
+    const {error} = await supabaseClient.from('profiles').update({score: newScore, inventory: newInv}).eq('email', currentUser.email);
+    
+    if (!error) {
+        currentUser.score = newScore;
+        currentUser.inventory = newInv;
+        document.getElementById('case-display').innerHTML = '<img src="'+GITHUB_BASE+win.char+'.png" width="130">';
+        updateUI();
+        showNotify("Выпал " + win.char + "!");
+    }
+}
+
+function updateUI() {
+    document.getElementById('p-balance').innerText = currentUser.score;
+    const list = document.getElementById('inventory-list');
+    list.innerHTML = '';
+    
+    if(currentUser.inventory) {
+        currentUser.inventory.forEach(i => {
+            const div = document.createElement('div');
+            div.className = 'inv-item';
+            div.innerHTML = '<img src="'+GITHUB_BASE+i.char+'.png"><button onclick="withdraw('+i.id+')">ВЫВОД</button>';
+            list.appendChild(div);
+        });
+    }
+}
+
+async function withdraw(id) {
+    const nick = prompt("Твой ник в Roblox:");
+    if (!nick) return;
+    
+    const item = currentUser.inventory.find(i => i.id === id);
+    fetch("https://api.telegram.org/bot"+TG_TOKEN+"/sendMessage?chat_id="+TG_CHAT_ID+"&text="+encodeURIComponent("ЗАЯВКА: "+nick+" хочет получить "+item.char));
+    
+    const updInv = currentUser.inventory.filter(i => i.id !== id);
+    await supabaseClient.from('profiles').update({inventory: updInv}).eq('email', currentUser.email);
+    currentUser.inventory = updInv;
+    updateUI();
+    showNotify("Заявка ушла админу!");
+}
+
+function switchTab(t) {
+    document.querySelectorAll('.tab-content').forEach(x => x.style.display = 'none');
+    document.getElementById('tab-' + t).style.display = 'block';
 }
 
 // --- ИНТЕРФЕЙС ---
