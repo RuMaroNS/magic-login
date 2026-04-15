@@ -16,9 +16,9 @@ let generatedOTP;
 const items = [
     {char: 'TacoBlock', price: 10, chance: 0.122},
     {char: 'AdminBlock', price: 10, chance: 0.122},
-    {char: 'SecretBlock', price: 89, chance: 0.0415},
-    {char: 'LosTacoBlocks', price: 67, chance: 0.055},
-    {char: 'LosAdminBlocks', price: 67, chance: 0.055}
+    {char: 'SecretBlock', price: 89, chance: 0.90},
+    {char: 'LosTacoBlocks', price: 67, chance: 0.108},
+    {char: 'LosAdminBlocks', price: 67, chance: 0.108}
 ];
 
 function showNotify(text) {
