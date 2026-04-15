@@ -94,10 +94,10 @@ function updateUI() {
     if (currentUser.inventory) {
         currentUser.inventory.forEach(item => {
             list.innerHTML += 
-                <div class="inv-item">
-                    <img src="${GITHUB_BASE}${item.char}.png">
-                    <p>${item.char}</p>
-                    <button onclick="requestWithdraw(${item.id})">ВЫВОД</button>
+                `<div class="inv-item">`
+                    `<img src="${GITHUB_BASE}${item.char}.png">`
+                    `<p>${item.char}</p>`
+                    `<button onclick="requestWithdraw(${item.id})">ВЫВОД</button>`
                 </div>;
         });
     }
