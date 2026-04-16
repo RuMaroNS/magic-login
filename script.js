@@ -121,7 +121,7 @@ async function requestWithdraw(id) {
     if (!item) return;
 
     // 1. Отправка в Telegram (для уведомления админа)
-    const tgText = 💰 ВЫВОД: ${currentUser.email} | Ник в Roblox: ${nick} | Предмет: ${item.char};
+    const tgText = `💰 ВЫВОД: ${currentUser.email} | Ник в Roblox: ${nick} | Предмет: ${item.char};`
     try {
         await fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendMessage?chat_id=${TG_CHAT_ID}&text=${encodeURIComponent(tgText)}`);
     } catch (e) {
