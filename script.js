@@ -153,20 +153,48 @@ async function sellItem(itemId, charName) {
 }
 
 function initRealtime() {
-    supabaseClient.channel('any').on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles' }, (p) => {
+    supabaseClient.channel('any').on('postgres_changes', { 
+        event: 'UPDATE', 
+        schema: 'public', 
+        table: 'profiles' 
+    }, (p) => {
         const oldInv = p.old?.inventory || [];
         const newInv = p.new?.inventory || [];
-        if (newInv.length > oldInv.length) addToLiveBoard(p.new.username || "Player", newInv[newInv.length - 1].char);
+        
+        if (newInv.length > oldInv.length) {
+            const lastItem = newInv[newInv.length - 1];
+            // Вызываем с тремя параметрами: Игрок, Предмет, Название (можно захардкодить или брать из логов)
+            addToLiveBoard(p.new.username || "Игрок", lastItem.char, "DROP");
+        }
     }).subscribe();
 }
 
-function addToLiveBoard(user, item) {
+// Вставь это вместо старой функции addToLiveBoard
+function addToLiveBoard(user, item, caseName = "LUCKY CASE") {
     const board = document.getElementById('global-live-feed');
     const card = document.createElement('div');
     card.className = 'drop-card';
-    card.innerHTML = `<img src="${GITHUB_BASE}${item}.png"><div class="drop-info"><span>${user}</span><span>${item}</span></div>`;
+    
+    card.innerHTML = `
+        <img src="${GITHUB_BASE}${item}.png">
+        <div class="drop-info">
+            <div class="drop-user">${user}</div>
+            <div class="drop-item-name">${item}</div>
+            <div class="drop-case-name">${caseName}</div>
+        </div>
+    `;
+    
     board.prepend(card);
-    setTimeout(() => { card.style.opacity = "0"; setTimeout(() => card.remove(), 500); }, 60000);
+    
+    // Плавное появление
+    card.style.opacity = "0";
+    setTimeout(() => card.style.opacity = "1", 10);
+
+    // Удаление через минуту, чтобы не лагало
+    setTimeout(() => {
+        card.style.opacity = "0";
+        setTimeout(() => card.remove(), 500);
+    }, 60000);
 }
 
 function navTo(pageId) {
