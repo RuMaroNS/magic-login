@@ -30,6 +30,33 @@ const CASE_TABLE = [
 
 let currentUser = null;
 
+// --- COOKIE & LOCAL STORAGE FIX ---
+function checkCookies() {
+    if (!localStorage.getItem('cookies_accepted')) {
+        document.getElementById('cookie-banner').style.display = 'block';
+    } else {
+        autoLogin();
+    }
+}
+
+function acceptCookies() {
+    localStorage.setItem('cookies_accepted', 'true');
+    document.getElementById('cookie-banner').style.display = 'none';
+    showNotify("Cookie приняты!");
+}
+
+async function autoLogin() {
+    const saved = localStorage.getItem('game_user');
+    if (saved) {
+        currentUser = JSON.parse(saved);
+        document.getElementById('auth-screen').style.display = 'none';
+        document.getElementById('game-interface').style.display = 'block';
+        navTo('cases');
+        initRealtime();
+    }
+}
+
+// --- АВТОРИЗАЦИЯ ---
 function switchAuthMode(mode) {
     document.getElementById('tab-btn-login').classList.toggle('active', mode === 'login');
     document.getElementById('tab-btn-reg').classList.toggle('active', mode === 'reg');
@@ -43,6 +70,7 @@ async function login() {
     const { data } = await supabaseClient.from('profiles').select('*').eq('email', email).eq('password', pass).single();
     if(data) {
         currentUser = data;
+        localStorage.setItem('game_user', JSON.stringify(data));
         document.getElementById('auth-screen').style.display = 'none';
         document.getElementById('game-interface').style.display = 'block';
         navTo('cases');
@@ -50,36 +78,61 @@ async function login() {
     } else showNotify("Ошибка входа!");
 }
 
-async function register() {
-    const email = document.getElementById('user_email').value;
-    const pass = document.getElementById('user_password').value;
-    const { data } = await supabaseClient.from('profiles').insert([{ email, password: pass, score: 1000, inventory: [] }]).select().single();
-    if(data) {
-        currentUser = data;
-        document.getElementById('auth-screen').style.display = 'none';
-        document.getElementById('game-interface').style.display = 'block';
-        navTo('cases');
-        initRealtime();
+// --- РУЛЕТКА (ПОЛНЫЙ ФИКС) ---
+async function openRoulette(caseId) {
+    const cData = CASE_TABLE.find(x => x.id === caseId);
+    if (currentUser.score < cData.price) return showNotify("Мало денег!");
+
+    currentUser.score -= cData.price;
+    navTo('opening');
+    
+    const tape = document.getElementById('roulette-tape');
+    const winDisplay = document.getElementById('win-display');
+    winDisplay.style.display = 'none';
+    tape.style.transition = 'none';
+    tape.style.transform = 'translateX(0)';
+
+    let tapeHTML = '';
+    for(let i=0; i<60; i++) {
+        const randItem = cData.items[Math.floor(Math.random() * cData.items.length)];
+        tapeHTML += `<div class="roulette-item"><img src="${GITHUB_BASE}${randItem.char}.png"></div>`;
     }
+    tape.innerHTML = tapeHTML;
+
+    // Шансы
+    let rand = Math.random() * 100;
+    let cum = 0;
+    let win = cData.items[0];
+    for (let itm of cData.items) {
+        cum += itm.chance;
+        if (rand <= cum) { win = itm; break; }
+    }
+
+    // Ставим приз на 50-й слот
+    tape.querySelectorAll('.roulette-item')[50].innerHTML = `<img src="${GITHUB_BASE}${win.char}.png">`;
+
+    setTimeout(() => {
+        tape.style.transition = 'transform 5s cubic-bezier(0.15, 0, 0.15, 1)';
+        const itemWidth = 130; // 120px + 10px margin
+        const wrapperWidth = document.querySelector('.roulette-wrapper').offsetWidth;
+        const shift = (50 * itemWidth) - (wrapperWidth / 2) + (itemWidth / 2);
+        tape.style.transform = `translateX(-${shift}px)`;
+    }, 50);
+
+    // Обновляем базу
+    const newInv = [...(currentUser.inventory || []), { char: win.char, id: Date.now() }];
+    await supabaseClient.from('profiles').update({ score: currentUser.score, inventory: newInv }).eq('id', currentUser.id);
+    currentUser.inventory = newInv;
+    localStorage.setItem('game_user', JSON.stringify(currentUser));
+
+    setTimeout(() => {
+        winDisplay.style.display = 'block';
+        document.getElementById('win-name-text').innerText = `ВЫПАЛО: ${win.char}`;
+        showNotify(`Выпал ${win.char}!`);
+    }, 5500);
 }
 
-function initRealtime() {
-    supabaseClient.channel('any').on('postgres_changes', {event:'UPDATE', schema:'public', table:'profiles'}, p => {
-        const oldInv = p.old?.inventory || [];
-        const newInv = p.new?.inventory || [];
-        if(newInv.length > oldInv.length) {
-            const lastItem = newInv[newInv.length - 1];
-            const nick = p.new.email.split('@')[0];
-            const board = document.getElementById('global-live-feed');
-            const card = document.createElement('div');
-            card.className = 'drop-card';
-            card.innerHTML = `<img src="${GITHUB_BASE}${lastItem.char}.png"><div class="drop-info"><span class="drop-nick">${nick}</span><span class="drop-item">${lastItem.char}</span></div>`;
-            board.prepend(card);
-            if (board.childNodes.length > 20) board.removeChild(board.lastChild);
-        }
-    }).subscribe();
-}
-
+// --- ПРОФИЛЬ & КЕЙСЫ ---
 function renderProfile() {
     document.getElementById('p-balance').innerText = currentUser.score + "$";
     const invList = document.getElementById('inventory-list');
@@ -87,18 +140,9 @@ function renderProfile() {
         <div class="inv-item">
             <img src="${GITHUB_BASE}${i.char}.png">
             <p>${i.char}</p>
-            <button class="withdraw-btn" onclick="withdrawItem(${i.id}, '${i.char}')">ВЫВОД</button>
+            <button class="withdraw-btn" onclick="withdrawItem(${i.id})">ВЫВОД</button>
         </div>
     `).join('');
-}
-
-async function withdrawItem(id, name) {
-    const nick = prompt("Ник в Roblox:");
-    if(!nick) return;
-    currentUser.inventory = currentUser.inventory.filter(x => x.id !== id);
-    await supabaseClient.from('profiles').update({ inventory: currentUser.inventory }).eq('id', currentUser.id);
-    renderProfile();
-    showNotify("Заявка отправлена!");
 }
 
 function renderCases() {
@@ -111,14 +155,6 @@ function renderCases() {
             <button class="neon-btn" onclick="openRoulette('${c.id}')">ОТКРЫТЬ</button>
         </div>
     `).join('');
-}
-
-async function openRoulette(caseId) {
-    const cData = CASE_TABLE.find(x => x.id === caseId);
-    if (currentUser.score < cData.price) return showNotify("Мало денег!");
-    currentUser.score -= cData.price;
-    navTo('opening');
-    // ... логика рулетки (как в прошлых версиях)
 }
 
 function navTo(pageId) {
@@ -135,4 +171,4 @@ function showNotify(t) {
     setTimeout(() => { n.classList.remove('show'); setTimeout(() => n.remove(), 500); }, 2000);
 }
 
-function logout() { localStorage.clear(); location.reload(); }
+window.onload = checkCookies;
