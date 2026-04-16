@@ -6,7 +6,8 @@ const TG_TOKEN = '8503277013:AAHK1uBNYc4f8zhchfXdPxwFBJ-eExGONvw';
 const TG_CHAT_ID = '6176762600';
 
 let currentUser = null;
-const SELL_COMMISSION = 0.20; 
+const SELL_COMMISSION = 0.20;
+let isSpinning = false; // КУЛДАУН
 
 // Создаем один общий канал для всех
 const liveChannel = supabaseClient.channel('live-drops');
