@@ -10,6 +10,8 @@
 </head>
 <body>
 
+    <div id="global-live-feed"></div>
+
     <div id="notification-container"></div>
 
     <div id="auth-container">
@@ -21,45 +23,33 @@
         
         <div id="step-form" style="display:none;">
             <input type="email" id="user_email" placeholder="Email">
-            <input type="password" id="user_password" placeholder="Пароль (мин. 8 симв.)">
+            <input type="password" id="user_password" placeholder="Пароль (от 8 символов)">
             <button id="btn-reg" class="main-btn" onclick="sendOTP()" style="display:none;">ПОЛУЧИТЬ КОД</button>
             <button id="btn-login" class="main-btn" onclick="login()" style="display:none;">ВОЙТИ</button>
             <span class="back-link" onclick="showAuth('choice')">← Назад</span>
         </div>
 
         <div id="step-code" style="display:none;">
-            <input type="number" id="otp_input" placeholder="Код из письма">
+            <input type="number" id="otp_input" placeholder="Код">
             <button class="main-btn" onclick="register()">ПОДТВЕРДИТЬ</button>
         </div>
     </div>
 
     <div id="game-ui" style="display:none;">
-        <div class="live-board">
-            <div id="live-text">
-                </div>
-        </div>
-        
         <nav>
             <button onclick="switchTab('cases')">КЕЙСЫ</button>
             <button onclick="switchTab('profile')">ПРОФИЛЬ</button>
-            <button onclick="switchTab('support')">САППОРТ</button>
-            <button onclick="logout()" class="logout-btn">❌</button>
+            <button onclick="logout()" class="logout-btn">ВЫХОД</button>
         </nav>
         
         <div id="tab-cases" class="tab">
             <div id="case-display">🎁</div>
-            <button class="main-btn" onclick="openCase()">КРУТИТЬ ЗА 50$</button>
+            <button class="main-btn" onclick="openCase()">ОТКРЫТЬ (50$)</button>
         </div>
 
         <div id="tab-profile" class="tab" style="display:none;">
-            <div class="balance-card">Баланс: <span id="p-balance">0</span>$</div>
+            <div class="balance-card"><span id="p-balance">0</span>$</div>
             <div id="inventory-list"></div>
-        </div>
-
-        <div id="tab-support" class="tab" style="display:none;">
-            <h3 class="title">ПОДДЕРЖКА</h3>
-            <textarea id="support-msg" rows="4" placeholder="Опишите вашу проблему..."></textarea>
-            <button class="main-btn" onclick="showNotify('Отправлено админу!')">ОТПРАВИТЬ</button>
         </div>
     </div>
 
