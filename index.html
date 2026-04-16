@@ -13,52 +13,53 @@
     <div id="notification-container"></div>
 
     <div id="auth-container">
+        <h1 class="logo">BRAINROT</h1>
+        
         <div id="step-choice">
-            <h1>БРАЙНРОТ КЕЙСЫ</h1>
-            <button onclick="showAuth('reg')">Регистрация</button>
-            <button onclick="showAuth('login')">Войти</button>
+            <button class="main-btn" onclick="showAuth('reg')">РЕГИСТРАЦИЯ</button>
+            <button class="main-btn btn-outline" onclick="showAuth('login')">ВХОД</button>
         </div>
 
         <div id="step-form" style="display:none;">
-            <h2 id="auth-title">Вход</h2>
-            <input type="email" id="user_email" placeholder="Email"><br>
-            <input type="password" id="user_password" placeholder="Пароль"><br>
-            <button id="btn-reg" onclick="sendOTP()" style="display:none;">Получить код</button>
-            <button id="btn-login" onclick="login()" style="display:none;">Войти в игру</button>
-            <p onclick="showAuth('choice')" class="back-link">← Назад</p>
+            <input type="email" id="user_email" placeholder="Твой Email">
+            <input type="password" id="user_password" placeholder="Пароль">
+            <button id="btn-reg" class="main-btn" onclick="sendOTP()" style="display:none;">ПОЛУЧИТЬ КОД</button>
+            <button id="btn-login" class="main-btn" onclick="login()" style="display:none;">ВОЙТИ</button>
+            <p class="back-link" onclick="showAuth('choice')">← Назад</p>
         </div>
 
         <div id="step-code" style="display:none;">
-            <h2>Введите код из письма</h2>
-            <input type="number" id="otp_input" placeholder="0000"><br>
-            <button onclick="register()">Подтвердить</button>
+            <p style="margin-bottom: 10px; font-size: 12px;">Код отправлен на почту!</p>
+            <input type="number" id="otp_input" placeholder="0000">
+            <button class="main-btn" onclick="register()">ПОДТВЕРДИТЬ</button>
         </div>
     </div>
 
     <div id="game-ui" style="display:none;">
         <nav>
-            <button onclick="switchTab('cases')">🎁 Кейсы</button>
-            <button onclick="switchTab('profile')">👤 Профиль</button>
-            <button onclick="switchTab('support')">🛠 Поддержка</button>
-            <button onclick="logout()" style="background: #ff4444;">Выход</button>
+            <button onclick="switchTab('cases')">КЕЙСЫ</button>
+            <button onclick="switchTab('profile')">ПРОФИЛЬ</button>
+            <button onclick="switchTab('support')">САППОРТ</button>
+            <button onclick="logout()" class="logout-btn">X</button>
         </nav>
 
         <div id="tab-cases" class="tab">
-            <h1>ОТКРЫВАЙ КЕЙС</h1>
             <div id="case-display">🎁</div>
-            <button id="spin-btn" onclick="openCase()">Открыть за 50$</button>
+            <button class="main-btn" onclick="openCase()">КРУТИТЬ (50$)</button>
         </div>
 
         <div id="tab-profile" class="tab" style="display:none;">
-            <h2>Твой профиль</h2>
-            <p>Email: <span id="p-email"></span></p>
-            <p>Баланс: <span id="p-balance"></span>$</p>
+            <div class="balance-card">
+                БАЛАНС: <span id="p-balance">0</span>$
+            </div>
+            <h3 class="title">ИНВЕНТАРЬ:</h3>
+            <div id="inventory-list"></div>
         </div>
 
         <div id="tab-support" class="tab" style="display:none;">
-            <h2>Техподдержка</h2>
-            <textarea id="support-msg" placeholder="Опиши проблему админу..."></textarea>
-            <button onclick="sendSupport()">Отправить в Telegram</button>
+            <h3 class="title">ТЕХПОДДЕРЖКА</h3>
+            <textarea id="support-msg" placeholder="Ник в Roblox и суть проблемы..."></textarea>
+            <button class="main-btn" onclick="sendSupport()">ОТПРАВИТЬ</button>
         </div>
     </div>
 
