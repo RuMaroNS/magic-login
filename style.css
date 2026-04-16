@@ -1,72 +1,127 @@
-* { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Arial Black', sans-serif; }
-body { background: #08080f; color: #fff; overflow-x: hidden; }
+/* Базовые стили */
+* { box-sizing: border-box; margin: 0; padding: 0; font-family: sans-serif; }
+body {
+    background: #08080f; /* Глубокий черный/синий */
+    color: #fff;
+    overflow-x: hidden;
+    min-height: 100vh;
+}
 
-header {
-    position: fixed; top: 0; width: 100%; height: 80px; 
-    background: rgba(13, 13, 25, 0.95); z-index: 2000; padding: 10px;
-    border-bottom: 1px solid #1f1f35; backdrop-filter: blur(5px);
+/* ЛАЙВ ХЕДЕР (Новый стиль) */
+.live-header {
+    position: fixed; top: 0; width: 100%; height: 70px;
+    background: rgba(10, 10, 21, 0.9);
+    backdrop-filter: blur(5px);
+    border-bottom: 1px solid #1f1f35;
+    z-index: 1000; padding: 10px;
 }
 .live-status { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
-.dot { width: 8px; height: 8px; background: #ff4444; border-radius: 50%; box-shadow: 0 0 8px #ff4444; animation: blink 1.2s infinite; }
+.dot { width: 8px; height: 8px; background: #ff4444; border-radius: 50%; animation: blink 1s infinite; }
 @keyframes blink { 50% { opacity: 0.2; } }
-.live-label { font-size: 10px; color: #ff4444; }
+.live-label { font-size: 10px; color: #ff4444; font-weight: bold; }
 
-#global-live-feed { display: flex; gap: 10px; overflow: hidden; }
-.feed-card {
-    min-width: 130px; height: 40px; background: #151525; border-radius: 8px;
-    display: flex; align-items: center; padding: 5px; gap: 8px; border: 1px solid #2a2a45;
+/* Лента карточек дропа */
+.drop-tape {
+    display: flex; gap: 10px;
+    overflow-x: auto; /* Горизонтальный скролл */
+    scrollbar-width: none; /* Скрыть скроллбар в Firefox */
 }
-.feed-card img { height: 30px; }
+.drop-tape::-webkit-scrollbar { display: none; } /* Скрыть скроллбар в Chrome */
 
-/* РУЛЕТКА */
+/* КАРТОЧКА ДРОПА (Вместо строки) */
+.drop-card {
+    min-width: 130px; height: 40px;
+    background: #151525;
+    border: 1px solid #2a2a45;
+    border-radius: 8px;
+    display: flex; align-items: center;
+    padding: 5px; gap: 8px;
+    animation: slideIn 0.5s ease-out;
+}
+@keyframes slideIn { from { transform: translateX(-50px); opacity: 0; } }
+
+.drop-card img { height: 100%; object-fit: contain; }
+.drop-info { display: flex; flex-direction: column; }
+.drop-nick { font-size: 8px; color: #aaa; }
+.drop-item { font-size: 9px; color: #00d4ff; font-weight: bold; }
+
+
+/* АВТОРИЗАЦИЯ (Стиль скриншота 1) */
+.full-screen { display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+.auth-card {
+    background: #111122;
+    width: 360px;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+}
+.auth-tabs { display: flex; border-bottom: 1px solid #2a2a45; }
+.auth-tabs button {
+    flex: 1; padding: 15px; background: none; border: none;
+    color: #5a5a7a; font-weight: bold; cursor: pointer; transition: 0.3s;
+}
+.auth-tabs button.active { color: #00d4ff; border-bottom: 2px solid #00d4ff; }
+.auth-tabs button:hover:not(.active) { color: #aaa; }
+
+.auth-form { padding: 30px; text-align: center; }
+input {
+    width: 100%; padding: 14px; background: #0a0a15;
+    border: 1px solid #2a2a45; color: #fff;
+    border-radius: 8px; margin-bottom: 12px; outline: none;
+}
+input:focus { border-color: #00d4ff; }
+
+/* НЕОНОВАЯ КНОПКА (Стиль скриншотов) */
+.neon-btn {
+    background: none;
+    border: 1px solid #00d4ff;
+    color: #00d4ff;
+    padding: 14px;
+    border-radius: 8px;
+    width: 100%;
+    font-weight: bold;
+    cursor: pointer;
+    margin-top: 10px;
+    text-transform: uppercase;
+    transition: 0.2s;
+}
+.neon-btn:hover { background: rgba(0, 212, 255, 0.1); box-shadow: 0 0 15px rgba(0, 212, 255, 0.5); }
+.neon-btn:active { transform: scale(0.98); }
+
+
+/* ИГРА (Стиль скриншота 2) */
+.page { display: none; padding: 100px 20px 80px; max-width: 800px; margin: 0 auto; }
+.page.active { display: block; animation: fadeIn 0.3s; }
+@keyframes fadeIn { from { opacity: 0; } }
+
+/* Рулетка */
 .roulette-wrapper {
-    position: relative; width: 100%; max-width: 600px; height: 120px;
-    margin: 40px auto; background: #111122; border: 2px solid #2a2a45;
-    overflow: hidden; border-radius: 15px;
+    position: relative; width: 100%; height: 120px;
+    background: #111122; border: 1px solid #2a2a45;
+    border-radius: 10px; overflow: hidden; margin: 30px auto;
 }
-.selector {
-    position: absolute; left: 50%; top: 0; width: 4px; height: 100%;
-    background: #ff4444; z-index: 10; transform: translateX(-50%);
-    box-shadow: 0 0 15px #ff4444;
-}
-.tape { display: flex; align-items: center; position: absolute; left: 0; height: 100%; }
+.selector { position: absolute; left: 50%; top: 0; width: 3px; height: 100%; background: #ff4444; z-index: 10; transform: translateX(-50%); }
+.tape { display: flex; align-items: center; position: absolute; left: 0; height: 100%; will-change: transform; }
+
 .roulette-item {
-    min-width: 110px; height: 100px; margin: 0 5px; background: #1c1c2e;
-    display: flex; justify-content: center; align-items: center; border-radius: 12px;
+    min-width: 100px; height: 100px; margin: 0 5px;
+    background: #1c1c2e; border: 1px solid #2a2a45;
+    border-radius: 8px; display: flex; justify-content: center; align-items: center;
 }
 .roulette-item img { width: 70px; }
 
-/* УВЕДОМЛЕНИЯ */
-#notification-container { position: fixed; top: 90px; left: 50%; transform: translateX(-50%); z-index: 9999; }
-.notification {
-    background: #00d4ff; color: #000; padding: 12px 25px; border-radius: 50px;
-    font-weight: bold; margin-bottom: 10px; opacity: 0; transform: translateY(-20px);
-    transition: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+/* Навигация (Снизу) */
+.bottom-navbar {
+    position: fixed; bottom: 0; left: 0; width: 100%; height: 60px;
+    background: #111122; border-top: 1px solid #2a2a45;
+    display: flex; z-index: 1000;
 }
-.notification.show { opacity: 1; transform: translateY(0); }
+.bottom-navbar button {
+    flex: 1; background: none; border: none; color: #5a5a7a;
+    font-weight: bold; cursor: pointer; text-transform: uppercase; font-size: 11px;
+}
+.bottom-navbar button:hover { color: #aaa; }
+.exit-link { color: #ff4444 !important; } /* Красный "Выход" */
 
-/* ИНТЕРФЕЙС */
-.page { display: none; padding: 110px 20px 100px; max-width: 900px; margin: 0 auto; }
-.page.active { display: block; animation: fadeIn 0.4s; }
-@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-
-.navbar { position: fixed; bottom: 0; width: 100%; height: 75px; background: #0d0d19; display: flex; border-top: 2px solid #1f1f35; z-index: 2000; }
-.nav-item { flex: 1; background: none; border: none; color: #5a5a7a; font-weight: bold; cursor: pointer; }
-.nav-item:hover { color: #00d4ff; }
-.exit { color: #ff4444 !important; }
-
-.main-btn { background: #00d4ff; color: #000; border: none; padding: 15px; border-radius: 12px; width: 100%; font-weight: bold; cursor: pointer; text-transform: uppercase; }
-.btn-outline { background: none; border: 2px solid #00d4ff; color: #00d4ff; }
-input { width: 100%; padding: 15px; background: #08080f; border: 1px solid #2a2a45; color: #fff; border-radius: 12px; margin-bottom: 10px; outline: none; }
-
-#cases-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 20px; }
-.case-card { background: #151525; padding: 20px; border-radius: 20px; text-align: center; border: 2px solid #1f1f35; }
-.case-card img { width: 120px; margin-bottom: 10px; }
-
-#inventory-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
-.inv-item { background: #111122; border: 1px solid #2a2a45; padding: 10px; border-radius: 15px; text-align: center; }
-.inv-item img { width: 60px; }
-.withdraw-btn { background: #2ecc71; border: none; color: #fff; width: 100%; padding: 5px; border-radius: 5px; margin-top: 5px; cursor: pointer; }
-
-.balance-view { background: #111122; padding: 20px; border-radius: 20px; text-align: center; border: 1px solid #2ecc71; margin-bottom: 20px; }
-#p-balance { color: #2ecc71; font-size: 30px; }
+/* Баланс */
+.balance-display { color: #2ecc71; font-size: 24px; font-weight: bold; text-align: center; margin-bottom: 20px; }
