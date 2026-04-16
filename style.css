@@ -1,79 +1,44 @@
-/* 1. БАЗА */
 * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Arial Black', sans-serif; }
-body { 
-    background: radial-gradient(circle at top center, #11112b 0%, #08080f 100%); 
-    background-attachment: fixed; color: #fff; overflow-x: hidden; min-height: 100vh; 
-}
+body { background: radial-gradient(circle at top center, #11112b 0%, #08080f 100%); background-attachment: fixed; color: #fff; overflow-x: hidden; min-height: 100vh; }
 
-/* 2. LIVE DROPS (НОВАЯ ШАПКА) */
-.live-header {
-    position: fixed; top: 0; width: 100%; height: 130px;
-    background: rgba(10, 10, 21, 0.95); backdrop-filter: blur(15px);
-    border-bottom: 2px solid #1f1f35; z-index: 1000;
-    display: flex; align-items: center; padding: 0 20px;
-}
-.live-status {
-    display: flex; flex-direction: column; align-items: flex-start;
-    justify-content: center; min-width: 120px; margin-right: 20px;
-    border-right: 1px solid #2a2a45; height: 70%;
-}
-.live-title { font-size: 18px; color: #fff; line-height: 1.1; }
+.live-header { position: fixed; top: 0; width: 100%; height: 130px; background: rgba(10, 10, 21, 0.95); backdrop-filter: blur(15px); border-bottom: 2px solid #1f1f35; z-index: 1000; display: flex; align-items: center; padding: 0 20px; }
+.live-status { display: flex; flex-direction: column; min-width: 120px; margin-right: 20px; border-right: 1px solid #2a2a45; height: 70%; justify-content: center; }
+.live-title { font-size: 18px; line-height: 1.1; }
 .live-indicator { display: flex; align-items: center; gap: 8px; color: #ff4444; font-size: 11px; margin-top: 5px; }
 .dot { width: 8px; height: 8px; background: #ff4444; border-radius: 50%; animation: blink 1s infinite; }
 @keyframes blink { 0%, 100% { opacity: 1; box-shadow: 0 0 5px #ff4444; } 50% { opacity: 0.3; } }
 
-/* КАРТОЧКИ В ЛЕНТЕ */
 .drop-tape { display: flex; gap: 15px; overflow-x: auto; scrollbar-width: none; }
-.drop-card { 
-    min-width: 160px; height: 100px; background: #1a1a2e; border: 1px solid #2a2a45; 
-    border-radius: 12px; display: flex; align-items: center; padding: 10px; gap: 12px;
-    flex-shrink: 0; animation: slideIn 0.4s ease-out;
-}
+.drop-card { min-width: 160px; height: 100px; background: #1a1a2e; border: 1px solid #2a2a45; border-radius: 12px; display: flex; align-items: center; padding: 10px; gap: 12px; flex-shrink: 0; animation: slideIn 0.4s ease-out; }
 .drop-card img { width: 60px; height: 60px; object-fit: contain; }
 .drop-info { display: flex; flex-direction: column; gap: 2px; }
 .drop-user { color: #5a5a7a; font-size: 10px; text-transform: uppercase; }
 .drop-item-name { color: #fff; font-size: 12px; font-weight: bold; }
 .drop-case-name { color: #00d4ff; font-size: 10px; }
 
-/* 3. КЕЙСЫ */
-#cases-grid { display: flex; flex-wrap: wrap; gap: 30px; justify-content: center; }
-.case-card { 
-    background: #151525; width: 280px; height: 400px; padding: 30px; border-radius: 25px; 
-    border: 1px solid #2a2a45; transition: 0.4s; display: flex; flex-direction: column; 
-    justify-content: space-between; align-items: center; cursor: pointer;
-}
-.case-card:hover { transform: translateY(-10px); border-color: #00d4ff; box-shadow: 0 0 30px rgba(0, 212, 255, 0.2); }
-.case-card img { width: 180px; height: 180px; object-fit: contain; filter: drop-shadow(0 10px 15px rgba(0,0,0,0.5)); }
+.page { display: none; padding: 180px 20px 100px; }
+.page.active { display: block; }
 
-/* 4. РУЛЕТКА */
-.roulette-wrapper {
-    position: relative; width: 100%; max-width: 900px; height: 140px;
-    background: #111122; border: 2px solid #2a2a45; border-radius: 20px; overflow: hidden; margin: 50px auto;
-}
-.selector { position: absolute; left: 50%; top: 0; width: 4px; height: 100%; background: #ff4444; z-index: 10; transform: translateX(-50%); }
+#cases-grid { display: flex; flex-wrap: wrap; gap: 30px; justify-content: center; }
+.case-card { background: #151525; width: 280px; height: 400px; padding: 30px; border-radius: 25px; border: 1px solid #2a2a45; transition: 0.4s; display: flex; flex-direction: column; justify-content: space-between; align-items: center; cursor: pointer; }
+.case-card:hover { transform: translateY(-10px); border-color: #00d4ff; box-shadow: 0 0 30px rgba(0, 212, 255, 0.2); }
+.case-card img { width: 180px; height: 180px; object-fit: contain; }
+
+.roulette-wrapper { position: relative; width: 100%; max-width: 900px; height: 140px; background: #111122; border: 2px solid #2a2a45; border-radius: 20px; overflow: hidden; margin: 50px auto; }
+.selector { position: absolute; left: 50%; top: 0; width: 4px; height: 100%; background: #ff4444; z-index: 10; transform: translateX(-50%); box-shadow: 0 0 10px #ff4444; }
 .tape { display: flex; align-items: center; position: absolute; left: 0; height: 100%; }
 .roulette-item { min-width: 120px; height: 120px; margin: 0 5px; background: #1c1c2e; border-radius: 15px; display: flex; justify-content: center; align-items: center; }
 
-/* 5. ИНВЕНТАРЬ */
-#inventory-list { display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; padding-top: 20px; }
-.inv-item { 
-    position: relative; background: #111122; width: 220px; height: 320px; border: 1px solid #2a2a45; 
-    padding: 20px; border-radius: 15px; display: flex; flex-direction: column; justify-content: space-between; align-items: center; overflow: hidden; 
-}
-.inv-item img { width: 130px; height: 130px; object-fit: contain; }
+#inventory-list { display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; }
+.inv-item { position: relative; background: #111122; width: 220px; height: 320px; border: 1px solid #2a2a45; padding: 20px; border-radius: 15px; display: flex; flex-direction: column; justify-content: space-between; align-items: center; overflow: hidden; }
+.inv-item.processing { filter: grayscale(0.8); }
+.inv-item .overlay { position: absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); color:#00d4ff; display:flex; align-items:center; justify-content:center; font-weight:bold; z-index:10; }
 
-/* 6. КНОПКИ */
 .neon-btn { border: 2px solid #00d4ff; color: #00d4ff; background: none; padding: 12px; border-radius: 10px; cursor: pointer; width: 100%; font-weight: bold; text-transform: uppercase; }
 .withdraw-btn { background: #2ecc71; color: #fff; border: none; padding: 10px; border-radius: 8px; flex: 1; cursor: pointer; font-size: 11px; font-weight: bold; }
 .sell-btn { background: #e67e22 !important; }
 
-/* 7. НАВИГАЦИЯ */
 .bottom-navbar { position: fixed; bottom: 0; width: 100%; height: 80px; background: #0d0d19; display: flex; align-items: center; border-top: 1px solid #1f1f35; z-index: 1000; }
-.bottom-navbar button { flex: 1; background: none; border: none; color: #5a5a7a; font-weight: bold; cursor: pointer; transition: 0.3s; }
-.bottom-navbar button:hover { color: #00d4ff; }
-
-/* СИСТЕМНОЕ */
-.page { display: none; padding: 180px 20px 100px; }
-.page.active { display: block; }
-
+.bottom-navbar button { flex: 1; background: none; border: none; color: #5a5a7a; font-weight: bold; cursor: pointer; }
+.notification { position: fixed; top: 140px; left: 50%; transform: translateX(-50%); background: #00d4ff; color: #000; padding: 10px 30px; border-radius: 50px; font-weight: bold; z-index: 9999; }
 @keyframes slideIn { from { opacity: 0; transform: translateX(-20px); } to { opacity: 1; transform: translateX(0); } }
