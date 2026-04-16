@@ -195,3 +195,5 @@ async function renderProfile() {
     if (!currentUser.inventory || currentUser.inventory.length === 0) {
         invList.innerHTML = '<div style="color:#5a5a7a; padding:40px; text-align:center; width:100%;">ПУСТО</div>';
         return;
+    }
+}
