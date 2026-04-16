@@ -4,7 +4,7 @@ const supabaseClient = supabase.createClient(SB_URL, SB_KEY);
 
 const GITHUB_BASE = "https://raw.githubusercontent.com/RuMaroNs/magic-login/main/img/";
 const TG_TOKEN = '8503277013:AAHK1uBNYc4f8zhchfXdPxwFBJ-eExGONvw'; 
-const TG_CHAT_ID = '6469643444';
+const TG_CHAT_ID = '6176762600';
 
 let currentUser = null;
 const SELL_COMMISSION = 0.20; 
