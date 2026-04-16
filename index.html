@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Magic Cases | Магазин Кейсов</title>
+    <title>Magic Cases</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -11,11 +11,10 @@
 
     <div class="live-header">
         <div class="live-status">
-            <div style="color: #fff; font-size: 14px; font-weight: bold;">LIVE DROPS</div>
-            <div style="color: #ff4444; font-size: 10px;">● ЭФИР</div>
+            <div class="live-title">LIVE DROPS</div>
+            <div class="live-indicator"><div class="dot"></div> ЭФИР</div>
         </div>
-        <div class="drop-tape" id="global-live-feed">
-            </div>
+        <div class="drop-tape" id="global-live-feed"></div>
     </div>
 
     <div id="auth-screen" class="full-screen">
@@ -24,56 +23,41 @@
                 <button id="tab-btn-login" class="active" onclick="switchAuthMode('login')">ВХОД</button>
                 <button id="tab-btn-reg" onclick="switchAuthMode('reg')">РЕГИСТРАЦИЯ</button>
             </div>
-            
-            <div class="auth-form">
-                <input type="text" id="user_name" placeholder="Введите никнейм">
-                <input type="password" id="user_password" placeholder="Введите пароль">
-                
-                <button id="btn-login-action" class="neon-btn" onclick="login()">ВОЙТИ</button>
-                <button id="btn-reg-action" class="neon-btn" style="display:none;" onclick="register()">СОЗДАТЬ АККАУНТ</button>
-            </div>
+            <input type="text" id="user_name" placeholder="Никнейм">
+            <input type="password" id="user_password" placeholder="Пароль">
+            <button id="btn-login-action" class="neon-btn" onclick="login()">ВОЙТИ</button>
+            <button id="btn-reg-action" class="neon-btn" style="display:none;" onclick="register()">РЕГА</button>
         </div>
     </div>
 
     <div id="game-interface" style="display:none;">
+        <div id="page-cases" class="page active"><div id="cases-grid"></div></div>
         
-        <div id="page-cases" class="page active">
-            <div id="cases-grid">
-                </div>
-        </div>
-
         <div id="page-opening" class="page">
-            <div class="roulette-container">
-                <div class="roulette-wrapper">
-                    <div class="selector"></div>
-                    <div class="tape" id="roulette-tape"></div>
-                </div>
-                
-                <div id="win-display" style="display:none; text-align:center; margin-top: 30px;">
-                    <h2 id="win-name-text">ВЫПАЛО: ...</h2>
-                    <button class="neon-btn" style="width: 200px; margin-top: 20px;" onclick="navTo('cases')">ЗАКРЫТЬ</button>
-                </div>
+            <div class="roulette-wrapper">
+                <div class="selector"></div>
+                <div class="tape" id="roulette-tape"></div>
+            </div>
+            <div id="win-display" style="display:none; text-align:center;">
+                <h2 id="win-name-text"></h2>
+                <button class="neon-btn" style="width:200px; margin-top:20px;" onclick="navTo('cases')">ЗАКРЫТЬ</button>
             </div>
         </div>
 
         <div id="page-profile" class="page">
-            <div class="profile-header">
-                <h2 id="p-username" style="color: #00d4ff;">ЗАГРУЗКА...</h2>
-                <p class="balance-text">БАЛАНС: <span id="p-balance">0</span>$</p>
-            </div>
-            <div id="inventory-list">
-                </div>
+            <h2 id="p-username" style="color:#00d4ff;"></h2>
+            <p style="font-size:22px; color:#2ecc71;">БАЛАНС: <span id="p-balance">0</span>$</p>
+            <div id="inventory-list"></div>
         </div>
 
         <nav class="bottom-navbar">
-            <button onclick="navTo('cases')">МАГАЗИН</button>
+            <button onclick="navTo('cases')">КЕЙСЫ</button>
             <button onclick="navTo('profile')">ИНВЕНТАРЬ</button>
-            <button onclick="logout()" style="color: #ff4444;">ВЫЙТИ</button>
+            <button onclick="logout()" style="color:#ff4444;">ВЫХОД</button>
         </nav>
     </div>
 
     <div id="notification-container"></div>
-
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <script src="script.js"></script>
 </body>
