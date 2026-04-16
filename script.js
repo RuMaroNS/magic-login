@@ -3,9 +3,7 @@ const SB_KEY = 'sb_publishable_l5wIAt6RrAl4Uo8uZKerRQ_xBYDS-Kv';
 const EJS_KEY = 'gTrqvbOiCTqlJcDNJ';
 const TG_TOKEN = '8503277013:AAHK1uBNYc4f8zhchfXdPxwFBJ-eExGONvw';
 const TG_CHAT_ID = '6176762600';
-
-// Ссылка на твой репозиторий GitHub (ветка main)
-const GITHUB_BASE = "https://raw.githubusercontent.com/ТВОЙ_НИК/ИМЯ_РЕПО/main/Drops/";
+const GITHUB_BASE = "https://raw.githubusercontent.com/marons/magic-login/main/Drops/";
 
 const supabaseClient = supabase.createClient(SB_URL, SB_KEY);
 emailjs.init(EJS_KEY);
@@ -23,117 +21,149 @@ const items = [
 
 function showNotify(text) {
     const container = document.getElementById('notification-container');
+    if (!container) return;
     const toast = document.createElement('div');
     toast.className = 'notification';
     toast.innerText = text;
     container.appendChild(toast);
-    setTimeout(() => toast.classList.add('show'), 100);
+    setTimeout(() => { toast.classList.add('show'); }, 100);
     setTimeout(() => {
         toast.classList.remove('show');
         setTimeout(() => toast.remove(), 500);
     }, 2500);
 }
 
-window.onload = async () => {
-    const savedUser = localStorage.getItem('game_user');
-    if (savedUser) {
-        try {
-            const userData = JSON.parse(savedUser);
-            const { data } = await supabaseClient.from('profiles').select('*').eq('email', userData.email).eq('password', userData.password).single();
-            if (data) loginSuccess(data);
-        } catch (e) { console.log("Кеш пуст"); }
-    }
-};
-
 function showAuth(mode) {
-    document.getElementById('step-choice').style.display = (mode === 'choice') ? 'block' : 'none';
-    document.getElementById('step-form').style.display = (mode === 'choice') ? 'none' : 'block';
-    document.getElementById('step-code').style.display = 'none';
-    if(mode !== 'choice') {
-        document.getElementById('auth-title').innerText = (mode === 'reg') ? "Регистрация" : "Вход";
-        document.getElementById('btn-reg').style.display = (mode === 'reg') ? 'block' : 'none';
-        document.getElementById('btn-login').style.display = (mode === 'login') ? 'block' : 'none';
-    }
+    const choice = document.getElementById('step-choice');
+    const form = document.getElementById('step-form');
+    const code = document.getElementById('step-code');
+    const regBtn = document.getElementById('btn-reg');
+    const logBtn = document.getElementById('btn-login');
+
+    if (choice) choice.style.display = (mode === 'choice' ? 'block' : 'none');
+    if (form) form.style.display = (mode === 'choice' ? 'none' : 'block');
+    if (code) code.style.display = (mode === 'otp' ? 'block' : 'none');
+
+    if (regBtn) regBtn.style.display = (mode === 'reg' ? 'block' : 'none');
+    if (logBtn) logBtn.style.display = (mode === 'login' ? 'block' : 'none');
 }
 
 async function login() {
     const email = document.getElementById('user_email').value;
     const pass = document.getElementById('user_password').value;
     const { data } = await supabaseClient.from('profiles').select('*').eq('email', email).eq('password', pass).single();
-    if (data) {
-        localStorage.setItem('game_user', JSON.stringify(data));
-        loginSuccess(data);
-    } else {
-        showNotify("Ошибка входа!");
-    }
+    if (data) loginSuccess(data); else showNotify("Ошибка входа!");
 }
 
 function loginSuccess(profile) {
     currentUser = profile;
+    localStorage.setItem('game_user', JSON.stringify(profile));
     document.getElementById('auth-container').style.display = 'none';
     document.getElementById('game-ui').style.display = 'block';
     updateUI();
-    showNotify("С возвращением!");
-}
-
-function logout() {
-    localStorage.removeItem('game_user');
-    location.reload();
 }
 
 async function openCase() {
-    if (currentUser.score < 50) return showNotify("Нужно 50$!");
-    
+    if (currentUser.score < 50) return showNotify("Мало денег!");
     const display = document.getElementById('case-display');
     display.classList.add('spinning');
-    
-    let rand = Math.random();
-    let cumulative = 0;
-    let win = items[0];
 
-    for (let item of items) {
-        cumulative += item.chance;
-        if (rand < cumulative) { win = item; break; }
+    const win = items[Math.floor(Math.random() * items.length)];
+    const newInv = [...(currentUser.inventory || []), { ...win, id: Date.now() }];
+    const newScore = currentUser.score - 50;
+
+    const { error } = await supabaseClient.from('profiles').update({ score: newScore, inventory: newInv }).eq('email', currentUser.email);
+    
+    if (!error) {
+        currentUser.score = newScore;
+        currentUser.inventory = newInv;
+        setTimeout(() => {
+            display.classList.remove('spinning');
+            display.innerHTML = <img src="${GITHUB_BASE}${win.char}.png" style="width:120px;">;
+            updateUI();
+            showNotify("Выпал " + win.char);
+        }, 800);
     }
-
-    currentUser.score = currentUser.score - 50 + win.price;
-    await supabaseClient.from('profiles').update({ score: currentUser.score }).eq('email', currentUser.email);
-    
-    setTimeout(() => {
-        display.classList.remove('spinning');
-        // Формируем прямую ссылку на картинку в GitHub
-        const fullPath = GITHUB_BASE + win.char + ".png";
-        display.innerHTML = '<img src="' + fullPath + '" style="width:100px; height:100px; object-fit:contain;">';
-        updateUI();
-        showNotify("Выпало: " + win.char + "! Цена: " + win.price + "$");
-    }, 800);
-}
-
-async function sendSupport() {
-    const msg = document.getElementById('support-msg').value;
-    if (!msg) return showNotify("Напиши текст!");
-    const text = "⚠️ ПОДДЕРЖКА\nЮзер: " + currentUser.email + "\nСообщение: " + msg;
-    
-    const url = "https://api.telegram.org/bot" + TG_TOKEN + "/sendMessage?chat_id=" + TG_CHAT_ID + "&text=" + encodeURIComponent(text);
-    
-    await fetch(url);
-    showNotify("Отправлено админу!");
-    document.getElementById('support-msg').value = "";
 }
 
 function updateUI() {
-    document.getElementById('p-email').innerText = currentUser.email;
-    document.getElementById('p-balance').innerText = currentUser.score;
+    // 1. Обновляем баланс
+    const balanceEl = document.getElementById('p-balance');
+    if (balanceEl && currentUser) {
+        balanceEl.innerText = currentUser.score;
+    }
+
+    // 2. Обновляем список инвентаря
+    const list = document.getElementById('inventory-list');
+    if (!list) return; // Чтобы не было ошибки, если элемента нет на странице
+
+    list.innerHTML = ''; // Очищаем старый список
+
+    if (currentUser && currentUser.inventory) {
+        currentUser.inventory.forEach(item => {
+            // ВАЖНО: Весь блок ниже обернут в ОБРАТНЫЕ КАВЫЧКИ  
+            list.innerHTML += 
+                <div class="inv-item"> `
+                    <img src="${GITHUB_BASE}${item.char}.png">
+                    <p>${item.char}</p>
+                    <button onclick="requestWithdraw(${item.id})">ВЫВОД</button>`
+                </div>;
+        });
+    }
 }
 
-function switchTab(tab) {
-    document.querySelectorAll('.tab').forEach(t => t.style.display = 'none');
-    document.getElementById('tab-' + tab).style.display = 'block';
+async function requestWithdraw(id) {
+    const nick = prompt("Твой ник в Roblox:");
+    if (!nick) return;
+
+    // Ищем предмет в инвентаре пользователя
+    const item = currentUser.inventory.find(i => i.id === id);
+    if (!item) return;
+
+    // 1. Отправка в Telegram (для уведомления админа)
+    const tgText = 💰 ВЫВОД: ${currentUser.email} | Ник в Roblox: ${nick} | Предмет: ${item.char};
+    try {
+        await fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendMessage?chat_id=${TG_CHAT_ID}&text=${encodeURIComponent(tgText)}`);
+    } catch (e) {
+        console.error("Ошибка Telegram:", e);
+    }
+
+    // 2. Отправка Email через EmailJS (шаблон template_cxh5ojg)
+    // Данные для шаблона: {{email}} и {{name}} (ник в роблоксе)
+    const emailParams = {
+        email: currentUser.email, // Электронная почта игрока
+        name: nick,               // Никнейм, который ввел игрок
+        item_name: item.char,     // Название предмета (если добавишь в шаблон)
+        to_email: 'sdulimos@gmail.com' // Получатель (админ)
+    };
+
+    emailjs.send('service_j9ls8lo', 'template_cxh5ojg', emailParams)
+        .then(() => {
+            console.log('Email успешно отправлен админу!');
+        })
+        .catch((error) => {
+            console.error('Ошибка отправки Email:', error);
+        });
+
+    // 3. Обновление инвентаря в базе (удаление выведенного предмета)
+    const updatedInventory = currentUser.inventory.filter(i => i.id !== id);
+    const { error } = await supabaseClient
+        .from('profiles')
+        .update({ inventory: updatedInventory })
+        .eq('email', currentUser.email);
+    
+    if (!error) {
+        currentUser.inventory = updatedInventory;
+        updateUI(); // Обновляем экран инвентаря
+        showNotify("Заявка принята! Письмо отправлено админу.");
+    } else {
+        showNotify("Ошибка базы данных при выводе.");
+    }
 }
 
 async function sendOTP() {
-    const email = document.getElementById('user_email').value;
     generatedOTP = Math.floor(1000 + Math.random() * 9000);
+    const email = document.getElementById('user_email').value;
     emailjs.send('service_j9ls8lo', 'template_ebxnpr6', {to_email: email, passcode: generatedOTP})
     .then(() => {
         showNotify("Код отправлен!");
@@ -143,15 +173,71 @@ async function sendOTP() {
 }
 
 async function register() {
-    if (document.getElementById('otp_input').value == generatedOTP) {
-        const email = document.getElementById('user_email').value;
-        const pass = document.getElementById('user_password').value;
-        const { data } = await supabaseClient.from('profiles').insert([{ email, password: pass, score: 100, level: 1 }]).select().single();
+    const otpInput = document.getElementById('otp_input');
+    const regBtn = event.target; // Кнопка, на которую нажали
+
+    // 1. Проверяем код ДО любых запросов в базу
+    if (otpInput.value != generatedOTP) {
+        return showNotify("Неверный код!");
+    }
+
+    // 2. Блокируем кнопку, чтобы не было дублей (ошибка 400)
+    regBtn.disabled = true;
+    regBtn.innerText = "РЕГИСТРАЦИЯ...";
+
+    const email = document.getElementById('user_email').value;
+    const pass = document.getElementById('user_password').value;
+
+    try {
+        // 3. Пытаемся создать юзера
+        const { data, error } = await supabaseClient
+            .from('profiles')
+            .insert([{ 
+                email: email, 
+                password: pass, 
+                score: 50, // Твои стартовые 100 монет
+                inventory: [] 
+            }])
+            .select()
+            .single();
+
+        if (error) {
+            // Если ошибка "занято" (Duplicate), Supabase вернет код 23505 или 409
+            if (error.code === '23505' || error.message.includes('unique')) {
+                showNotify("Этот Email уже зарегистрирован!");
+            } else {
+                showNotify("Ошибка: " + error.message);
+            }
+            regBtn.disabled = false;
+            regBtn.innerText = "ПОДТВЕРДИТЬ";
+            return;
+        }
+
         if (data) {
-            localStorage.setItem('game_user', JSON.stringify(data));
+            showNotify("Успешная регистрация!");
             loginSuccess(data);
         }
-    } else {
-        showNotify("Неверный код!");
+
+    } catch (err) {
+        console.error("Критическая ошибка:", err);
+        showNotify("Проблема с сетью");
+        regBtn.disabled = false;
+        regBtn.innerText = "ПОДТВЕРДИТЬ";
     }
 }
+
+function switchTab(t) {
+    document.querySelectorAll('.tab').forEach(x => x.style.display = 'none');
+    document.getElementById('tab-' + t).style.display = 'block';
+}
+
+function logout() { localStorage.clear(); location.reload(); }
+
+window.onload = async () => {
+    const saved = localStorage.getItem('game_user');
+    if (saved) {
+        const u = JSON.parse(saved);
+        const { data } = await supabaseClient.from('profiles').select('*').eq('email', u.email).single();
+        if (data) loginSuccess(data);
+    }
+};
