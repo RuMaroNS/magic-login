@@ -3,81 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Magic Cases</title>
+    <title>Magic Cases | Premium</title>
     <link rel="stylesheet" href="style.css">
-    
-    <style>
-        /* ГАРАНТИРОВАННАЯ ЦЕНТРОВКА ДЛЯ ВСЕХ УСТРОЙСТВ */
-        .page { text-align: center; width: 100%; max-width: 1400px; margin: 0 auto; box-sizing: border-box; }
-        
-        .roulette-container {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            width: 100%;
-            margin: 20px auto;
-            overflow: hidden;
-        }
-
-        .roulette-wrapper {
-            position: relative;
-            width: 95%;
-            max-width: 800px;
-            height: 120px;
-            background: #111122;
-            border: 2px solid #2a2a45;
-            border-radius: 15px;
-            overflow: hidden;
-            box-shadow: inset 0 0 30px rgba(0,0,0,0.5);
-        }
-
-        .tape {
-            display: flex;
-            align-items: center;
-            position: absolute;
-            left: 0;
-            height: 100%;
-            will-change: transform;
-        }
-
-        .roulette-item {
-            min-width: 100px;
-            height: 100px;
-            margin: 0 5px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            background: #1c1c2e;
-            border-radius: 12px;
-            border: 1px solid #2a2a45;
-        }
-        
-        .roulette-item img { width: 70px; height: 70px; object-fit: contain; }
-
-        /* Фикс для селектора (красная линия по центру) */
-        .selector {
-            position: absolute;
-            left: 50%;
-            top: 0;
-            width: 4px;
-            height: 100%;
-            background: #ff4444;
-            z-index: 10;
-            transform: translateX(-50%);
-            box-shadow: 0 0 15px #ff4444;
-        }
-        
-        @media (max-width: 600px) {
-            .roulette-wrapper { height: 100px; }
-            .roulette-item { min-width: 80px; height: 80px; }
-            .roulette-item img { width: 60px; height: 60px; }
-        }
-    </style>
-    
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
+
+    <div id="notification-container"></div>
 
     <div class="live-header">
         <div class="live-status">
@@ -87,15 +19,15 @@
         <div class="drop-tape" id="global-live-feed"></div>
     </div>
 
-    <div id="auth-screen" class="full-screen">
-        <div class="auth-card">
-            <div class="auth-tabs">
-                <button id="tab-btn-login" class="active" onclick="switchAuthMode('login')">ВХОД</button>
-                <button id="tab-btn-reg" onclick="switchAuthMode('reg')">РЕГА</button>
+    <div id="auth-screen" class="full-screen" style="display: flex; align-items: center; justify-content: center; height: 100vh;">
+        <div class="auth-card" style="background: #0f0f1e; padding: 30px; border-radius: 20px; border: 1px solid #2a2a45; width: 90%; max-width: 400px;">
+            <div class="auth-tabs" style="display: flex; gap: 10px; margin-bottom: 20px;">
+                <button id="tab-btn-login" class="active neon-btn" onclick="switchAuthMode('login')">ВХОД</button>
+                <button id="tab-btn-reg" class="neon-btn" onclick="switchAuthMode('reg')">РЕГА</button>
             </div>
             <div class="auth-form">
-                <input type="text" id="user_name" placeholder="Никнейм">
-                <input type="password" id="user_password" placeholder="Пароль">
+                <input type="text" id="user_name" placeholder="Никнейм" style="width: 100%; padding: 12px; margin-bottom: 10px; border-radius: 10px; border: none; background: #1c1c2e; color: #fff;">
+                <input type="password" id="user_password" placeholder="Пароль" style="width: 100%; padding: 12px; margin-bottom: 20px; border-radius: 10px; border: none; background: #1c1c2e; color: #fff;">
                 <button id="btn-login-action" class="neon-btn" onclick="login()">ВОЙТИ</button>
                 <button id="btn-reg-action" class="neon-btn" style="display:none;" onclick="register()">СОЗДАТЬ</button>
             </div>
@@ -103,6 +35,7 @@
     </div>
 
     <div id="game-interface" style="display:none;">
+        
         <div id="page-cases" class="page active">
             <div id="cases-grid"></div>
         </div>
@@ -110,32 +43,30 @@
         <div id="page-opening" class="page">
             <div class="roulette-container">
                 <div class="roulette-wrapper">
-                    <div class="selector"></div>
                     <div class="tape" id="roulette-tape"></div>
                 </div>
                 <div id="win-display" style="display:none; margin-top: 20px;">
-                    <h2 id="win-name-text" style="color:#00d4ff; text-shadow: 0 0 10px #00d4ff;"></h2>
-                    <button class="neon-btn" style="max-width:200px; margin-top:15px;" onclick="navTo('cases')">НАЗАД</button>
+                    <h2 id="win-name-text" style="color:#00d4ff; text-shadow: 0 0 10px #00d4ff; margin-bottom: 15px;"></h2>
+                    <button class="neon-btn" style="max-width:200px;" onclick="navTo('cases')">ЗАБРАТЬ</button>
                 </div>
             </div>
         </div>
 
         <div id="page-profile" class="page">
-            <div class="profile-info">
-                <h2 id="p-username" style="color:#00d4ff;"></h2>
-                <p class="balance-text">БАЛАНС: <span id="p-balance">0</span>$</p>
+            <div class="profile-info" style="margin-bottom: 30px; text-align: center;">
+                <h2 id="p-username" style="color:#00d4ff; font-size: 28px;"></h2>
+                <p class="balance-text" style="font-size: 20px; color: #2ecc71;">БАЛАНС: <span id="p-balance">0</span>$</p>
             </div>
             <div id="inventory-list"></div>
         </div>
 
         <nav class="bottom-navbar">
-            <button onclick="navTo('cases')">КЕЙСЫ</button>
-            <button onclick="navTo('profile')">ИНВЕНТАРЬ</button>
+            <button id="nav-cases" onclick="navTo('cases')">КЕЙСЫ</button>
+            <button id="nav-profile" onclick="navTo('profile')">ИНВЕНТАРЬ</button>
             <button onclick="logout()" style="color:#ff4444;">ВЫХОД</button>
         </nav>
     </div>
 
-    <div id="notification-container"></div>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <script src="script.js"></script>
 </body>
