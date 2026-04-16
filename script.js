@@ -2,6 +2,8 @@ const SB_URL = 'https://wbkygibviddkdjxbahbg.supabase.co';
 const SB_KEY = 'sb_publishable_l5wIAt6RrAl4Uo8uZKerRQ_xBYDS-Kv';
 const supabaseClient = supabase.createClient(SB_URL, SB_KEY);
 const GITHUB_BASE = "https://raw.githubusercontent.com/RuMaroNs/magic-login/main/img/";
+const TG_TOKEN = '7032738927:AAH0zFcl4_H_9o9G-lZp1D6Y5v7wJ_6m_vM'; 
+const TG_CHAT_ID = '6469643444';
 
 let currentUser = null;
 const SELL_COMMISSION = 0.20; 
@@ -61,7 +63,7 @@ function enterGame() {
     document.getElementById('auth-screen').style.display = 'none';
     document.getElementById('game-interface').style.display = 'block';
     navTo('cases');
-    ();
+    initRealtime(); // ИСПРАВЛЕНО: добавил имя функции
 }
 
 // --- ИГРОВАЯ ЛОГИКА ---
@@ -83,11 +85,10 @@ async function openRoulette(caseId) {
     const tape = document.getElementById('roulette-tape');
     const winDisplay = document.getElementById('win-display');
     
-    // ФИКС БАГА РУЛЕТКИ (СБРОС)
     winDisplay.style.display = 'none';
     tape.style.transition = 'none';
     tape.style.transform = 'translateX(0)';
-    void tape.offsetHeight; // Force Reflow
+    void tape.offsetHeight; 
 
     const loot = cData.loot;
     let tapeHTML = '';
@@ -135,7 +136,7 @@ async function sellItem(itemId, charName) {
     showNotify(`Продано за ${sellPrice}$`);
 }
 
-// --- ЛАЙВ БОРД (САМООЧИСТКА 60с) ---
+// --- ЛАЙВ БОРД ---
 function initRealtime() {
     supabaseClient
         .channel('any')
@@ -143,7 +144,7 @@ function initRealtime() {
             event: 'UPDATE',
             schema: 'public',
             table: 'profiles'
-        }, (p) => { // Добавил стрелку (p) => для надежности
+        }, (p) => {
             const oldInv = p.old?.inventory || [];
             const newInv = p.new?.inventory || [];
 
@@ -152,7 +153,7 @@ function initRealtime() {
                 const nick = p.new.username || "Player";
                 addToLiveBoard(nick, lastItem.char);
             }
-        }) // Вот здесь часто бывает лишняя скобка
+        })
         .subscribe();
 }
 
@@ -165,7 +166,6 @@ function addToLiveBoard(username, itemName) {
 
     if (board.childNodes.length > 20) board.removeChild(board.lastChild);
 
-    // Удаление через 60 секунд
     setTimeout(() => {
         if (card && card.parentNode === board) {
             card.style.opacity = "0";
@@ -184,6 +184,7 @@ function navTo(pageId) {
 
 async function renderCases() {
     const { data: cases } = await supabaseClient.from('cases_meta').select('*');
+    if (!cases) return;
     document.getElementById('cases-grid').innerHTML = cases.map(c => `
         <div class="case-card">
             <img src="${GITHUB_BASE}${c.image_url}">
@@ -192,6 +193,46 @@ async function renderCases() {
             <button class="neon-btn" onclick="openRoulette(${c.id})">ОТКРЫТЬ</button>
         </div>
     `).join('');
+}
+
+async function withdrawItem(id) {
+    const robloxNick = prompt("Введи свой ник в Roblox для получения предмета:");
+    if (!robloxNick) return;
+
+    const item = currentUser.inventory.find(x => x.id === id);
+    if (!item) return;
+
+    const message = `
+🚀 **ЗАЯВКА НА ВЫВОД**
+━━━━━━━━━━━━━━━━━━
+👤 **Игрок:** \`${currentUser.username}\`
+🎮 **Roblox Nick:** \`${robloxNick}\`
+📦 **Предмет:** \`${item.char}\`
+🆔 **ID:** \`${item.id}\`
+━━━━━━━━━━━━━━━━━━
+    `;
+
+    try {
+        const response = await fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendMessage`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                chat_id: TG_CHAT_ID,
+                text: message,
+                parse_mode: 'Markdown'
+            })
+        });
+
+        if (response.ok) {
+            const updatedInv = currentUser.inventory.filter(x => x.id !== id);
+            await supabaseClient.from('profiles').update({ inventory: updatedInv }).eq('id', currentUser.id);
+            currentUser.inventory = updatedInv;
+            renderProfile();
+            showNotify("Заявка отправлена!");
+        }
+    } catch (err) {
+        showNotify("Ошибка соединения.");
+    }
 }
 
 async function renderProfile() {
