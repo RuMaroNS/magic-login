@@ -27,18 +27,13 @@
                 <button id="tab-btn-login" class="active" onclick="switchAuthMode('login')">ВХОД</button>
                 <button id="tab-btn-reg" onclick="switchAuthMode('reg')">РЕГИСТРАЦИЯ</button>
             </div>
-            
-            <div class="auth-form">
-                <input type="email" id="user_email" placeholder="Email">
-                <input type="password" id="user_password" placeholder="Пароль">
-                
-                <div id="otp-area" style="display:none;">
-                    <input type="number" id="otp_input" placeholder="Код из письма">
-                </div>
 
+            <div class="auth-form">
+                <input type="text" id="user_name" placeholder="Roblox Username">
+                <input type="password" id="user_password" placeholder="Пароль (от 8 символов)">
+    
                 <button id="btn-login-action" class="neon-btn" onclick="login()">ВОЙТИ</button>
-                <button id="btn-reg-action" class="neon-btn" onclick="sendOTP()" style="display:none;">ПОЛУЧИТЬ КОД</button>
-                <button id="btn-confirm-action" class="neon-btn" onclick="register()" style="display:none;">ПОДТВЕРДИТЬ</button>
+                <button id="btn-reg-action" class="neon-btn" onclick="register()" style="display:none;">СОЗДАТЬ АККАУНТ</button>
             </div>
         </div>
     </div>
