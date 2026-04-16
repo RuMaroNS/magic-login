@@ -92,9 +92,14 @@ async function syncFromDB() {
 
 async function renderCases() {
     const { data: cases, error } = await supabaseClient.from('cases_meta').select('*');
-    if (error) return console.error("Ошибка загрузки кейсов:", error);
+    if (error) {
+        console.error("Ошибка БД:", error);
+        return showNotify("Ошибка загрузки данных!");
+    }
     
     const grid = document.getElementById('cases-grid');
+    if (!grid) return; // Защита от ошибок
+
     grid.innerHTML = cases.map(c => `
         <div class="case-card">
             <img src="${GITHUB_BASE}${c.image_url || 'Case_Basic.png'}">
