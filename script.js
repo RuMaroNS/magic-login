@@ -3,167 +3,88 @@ const SB_KEY = 'sb_publishable_l5wIAt6RrAl4Uo8uZKerRQ_xBYDS-Kv';
 const supabaseClient = supabase.createClient(SB_URL, SB_KEY);
 const GITHUB_BASE = "https://raw.githubusercontent.com/RuMaroNs/magic-login/main/img/";
 
-// ==========================================
-// ПОЛНАЯ ТАБЛИЦА КЕЙСОВ (МЕТАДАТА)
-// ==========================================
-const CASE_TABLE = [
-    { 
-        id: "case_basic", 
-        name: "LUCKY BLOCK CASE", 
-        price: 50, 
-        img: "Case_Basic.png",
-        items: [
-            {char: 'TacoBlock', chance: 45},
-            {char: 'AdminBlock', chance: 45},
-            {char: 'SecretBlock', chance: 10}
-        ]
-    },
-    { 
-        id: "case_premium", 
-        name: "GALAXY CASE", 
-        price: 250, 
-        img: "Case_Premium.png",
-        items: [
-            {char: 'LosTacoBlocks', chance: 40},
-            {char: 'LosAdminBlocks', chance: 40},
-            {char: 'SecretBlock', chance: 20}
-        ]
-    },
-    { 
-        id: "case_meme", 
-        name: "BRAINROT CASE", 
-        price: 100, 
-        img: "Case_Basic.png", 
-        items: [
-            {char: 'AdminBlock', chance: 50},
-            {char: 'TacoBlock', chance: 40},
-            {char: 'SecretBlock', chance: 10}
-        ]
-    },
-    { 
-        id: "case_taco", 
-        name: "RAINING TACOS", 
-        price: 75, 
-        img: "Case_Premium.png", 
-        items: [
-            {char: 'TacoBlock', chance: 70},
-            {char: 'LosTacoBlocks', chance: 25},
-            {char: 'SecretBlock', chance: 5}
-        ]
-    }
-];
-
 let currentUser = null;
+const SELL_COMMISSION = 0.20; // Комиссия 20% (игрок получает 80% от цены)
 
-// --- COOKIE & АВТО-ВХОД ---
-function checkCookies() {
-    if (!localStorage.getItem('cookies_accepted')) {
-        document.getElementById('cookie-banner').style.display = 'block';
-    } else {
-        autoLogin();
-    }
-}
+// --- РЕГИСТРАЦИЯ (С НОВЫМИ ПРАВИЛАМИ) ---
+async function register() {
+    const user = document.getElementById('user_name').value.trim();
+    const pass = document.getElementById('user_password').value;
 
-function acceptCookies() {
-    localStorage.setItem('cookies_accepted', 'true');
-    document.getElementById('cookie-banner').style.display = 'none';
-    autoLogin();
-}
+    if (!user || !pass) return showNotify("Поля не могут быть пустыми!");
+    if (pass.length < 8) return showNotify("Пароль от 8 символов!");
 
-async function autoLogin() {
-    const savedId = localStorage.getItem('game_user_id');
-    if (savedId) {
-        // Тянем свежие данные только по ID
-        const { data, error } = await supabaseClient.from('profiles').select('*').eq('id', savedId).single();
-        if (data && !error) {
-            currentUser = data;
-            enterGame();
-        } else {
-            localStorage.removeItem('game_user_id');
-        }
-    }
+    const { data, error } = await supabaseClient.from('profiles').insert([
+        { username: user, password: pass, score: 50, inventory: [] }
+    ]).select().single();
+
+    if (error) return showNotify("Никнейм уже занят!");
+    login();
 }
 
 async function login() {
-    const email = document.getElementById('user_email').value;
+    const user = document.getElementById('user_name').value.trim();
     const pass = document.getElementById('user_password').value;
-    const { data } = await supabaseClient.from('profiles').select('*').eq('email', email).eq('password', pass).single();
+    
+    const { data } = await supabaseClient.from('profiles')
+        .select('*')
+        .eq('username', user)
+        .eq('password', pass)
+        .single();
+
     if(data) {
         currentUser = data;
-        localStorage.setItem('game_user_id', data.id); // Храним ТОЛЬКО ID
+        localStorage.setItem('game_user_id', data.id);
         enterGame();
-    } else showNotify("Ошибка входа!");
+    } else showNotify("Неверный ник или пароль!");
 }
 
-async function register() {
-    const email = document.getElementById('user_email').value;
-    const pass = document.getElementById('user_password').value;
-    const { data } = await supabaseClient.from('profiles').insert([{ email, password: pass, score: 500, inventory: [] }]).select().single();
-    if(data) login();
-}
-
-function enterGame() {
-    document.getElementById('auth-screen').style.display = 'none';
-    document.getElementById('game-interface').style.display = 'block';
-    navTo('cases');
-    initRealtime();
-}
-
-// --- СИНХРОНИЗАЦИЯ С БД ПЕРЕД ДЕЙСТВИЕМ ---
-async function syncFromDB() {
-    const { data } = await supabaseClient.from('profiles').select('*').eq('id', currentUser.id).single();
-    if (data) currentUser = data;
-}
-
-// --- РЕНДЕР ПРОФИЛЯ ---
-async function renderProfile() {
-    await syncFromDB(); // Обновляем данные из базы
-    document.getElementById('p-balance').innerText = currentUser.score;
-    const invList = document.getElementById('inventory-list');
-    invList.innerHTML = (currentUser.inventory || []).map(i => `
-        <div class="inv-item">
-            <img src="${GITHUB_BASE}${i.char}.png">
-            <p>${i.char}</p>
-            <button class="withdraw-btn" onclick="withdrawItem(${i.id})">ВЫВОД</button>
+// --- ЗАГРУЗКА КЕЙСОВ ИЗ БАЗЫ ---
+async function renderCases() {
+    const { data: cases } = await supabaseClient.from('cases_meta').select('*');
+    const grid = document.getElementById('cases-grid');
+    grid.innerHTML = cases.map(c => `
+        <div class="case-card">
+            <img src="${GITHUB_BASE}${c.name.replace(/ /g, '_')}.png">
+            <h3>${c.name}</h3>
+            <p style="color:#00d4ff; margin:15px 0;">${c.price}$</p>
+            <button class="neon-btn" onclick="openRoulette(${c.id})">ОТКРЫТЬ</button>
         </div>
     `).join('');
 }
 
-// --- РУЛЕТКА ---
+// --- ОТКРЫТИЕ КЕЙСА (ДАННЫЕ ИЗ БД) ---
 async function openRoulette(caseId) {
-    await syncFromDB(); // Жесткая проверка баланса перед открытием
-    const cData = CASE_TABLE.find(x => x.id === caseId);
-    
-    if (currentUser.score < cData.price) return showNotify("Недостаточно средств!");
+    const { data: cData } = await supabaseClient.from('cases_meta').select('*').eq('id', caseId).single();
+    await syncFromDB();
 
-    // Снимаем деньги в БД
+    if (currentUser.score < cData.price) return showNotify("Мало монет!");
+
+    // Списание баланса
     const newScore = currentUser.score - cData.price;
-    const { error: updateError } = await supabaseClient.from('profiles').update({ score: newScore }).eq('id', currentUser.id);
-    if (updateError) return showNotify("Ошибка связи с сервером!");
-
+    await supabaseClient.from('profiles').update({ score: newScore }).eq('id', currentUser.id);
     currentUser.score = newScore;
-    navTo('opening');
-    
-    const tape = document.getElementById('roulette-tape');
-    const winDisplay = document.getElementById('win-display');
-    winDisplay.style.display = 'none';
-    tape.style.transition = 'none';
-    tape.style.transform = 'translateX(0)';
 
+    navTo('opening');
+    const tape = document.getElementById('roulette-tape');
+    const loot = cData.loot;
+
+    // Рендер ленты
     let tapeHTML = '';
     for(let i=0; i<60; i++) {
-        const randItem = cData.items[Math.floor(Math.random() * cData.items.length)];
-        tapeHTML += `<div class="roulette-item"><img src="${GITHUB_BASE}${randItem.char}.png"></div>`;
+        const rand = loot[Math.floor(Math.random() * loot.length)];
+        tapeHTML += `<div class="roulette-item"><img src="${GITHUB_BASE}${rand.name}.png"></div>`;
     }
     tape.innerHTML = tapeHTML;
 
-    let rand = Math.random() * 100, cum = 0, win = cData.items[0];
-    for (let itm of cData.items) {
+    // Математика выигрыша
+    let rand = Math.random() * 100, cum = 0, win = loot[0];
+    for (let itm of loot) {
         cum += itm.chance;
         if (rand <= cum) { win = itm; break; }
     }
 
-    tape.querySelectorAll('.roulette-item')[50].innerHTML = `<img src="${GITHUB_BASE}${win.char}.png">`;
+    tape.querySelectorAll('.roulette-item')[50].innerHTML = `<img src="${GITHUB_BASE}${win.name}.png">`;
 
     setTimeout(() => {
         tape.style.transition = 'transform 5s cubic-bezier(0.15, 0, 0.15, 1)';
@@ -171,74 +92,55 @@ async function openRoulette(caseId) {
         tape.style.transform = `translateX(-${shift}px)`;
     }, 50);
 
-    // Сохраняем выигрыш в БД
-    const newItem = { char: win.char, id: Date.now() };
+    // Сохранение в инвентарь
+    const newItem = { char: win.name, id: Date.now() };
     const newInv = [...(currentUser.inventory || []), newItem];
     await supabaseClient.from('profiles').update({ inventory: newInv }).eq('id', currentUser.id);
     currentUser.inventory = newInv;
 
     setTimeout(() => {
-        winDisplay.style.display = 'block';
-        document.getElementById('win-name-text').innerText = `ВЫПАЛО: ${win.char}`;
-        showNotify(`Выпал ${win.char}!`);
+        document.getElementById('win-display').style.display = 'block';
+        document.getElementById('win-name-text').innerText = `ВЫПАЛО: ${win.name}`;
     }, 5500);
 }
 
-// --- ЛАЙВ-БОРД ---
-function initRealtime() {
-    supabaseClient.channel('any').on('postgres_changes', {event:'UPDATE', schema:'public', table:'profiles'}, p => {
-        const oldInv = p.old?.inventory || [];
-        const newInv = p.new?.inventory || [];
-        if(newInv.length > oldInv.length) {
-            const lastItem = newInv[newInv.length - 1];
-            const nick = p.new.email ? p.new.email.split('@')[0] : "Player";
-            addToLiveBoard(nick, lastItem.char);
-        }
-    }).subscribe();
+// --- ПРОДАЖА ПРЕДМЕТА ---
+async function sellItem(itemId, charName) {
+    // Получаем цену предмета из базы метадаты
+    const { data: itemData } = await supabaseClient.from('items_meta').select('price').eq('name', charName).single();
+    
+    if (!itemData) return showNotify("Ошибка цены!");
+
+    const sellPrice = Math.floor(itemData.price * (1 - SELL_COMMISSION));
+    
+    // Удаляем из инвентаря и начисляем деньги
+    const updatedInv = currentUser.inventory.filter(i => i.id !== itemId);
+    const newScore = currentUser.score + sellPrice;
+
+    const { error } = await supabaseClient.from('profiles').update({
+        inventory: updatedInv,
+        score: newScore
+    }).eq('id', currentUser.id);
+
+    if (!error) {
+        currentUser.inventory = updatedInv;
+        currentUser.score = newScore;
+        renderProfile();
+        showNotify(`Продано за ${sellPrice}$`);
+    }
 }
 
-function addToLiveBoard(username, itemName) {
-    const board = document.getElementById('global-live-feed');
-    if (!board) return;
-    const card = document.createElement('div');
-    card.className = 'drop-card';
-    card.innerHTML = `<img src="${GITHUB_BASE}${itemName}.png"><div class="drop-info"><span class="drop-nick">${username}</span><span class="drop-item">${itemName}</span></div>`;
-    board.prepend(card);
-    if (board.childNodes.length > 20) board.removeChild(board.lastChild);
-}
-
-function renderCases() {
-    document.getElementById('cases-grid').innerHTML = CASE_TABLE.map(c => `
-        <div class="case-card">
-            <img src="${GITHUB_BASE}${c.img}">
-            <h3>${c.name}</h3>
-            <p style="color:#00d4ff; margin:15px 0;">${c.price}$</p>
-            <button class="neon-btn" onclick="openRoulette('${c.id}')">ОТКРЫТЬ</button>
+async function renderProfile() {
+    await syncFromDB();
+    document.getElementById('p-balance').innerText = currentUser.score;
+    document.getElementById('inventory-list').innerHTML = (currentUser.inventory || []).map(i => `
+        <div class="inv-item">
+            <img src="${GITHUB_BASE}${i.char}.png">
+            <p>${i.char}</p>
+            <div style="display:flex; gap:5px; margin-top:10px;">
+                <button class="withdraw-btn" onclick="withdrawItem(${i.id})">ВЫВОД</button>
+                <button class="withdraw-btn" style="background:#e67e22" onclick="sellItem(${i.id}, '${i.char}')">ПРОДАТЬ</button>
+            </div>
         </div>
     `).join('');
 }
-
-function navTo(pageId) {
-    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-    document.getElementById('page-' + pageId).classList.add('active');
-    if(pageId === 'profile') renderProfile();
-    if(pageId === 'cases') renderCases();
-}
-
-function showNotify(t) {
-    const c = document.getElementById('notification-container');
-    const n = document.createElement('div'); n.className = 'notification'; n.innerText = t;
-    c.appendChild(n); setTimeout(() => n.classList.add('show'), 10);
-    setTimeout(() => { n.classList.remove('show'); setTimeout(() => n.remove(), 500); }, 2000);
-}
-
-function logout() { localStorage.removeItem('game_user_id'); location.reload(); }
-
-function switchAuthMode(mode) {
-    document.getElementById('tab-btn-login').className = (mode === 'login' ? 'active' : '');
-    document.getElementById('tab-btn-reg').className = (mode === 'reg' ? 'active' : '');
-    document.getElementById('btn-login-action').style.display = (mode === 'login' ? 'block' : 'none');
-    document.getElementById('btn-reg-action').style.display = (mode === 'reg' ? 'block' : 'none');
-}
-
-window.onload = checkCookies;
