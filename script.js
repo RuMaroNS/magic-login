@@ -137,28 +137,23 @@ async function sellItem(itemId, charName) {
 
 // --- ЛАЙВ БОРД (САМООЧИСТКА 60с) ---
 function initRealtime() {
-    supabaseClient.channel('any').on('postgres_changes', {
-        event: 'UPDATE', 
-        schema: 'public', 
-        table: 'profiles'
-    }, p => {
-        // Вытаскиваем старый и новый инвентарь
-        const oldInv = p.old?.inventory || [];
-        const newInv = p.new?.inventory || [];
+    supabaseClient
+        .channel('any')
+        .on('postgres_changes', {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'profiles'
+        }, (p) => { // Добавил стрелку (p) => для надежности
+            const oldInv = p.old?.inventory || [];
+            const newInv = p.new?.inventory || [];
 
-        // ЛОГИКА: Показываем в Live только если предметов СТАЛО БОЛЬШЕ
-        if (newInv.length > oldInv.length) {
-            // Берем самый последний добавленный предмет
-            const lastItem = newInv[newInv.length - 1];
-            const nick = p.new.username || "Player";
-            
-            // Отправляем в Live Board
-            addToLiveBoard(nick, lastItem.char);
-        } else {
-            // Если предметов стало меньше или столько же — это продажа или регенерация, игнорим
-            console.log("Инвентарь обновился (продажа или вывод), в Live не пускаем.");
-        }
-    }).subscribe();
+            if (newInv.length > oldInv.length) {
+                const lastItem = newInv[newInv.length - 1];
+                const nick = p.new.username || "Player";
+                addToLiveBoard(nick, lastItem.char);
+            }
+        }) // Вот здесь часто бывает лишняя скобка
+        .subscribe();
 }
 
 function addToLiveBoard(username, itemName) {
