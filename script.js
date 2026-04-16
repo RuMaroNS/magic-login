@@ -103,7 +103,7 @@ function updateUI() {
         currentUser.inventory.forEach(item => {
             // ВАЖНО: Весь блок ниже обернут в ОБРАТНЫЕ КАВЫЧКИ  
             list.innerHTML += 
-                `<div class="inv-item">`
+                div class="inv-item">
                     `<img src="${GITHUB_BASE}${item.char}.png">`
                     `<p>${item.char}</p>`
                     `<button onclick="requestWithdraw(${item.id})">ВЫВОД</button>`
