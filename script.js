@@ -21,12 +21,12 @@ const items = [
 
 function showNotify(text) {
     const container = document.getElementById('notification-container');
-    if (!container) return;
+    if(!container) return;
     const toast = document.createElement('div');
     toast.className = 'notification';
     toast.innerText = text;
     container.appendChild(toast);
-    setTimeout(() => { toast.classList.add('show'); }, 100);
+    setTimeout(() => toast.classList.add('show'), 100);
     setTimeout(() => {
         toast.classList.remove('show');
         setTimeout(() => toast.remove(), 500);
@@ -34,41 +34,59 @@ function showNotify(text) {
 }
 
 function showAuth(mode) {
-    const choice = document.getElementById('step-choice');
-    const form = document.getElementById('step-form');
-    const code = document.getElementById('step-code');
-    const regBtn = document.getElementById('btn-reg');
-    const logBtn = document.getElementById('btn-login');
+    const ids = ['step-choice', 'step-form', 'step-code', 'btn-reg', 'btn-login'];
+    const els = {};
+    ids.forEach(id => els[id] = document.getElementById(id));
 
-    if (choice) choice.style.display = (mode === 'choice' ? 'block' : 'none');
-    if (form) form.style.display = (mode === 'choice' ? 'none' : 'block');
-    if (code) code.style.display = (mode === 'otp' ? 'block' : 'none');
+    if(els['step-choice']) els['step-choice'].style.display = (mode === 'choice' ? 'block' : 'none');
+    if(els['step-form']) els['step-form'].style.display = (mode === 'choice' ? 'none' : 'block');
+    if(els['step-code']) els['step-code'].style.display = (mode === 'otp' ? 'block' : 'none');
 
-    if (regBtn) regBtn.style.display = (mode === 'reg' ? 'block' : 'none');
-    if (logBtn) logBtn.style.display = (mode === 'login' ? 'block' : 'none');
+    if(mode === 'reg') {
+        if(els['btn-reg']) els['btn-reg'].style.display = 'block';
+        if(els['btn-login']) els['btn-login'].style.display = 'none';
+    } else if(mode === 'login') {
+        if(els['btn-reg']) els['btn-reg'].style.display = 'none';
+        if(els['btn-login']) els['btn-login'].style.display = 'block';
+    }
 }
 
 async function login() {
     const email = document.getElementById('user_email').value;
     const pass = document.getElementById('user_password').value;
-    const { data } = await supabaseClient.from('profiles').select('*').eq('email', email).eq('password', pass).single();
-    if (data) loginSuccess(data); else showNotify("Ошибка входа!");
+    const { data, error } = await supabaseClient.from('profiles').select('*').eq('email', email).eq('password', pass).single();
+    
+    if (data) {
+        localStorage.setItem('game_user', JSON.stringify(data));
+        loginSuccess(data);
+    } else {
+        showNotify("Ошибка входа!");
+    }
 }
 
 function loginSuccess(profile) {
     currentUser = profile;
-    localStorage.setItem('game_user', JSON.stringify(profile));
-    document.getElementById('auth-container').style.display = 'none';
-    document.getElementById('game-ui').style.display = 'block';
+    const authCont = document.getElementById('auth-container');
+    const gameUI = document.getElementById('game-ui');
+    if(authCont) authCont.style.display = 'none';
+    if(gameUI) gameUI.style.display = 'block';
     updateUI();
 }
 
 async function openCase() {
-    if (currentUser.score < 50) return showNotify("Мало денег!");
+    if (!currentUser || currentUser.score < 50) return showNotify("Нужно 50$!");
+    
     const display = document.getElementById('case-display');
-    display.classList.add('spinning');
+    if(display) display.classList.add('spinning');
+    
+    let rand = Math.random();
+    let cumulative = 0;
+    let win = items[0];
+    for (let i of items) {
+        cumulative += i.chance;
+        if (rand < cumulative) { win = i; break; }
+    }
 
-    const win = items[Math.floor(Math.random() * items.length)];
     const newInv = [...(currentUser.inventory || []), { ...win, id: Date.now() }];
     const newScore = currentUser.score - 50;
 
@@ -78,157 +96,81 @@ async function openCase() {
         currentUser.score = newScore;
         currentUser.inventory = newInv;
         setTimeout(() => {
-            display.classList.remove('spinning');
-            display.innerHTML = `<img src="${GITHUB_BASE}${win.char}.png" style="width:120px;">`;
+            if(display) {
+                display.classList.remove('spinning');
+                display.innerHTML = `<img src="${GITHUB_BASE}${win.char}.png">`;
+            }
             updateUI();
-            showNotify("Выпал " + win.char);
+            showNotify(`Выпал ${win.char}!`);
         }, 800);
     }
 }
 
 function updateUI() {
-    // 1. Обновляем баланс
     const balanceEl = document.getElementById('p-balance');
-    if (balanceEl && currentUser) {
-        balanceEl.innerText = currentUser.score;
+    const listEl = document.getElementById('inventory-list');
+    
+    if (balanceEl) balanceEl.innerText = currentUser.score;
+    
+    if (listEl) {
+        listEl.innerHTML = ''; // Очистка списка
+        if (currentUser.inventory) {
+            currentUser.inventory.forEach(i => {
+                listEl.innerHTML += `
+                    <div class="inv-item">
+                        <img src="${GITHUB_BASE}${i.char}.png">
+                        <p style="font-size:10px; margin:5px 0;">${i.char}</p>
+                        <button onclick="requestWithdraw(${i.id})" style="background:#2ecc71; color:white; border:none; padding:4px; border-radius:4px; cursor:pointer; width:100%; font-size:10px;">ВЫВОД</button>
+                    </div>`;
+            });
+        }
     }
-
-    // 2. Обновляем список инвентаря
-    const list = document.getElementById('inventory-list');
-    if (!list) return; // Чтобы не было ошибки, если элемента нет на странице
-
-    list.innerHTML = ''; // Очищаем старый список
-
-    if (currentUser && currentUser.inventory) {
-    currentUser.inventory.forEach(item => {
-        // ОДНА открывающая обратная кавычка в начале блока
-        listEl.innerHTML += `
-            <div class="inv-item">
-                <img src="${GITHUB_BASE}${item.char}.png">
-                <p style="font-size:10px; margin:5px 0;">${item.char}</p>
-                <button onclick="requestWithdraw(${item.id})" style="background:#2ecc71; color:white; border:none; padding:4px; border-radius:4px; cursor:pointer; width:100%; font-size:10px;">ВЫВОД</button>
-            </div>
-        `; // ОДНА закрывающая обратная кавычка в конце
-    });
 }
 
 async function requestWithdraw(id) {
     const nick = prompt("Твой ник в Roblox:");
-    if (!nick) return;
-
-    // Ищем предмет в инвентаре пользователя
+    if(!nick) return;
     const item = currentUser.inventory.find(i => i.id === id);
-    if (!item) return;
-
-    // 1. Отправка в Telegram (для уведомления админа)
-    const tgText = `💰 ВЫВОД: ${currentUser.email} | Ник в Roblox: ${nick} | Предмет: ${item.char};`
-    try {
-        await fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendMessage?chat_id=${TG_CHAT_ID}&text=${encodeURIComponent(tgText)}`);
-    } catch (e) {
-        console.error("Ошибка Telegram:", e);
-    }
-
-    // 2. Отправка Email через EmailJS (шаблон template_cxh5ojg)
-    // Данные для шаблона: {{email}} и {{name}} (ник в роблоксе)
-    const emailParams = {
-        email: currentUser.email, // Электронная почта игрока
-        name: nick,               // Никнейм, который ввел игрок
-        item_name: item.char,     // Название предмета (если добавишь в шаблон)
-        to_email: 'sdulimos@gmail.com' // Получатель (админ)
-    };
-
-    emailjs.send('service_j9ls8lo', 'template_cxh5ojg', emailParams)
-        .then(() => {
-            console.log('Email успешно отправлен админу!');
-        })
-        .catch((error) => {
-            console.error('Ошибка отправки Email:', error);
-        });
-
-    // 3. Обновление инвентаря в базе (удаление выведенного предмета)
-    const updatedInventory = currentUser.inventory.filter(i => i.id !== id);
-    const { error } = await supabaseClient
-        .from('profiles')
-        .update({ inventory: updatedInventory })
-        .eq('email', currentUser.email);
+    const text = `💰 ВЫВОД\nЮзер: ${currentUser.email}\nНик: ${nick}\nДроп: ${item.char}`;
+    await fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendMessage?chat_id=${TG_CHAT_ID}&text=${encodeURIComponent(text)}`);
     
-    if (!error) {
-        currentUser.inventory = updatedInventory;
-        updateUI(); // Обновляем экран инвентаря
-        showNotify("Заявка принята! Письмо отправлено админу.");
-    } else {
-        showNotify("Ошибка базы данных при выводе.");
-    }
+    const updated = currentUser.inventory.filter(i => i.id !== id);
+    await supabaseClient.from('profiles').update({ inventory: updated }).eq('email', currentUser.email);
+    currentUser.inventory = updated;
+    updateUI();
+    showNotify("Заявка у админа!");
 }
 
 async function sendOTP() {
-    generatedOTP = Math.floor(1000 + Math.random() * 9000);
     const email = document.getElementById('user_email').value;
+    if(!email) return showNotify("Введи Email!");
+    generatedOTP = Math.floor(1000 + Math.random() * 9000);
     emailjs.send('service_j9ls8lo', 'template_ebxnpr6', {to_email: email, passcode: generatedOTP})
     .then(() => {
-        showNotify("Код отправлен!");
-        document.getElementById('step-form').style.display = 'none';
-        document.getElementById('step-code').style.display = 'block';
+        showNotify("Код на почте!");
+        const form = document.getElementById('step-form');
+        const code = document.getElementById('step-code');
+        if(form) form.style.display = 'none';
+        if(code) code.style.display = 'block';
     });
 }
 
 async function register() {
-    const otpInput = document.getElementById('otp_input');
-    const regBtn = event.target; // Кнопка, на которую нажали
-
-    // 1. Проверяем код ДО любых запросов в базу
-    if (otpInput.value != generatedOTP) {
-        return showNotify("Неверный код!");
-    }
-
-    // 2. Блокируем кнопку, чтобы не было дублей (ошибка 400)
-    regBtn.disabled = true;
-    regBtn.innerText = "РЕГИСТРАЦИЯ...";
-
-    const email = document.getElementById('user_email').value;
-    const pass = document.getElementById('user_password').value;
-
-    try {
-        // 3. Пытаемся создать юзера
-        const { data, error } = await supabaseClient
-            .from('profiles')
-            .insert([{ 
-                email: email, 
-                password: pass, 
-                score: 50, // Твои стартовые 100 монет
-                inventory: [] 
-            }])
-            .select()
-            .single();
-
-        if (error) {
-            // Если ошибка "занято" (Duplicate), Supabase вернет код 23505 или 409
-            if (error.code === '23505' || error.message.includes('unique')) {
-                showNotify("Этот Email уже зарегистрирован!");
-            } else {
-                showNotify("Ошибка: " + error.message);
-            }
-            regBtn.disabled = false;
-            regBtn.innerText = "ПОДТВЕРДИТЬ";
-            return;
-        }
-
-        if (data) {
-            showNotify("Успешная регистрация!");
-            loginSuccess(data);
-        }
-
-    } catch (err) {
-        console.error("Критическая ошибка:", err);
-        showNotify("Проблема с сетью");
-        regBtn.disabled = false;
-        regBtn.innerText = "ПОДТВЕРДИТЬ";
+    const otp = document.getElementById('otp_input').value;
+    if (otp == generatedOTP) {
+        const email = document.getElementById('user_email').value;
+        const pass = document.getElementById('user_password').value;
+        const { data } = await supabaseClient.from('profiles').insert([{ email, password: pass, score: 100, inventory: [] }]).select().single();
+        if (data) loginSuccess(data);
+    } else {
+        showNotify("Неверный код!");
     }
 }
 
 function switchTab(t) {
     document.querySelectorAll('.tab').forEach(x => x.style.display = 'none');
-    document.getElementById('tab-' + t).style.display = 'block';
+    const target = document.getElementById('tab-' + t);
+    if(target) target.style.display = 'block';
 }
 
 function logout() { localStorage.clear(); location.reload(); }
@@ -237,7 +179,7 @@ window.onload = async () => {
     const saved = localStorage.getItem('game_user');
     if (saved) {
         const u = JSON.parse(saved);
-        const { data } = await supabaseClient.from('profiles').select('*').eq('email', u.email).single();
+        const { data } = await supabaseClient.from('profiles').select('*').eq('email', u.email).eq('password', u.password).single();
         if (data) loginSuccess(data);
     }
 };
