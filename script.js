@@ -11,6 +11,19 @@ const SELL_COMMISSION = 0.20;
 
 window.onload = checkCookies;
 
+function checkCookies() {
+    const accepted = localStorage.getItem('cookies_accepted');
+    
+    if (!accepted) {
+        // Если еще не принимали — показываем баннер
+        document.getElementById('cookie-banner').style.display = 'block';
+    } else {
+        // Если уже принимали — баннер не показываем и пробуем войти в аккаунт
+        document.getElementById('cookie-banner').style.display = 'none';
+        autoLogin();
+    }
+}
+
 function acceptCookies() {
     // Скрываем баннер визуально
     const banner = document.getElementById('cookie-banner');
