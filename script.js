@@ -2,7 +2,7 @@ const SB_URL = 'https://wbkygibviddkdjxbahbg.supabase.co';
 const SB_KEY = 'sb_publishable_l5wIAt6RrAl4Uo8uZKerRQ_xBYDS-Kv';
 const supabaseClient = supabase.createClient(SB_URL, SB_KEY);
 
-const GITHUB_BASE = "https://raw.githubusercontent.com/marons/magic-login/main/Drops/";
+const GITHUB_BASE = "https://raw.githubusercontent.com/RuMaroNs/magic-login/main/img/";
 
 // ==========================================
 // ВОТ ОНА — ТАБЛИЦА С КЕЙСАМИ И ИХ ЛУТОМ
