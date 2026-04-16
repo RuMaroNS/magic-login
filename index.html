@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BRAINROT CASES | LIVE</title>
+    <title>BRAINROT CASES | OFFICIAL SITE</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -12,7 +12,7 @@
     <header>
         <div class="live-status">
             <span class="dot"></span>
-            <span class="live-label">LIVE FEED</span>
+            <span class="live-label">LIVE DROPS</span>
         </div>
         <div id="global-live-feed"></div>
     </header>
@@ -27,17 +27,18 @@
                 <button class="main-btn btn-outline" onclick="showAuth('login')">ВХОД</button>
             </div>
             <div id="step-form" style="display:none;">
-                <input type="email" id="user_email" placeholder="Email">
-                <input type="password" id="user_password" placeholder="Пароль (8+ символов)">
-                <button id="btn-login" class="main-btn" onclick="login()">ВОЙТИ</button>
-                <p class="back-link" onclick="showAuth('choice')">назад</p>
+                <input type="email" id="user_email" placeholder="Ваш Email">
+                <input type="password" id="user_password" placeholder="Пароль (мин. 8 символов)">
+                <button id="btn-login" class="main-btn" onclick="login()">ПОДТВЕРДИТЬ</button>
+                <p class="back-link" onclick="showAuth('choice')">← назад</p>
             </div>
         </div>
     </div>
 
     <main id="game-interface" style="display:none;">
+        
         <section id="page-cases" class="page active">
-            <h2 class="section-title">КЕЙСЫ</h2>
+            <h2 class="section-title">МАГАЗИН КЕЙСОВ</h2>
             <div id="cases-grid"></div>
         </section>
 
@@ -46,19 +47,22 @@
                 <div class="selector"></div>
                 <div id="roulette-tape" class="tape"></div>
             </div>
-            <div id="win-display" style="display:none; text-align:center; margin-top:20px;">
+            <div id="win-display" style="display:none; text-align:center; margin-top:30px;">
+                <div class="win-light"></div>
                 <h2 id="win-name-text"></h2>
-                <button class="main-btn" onclick="navTo('cases')">ЗАБРАТЬ ДРОП</button>
+                <button class="main-btn" style="width: 200px;" onclick="navTo('cases')">ЗАБРАТЬ</button>
             </div>
         </section>
 
         <section id="page-profile" class="page">
             <div class="balance-view">
-                <p>БАЛАНС</p>
+                <p>ВАШ БАЛАНС</p>
                 <h2 id="p-balance">0$</h2>
             </div>
-            <h3 class="sub-title">ИНВЕНТАРЬ</h3>
+            
+            <h3 class="sub-title">МОЙ ИНВЕНТАРЬ</h3>
             <div id="inventory-list"></div>
+
             <h3 class="sub-title">ИСТОРИЯ ВЫВОДОВ</h3>
             <div id="withdraw-history"></div>
         </section>
