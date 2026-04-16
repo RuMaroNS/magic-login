@@ -2,12 +2,13 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Magic Cases</title>
     <link rel="stylesheet" href="style.css">
     
     <style>
-        .page { text-align: center; width: 100%; max-width: 1400px; margin: 0 auto; }
+        /* ГАРАНТИРОВАННАЯ ЦЕНТРОВКА ДЛЯ ВСЕХ УСТРОЙСТВ */
+        .page { text-align: center; width: 100%; max-width: 1400px; margin: 0 auto; box-sizing: border-box; }
         
         .roulette-container {
             display: flex;
@@ -15,20 +16,20 @@
             align-items: center;
             justify-content: center;
             width: 100%;
-            height: auto;
-            margin: 50px auto;
+            margin: 20px auto;
+            overflow: hidden;
         }
 
         .roulette-wrapper {
             position: relative;
-            width: 100%;
-            max-width: 900px; /* Ширина корпуса рулетки */
-            height: 140px;
+            width: 95%;
+            max-width: 800px;
+            height: 120px;
             background: #111122;
             border: 2px solid #2a2a45;
-            border-radius: 20px;
-            overflow: hidden; /* Прячем все, что не влазит */
-            box-shadow: inset 0 0 50px rgba(0,0,0,0.5);
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: inset 0 0 30px rgba(0,0,0,0.5);
         }
 
         .tape {
@@ -41,24 +42,37 @@
         }
 
         .roulette-item {
-            min-width: 120px;
-            height: 120px;
+            min-width: 100px;
+            height: 100px;
             margin: 0 5px;
             display: flex;
             justify-content: center;
             align-items: center;
             background: #1c1c2e;
-            border-radius: 15px;
+            border-radius: 12px;
             border: 1px solid #2a2a45;
         }
         
-        .roulette-item img {
-            width: 90px;
-            height: 90px;
-            object-fit: contain;
+        .roulette-item img { width: 70px; height: 70px; object-fit: contain; }
+
+        /* Фикс для селектора (красная линия по центру) */
+        .selector {
+            position: absolute;
+            left: 50%;
+            top: 0;
+            width: 4px;
+            height: 100%;
+            background: #ff4444;
+            z-index: 10;
+            transform: translateX(-50%);
+            box-shadow: 0 0 15px #ff4444;
         }
         
-        .win-name-text { font-size: 32px; color: #00d4ff; margin-top: 20px; text-shadow: 0 0 15px #00d4ff; }
+        @media (max-width: 600px) {
+            .roulette-wrapper { height: 100px; }
+            .roulette-item { min-width: 80px; height: 80px; }
+            .roulette-item img { width: 60px; height: 60px; }
+        }
     </style>
     
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -67,8 +81,8 @@
 
     <div class="live-header">
         <div class="live-status">
-            <div class="live-title">LIVE DROPS</div>
-            <div class="live-indicator"><div class="dot"></div> ЭФИР</div>
+            <div class="live-title">LIVE</div>
+            <div class="live-indicator"><div class="dot"></div></div>
         </div>
         <div class="drop-tape" id="global-live-feed"></div>
     </div>
@@ -77,7 +91,7 @@
         <div class="auth-card">
             <div class="auth-tabs">
                 <button id="tab-btn-login" class="active" onclick="switchAuthMode('login')">ВХОД</button>
-                <button id="tab-btn-reg" onclick="switchAuthMode('reg')">РЕГИСТРАЦИЯ</button>
+                <button id="tab-btn-reg" onclick="switchAuthMode('reg')">РЕГА</button>
             </div>
             <div class="auth-form">
                 <input type="text" id="user_name" placeholder="Никнейм">
@@ -89,7 +103,9 @@
     </div>
 
     <div id="game-interface" style="display:none;">
-        <div id="page-cases" class="page active"><div id="cases-grid"></div></div>
+        <div id="page-cases" class="page active">
+            <div id="cases-grid"></div>
+        </div>
         
         <div id="page-opening" class="page">
             <div class="roulette-container">
@@ -97,16 +113,18 @@
                     <div class="selector"></div>
                     <div class="tape" id="roulette-tape"></div>
                 </div>
-                <div id="win-display" style="display:none;">
-                    <h2 id="win-name-text" class="win-name-text"></h2>
-                    <button class="neon-btn win-back-btn" onclick="navTo('cases')">ЗАКРЫТЬ КЕЙС</button>
+                <div id="win-display" style="display:none; margin-top: 20px;">
+                    <h2 id="win-name-text" style="color:#00d4ff; text-shadow: 0 0 10px #00d4ff;"></h2>
+                    <button class="neon-btn" style="max-width:200px; margin-top:15px;" onclick="navTo('cases')">НАЗАД</button>
                 </div>
             </div>
         </div>
 
         <div id="page-profile" class="page">
-            <h2 id="p-username" style="color:#00d4ff; font-size: 28px;">Загрузка...</h2>
-            <p class="p-balance-display">БАЛАНС: <span id="p-balance">0</span>$</p>
+            <div class="profile-info">
+                <h2 id="p-username" style="color:#00d4ff;"></h2>
+                <p class="balance-text">БАЛАНС: <span id="p-balance">0</span>$</p>
+            </div>
             <div id="inventory-list"></div>
         </div>
 
@@ -120,7 +138,5 @@
     <div id="notification-container"></div>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <script src="script.js"></script>
-
-    <div id="notification-container"></div>
 </body>
 </html>
