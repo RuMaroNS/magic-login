@@ -3,46 +3,83 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Brainrot Cases - LIVE</title>
+    <title>BRAINROT CASES | LIVE</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
 </head>
 <body>
 
     <header>
-        <div class="live-indicator">
-            <span class="red-dot"></span>
-            <span class="live-text">LIVE FEED</span>
+        <div class="live-status">
+            <span class="dot"></span>
+            <span class="live-label">LIVE FEED</span>
         </div>
         <div id="global-live-feed"></div>
     </header>
 
-    <main id="app">
-        <section id="page-cases" class="page active">
-            <h1 class="page-title">МАГАЗИН КЕЙСОВ</h1>
-            <div id="cases-grid">
+    <div id="notification-container"></div>
+
+    <div id="auth-screen" class="full-screen">
+        <div class="auth-card">
+            <h1 class="logo">BRAINROT</h1>
+            <div id="auth-steps">
+                <div id="step-choice">
+                    <button class="main-btn" onclick="showAuth('reg')">СОЗДАТЬ АККАУНТ</button>
+                    <button class="main-btn btn-outline" onclick="showAuth('login')">ВОЙТИ</button>
                 </div>
+                <div id="step-form" style="display:none;">
+                    <input type="email" id="user_email" placeholder="Email">
+                    <input type="password" id="user_password" placeholder="Пароль (8+ символов)">
+                    <button id="btn-reg" class="main-btn" onclick="sendOTP()" style="display:none;">ПОЛУЧИТЬ КОД</button>
+                    <button id="btn-login" class="main-btn" onclick="login()" style="display:none;">ВОЙТИ</button>
+                    <p class="back-link" onclick="showAuth('choice')">назад</p>
+                </div>
+                <div id="step-code" style="display:none;">
+                    <input type="number" id="otp_input" placeholder="Код подтверждения">
+                    <button class="main-btn" onclick="register()">ПОДТВЕРДИТЬ</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <main id="game-interface" style="display:none;">
+        
+        <section id="page-cases" class="page active">
+            <h2 class="section-title">ВЫБЕРИ КЕЙС</h2>
+            <div id="cases-grid"></div>
+        </section>
+
+        <section id="page-opening" class="page">
+            <div class="opening-container">
+                <div id="case-render">🎁</div>
+                <h3 id="win-name">Крутим...</h3>
+                <button class="main-btn" onclick="navTo('cases')" id="btn-back-after" style="display:none;">К КЕЙСАМ</button>
+            </div>
         </section>
 
         <section id="page-profile" class="page">
-            <h1 class="page-title">ВАШ ИНВЕНТАРЬ</h1>
-            <div class="user-stats">
-                <span id="p-balance">0</span><span class="currency">$</span>
+            <div class="profile-header">
+                <div class="balance-view">
+                    <p>ВАШ БАЛАНС</p>
+                    <h2 id="p-balance">0$</h2>
+                </div>
             </div>
-            <div id="inventory-list"></div>
             
-            <h2 class="sub-title">ИСТОРИЯ ВЫВОДОВ</h2>
+            <h3 class="sub-title">ИНВЕНТАРЬ</h3>
+            <div id="inventory-list"></div>
+
+            <h3 class="sub-title">ИСТОРИЯ ВЫВОДОВ</h3>
             <div id="withdraw-history"></div>
         </section>
+
+        <nav class="navbar">
+            <button onclick="navTo('cases')" class="nav-item">КЕЙСЫ</button>
+            <button onclick="navTo('profile')" class="nav-item">ПРОФИЛЬ</button>
+            <button onclick="logout()" class="nav-item exit">ВЫХОД</button>
+        </nav>
     </main>
 
-    <nav class="bottom-nav">
-        <button onclick="navTo('cases')">КЕЙСЫ</button>
-        <button onclick="navTo('profile')">ПРОФИЛЬ</button>
-        <button onclick="logout()" class="exit-btn">ВЫХОД</button>
-    </nav>
-
-    <div id="notification-container"></div>
     <script src="script.js"></script>
 </body>
 </html>
