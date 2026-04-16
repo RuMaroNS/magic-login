@@ -55,7 +55,7 @@ const CASE_TABLE = [
 
 let currentUser = null;
 
-// --- АВТОРИЗАЦИЯ И COOKIE ---
+// --- COOKIE & АВТО-ВХОД ---
 function checkCookies() {
     if (!localStorage.getItem('cookies_accepted')) {
         document.getElementById('cookie-banner').style.display = 'block';
@@ -67,25 +67,21 @@ function checkCookies() {
 function acceptCookies() {
     localStorage.setItem('cookies_accepted', 'true');
     document.getElementById('cookie-banner').style.display = 'none';
-    showNotify("Cookie приняты!");
+    autoLogin();
 }
 
 async function autoLogin() {
-    const saved = localStorage.getItem('game_user');
-    if (saved) {
-        currentUser = JSON.parse(saved);
-        document.getElementById('auth-screen').style.display = 'none';
-        document.getElementById('game-interface').style.display = 'block';
-        navTo('cases');
-        initRealtime();
+    const savedId = localStorage.getItem('game_user_id');
+    if (savedId) {
+        // Тянем свежие данные только по ID
+        const { data, error } = await supabaseClient.from('profiles').select('*').eq('id', savedId).single();
+        if (data && !error) {
+            currentUser = data;
+            enterGame();
+        } else {
+            localStorage.removeItem('game_user_id');
+        }
     }
-}
-
-function switchAuthMode(mode) {
-    document.getElementById('tab-btn-login').classList.toggle('active', mode === 'login');
-    document.getElementById('tab-btn-reg').classList.toggle('active', mode === 'reg');
-    document.getElementById('btn-login-action').style.display = (mode === 'login' ? 'block' : 'none');
-    document.getElementById('btn-reg-action').style.display = (mode === 'reg' ? 'block' : 'none');
 }
 
 async function login() {
@@ -94,11 +90,8 @@ async function login() {
     const { data } = await supabaseClient.from('profiles').select('*').eq('email', email).eq('password', pass).single();
     if(data) {
         currentUser = data;
-        localStorage.setItem('game_user', JSON.stringify(data));
-        document.getElementById('auth-screen').style.display = 'none';
-        document.getElementById('game-interface').style.display = 'block';
-        navTo('cases');
-        initRealtime();
+        localStorage.setItem('game_user_id', data.id); // Храним ТОЛЬКО ID
+        enterGame();
     } else showNotify("Ошибка входа!");
 }
 
@@ -106,38 +99,49 @@ async function register() {
     const email = document.getElementById('user_email').value;
     const pass = document.getElementById('user_password').value;
     const { data } = await supabaseClient.from('profiles').insert([{ email, password: pass, score: 500, inventory: [] }]).select().single();
-    if(data) { currentUser = data; login(); }
+    if(data) login();
 }
 
-// --- ЛАЙВ-БОРД ---
-function initRealtime() {
-    supabaseClient.channel('any').on('postgres_changes', {event:'UPDATE', schema:'public', table:'profiles'}, p => {
-        const oldInv = p.old?.inventory || [];
-        const newInv = p.new?.inventory || [];
-        if(newInv.length > oldInv.length) {
-            const lastItem = newInv[newInv.length - 1];
-            const nick = p.new.email.split('@')[0];
-            addToLiveBoard(nick, lastItem.char);
-        }
-    }).subscribe();
+function enterGame() {
+    document.getElementById('auth-screen').style.display = 'none';
+    document.getElementById('game-interface').style.display = 'block';
+    navTo('cases');
+    initRealtime();
 }
 
-function addToLiveBoard(username, itemName) {
-    const board = document.getElementById('global-live-feed');
-    if (!board) return;
-    const card = document.createElement('div');
-    card.className = 'drop-card';
-    card.innerHTML = `<img src="${GITHUB_BASE}${itemName}.png"><div class="drop-info"><span class="drop-nick">${username}</span><span class="drop-item">${itemName}</span></div>`;
-    board.prepend(card);
-    if (board.childNodes.length > 20) board.removeChild(board.lastChild);
+// --- СИНХРОНИЗАЦИЯ С БД ПЕРЕД ДЕЙСТВИЕМ ---
+async function syncFromDB() {
+    const { data } = await supabaseClient.from('profiles').select('*').eq('id', currentUser.id).single();
+    if (data) currentUser = data;
 }
 
-// --- ИГРОВАЯ ЛОГИКА ---
+// --- РЕНДЕР ПРОФИЛЯ ---
+async function renderProfile() {
+    await syncFromDB(); // Обновляем данные из базы
+    document.getElementById('p-balance').innerText = currentUser.score;
+    const invList = document.getElementById('inventory-list');
+    invList.innerHTML = (currentUser.inventory || []).map(i => `
+        <div class="inv-item">
+            <img src="${GITHUB_BASE}${i.char}.png">
+            <p>${i.char}</p>
+            <button class="withdraw-btn" onclick="withdrawItem(${i.id})">ВЫВОД</button>
+        </div>
+    `).join('');
+}
+
+// --- РУЛЕТКА ---
 async function openRoulette(caseId) {
+    await syncFromDB(); // Жесткая проверка баланса перед открытием
     const cData = CASE_TABLE.find(x => x.id === caseId);
-    if (currentUser.score < cData.price) return showNotify("Мало денег!");
+    
+    if (currentUser.score < cData.price) return showNotify("Недостаточно средств!");
 
-    currentUser.score -= cData.price;
+    // Снимаем деньги в БД
+    const newScore = currentUser.score - cData.price;
+    const { error: updateError } = await supabaseClient.from('profiles').update({ score: newScore }).eq('id', currentUser.id);
+    if (updateError) return showNotify("Ошибка связи с сервером!");
+
+    currentUser.score = newScore;
     navTo('opening');
     
     const tape = document.getElementById('roulette-tape');
@@ -167,10 +171,11 @@ async function openRoulette(caseId) {
         tape.style.transform = `translateX(-${shift}px)`;
     }, 50);
 
-    const newInv = [...(currentUser.inventory || []), { char: win.char, id: Date.now() }];
-    await supabaseClient.from('profiles').update({ score: currentUser.score, inventory: newInv }).eq('id', currentUser.id);
+    // Сохраняем выигрыш в БД
+    const newItem = { char: win.char, id: Date.now() };
+    const newInv = [...(currentUser.inventory || []), newItem];
+    await supabaseClient.from('profiles').update({ inventory: newInv }).eq('id', currentUser.id);
     currentUser.inventory = newInv;
-    localStorage.setItem('game_user', JSON.stringify(currentUser));
 
     setTimeout(() => {
         winDisplay.style.display = 'block';
@@ -179,25 +184,35 @@ async function openRoulette(caseId) {
     }, 5500);
 }
 
-function renderProfile() {
-    document.getElementById('p-balance').innerText = currentUser.score;
-    const invList = document.getElementById('inventory-list');
-    invList.innerHTML = (currentUser.inventory || []).map(i => `
-        <div class="inv-item">
-            <img src="${GITHUB_BASE}${i.char}.png">
-            <p>${i.char}</p>
-            <button class="withdraw-btn" onclick="withdrawItem(${i.id})">ВЫВОД</button>
-        </div>
-    `).join('');
+// --- ЛАЙВ-БОРД ---
+function initRealtime() {
+    supabaseClient.channel('any').on('postgres_changes', {event:'UPDATE', schema:'public', table:'profiles'}, p => {
+        const oldInv = p.old?.inventory || [];
+        const newInv = p.new?.inventory || [];
+        if(newInv.length > oldInv.length) {
+            const lastItem = newInv[newInv.length - 1];
+            const nick = p.new.email ? p.new.email.split('@')[0] : "Player";
+            addToLiveBoard(nick, lastItem.char);
+        }
+    }).subscribe();
+}
+
+function addToLiveBoard(username, itemName) {
+    const board = document.getElementById('global-live-feed');
+    if (!board) return;
+    const card = document.createElement('div');
+    card.className = 'drop-card';
+    card.innerHTML = `<img src="${GITHUB_BASE}${itemName}.png"><div class="drop-info"><span class="drop-nick">${username}</span><span class="drop-item">${itemName}</span></div>`;
+    board.prepend(card);
+    if (board.childNodes.length > 20) board.removeChild(board.lastChild);
 }
 
 function renderCases() {
-    const grid = document.getElementById('cases-grid');
-    grid.innerHTML = CASE_TABLE.map(c => `
+    document.getElementById('cases-grid').innerHTML = CASE_TABLE.map(c => `
         <div class="case-card">
             <img src="${GITHUB_BASE}${c.img}">
             <h3>${c.name}</h3>
-            <p style="color:#00d4ff; margin:15px 0; font-size:20px;">${c.price}$</p>
+            <p style="color:#00d4ff; margin:15px 0;">${c.price}$</p>
             <button class="neon-btn" onclick="openRoulette('${c.id}')">ОТКРЫТЬ</button>
         </div>
     `).join('');
@@ -217,14 +232,13 @@ function showNotify(t) {
     setTimeout(() => { n.classList.remove('show'); setTimeout(() => n.remove(), 500); }, 2000);
 }
 
-async function withdrawItem(id) {
-    const nick = prompt("Ник в Roblox:");
-    if(!nick) return;
-    currentUser.inventory = currentUser.inventory.filter(x => x.id !== id);
-    await supabaseClient.from('profiles').update({ inventory: currentUser.inventory }).eq('id', currentUser.id);
-    renderProfile();
-    showNotify("Заявка отправлена!");
+function logout() { localStorage.removeItem('game_user_id'); location.reload(); }
+
+function switchAuthMode(mode) {
+    document.getElementById('tab-btn-login').className = (mode === 'login' ? 'active' : '');
+    document.getElementById('tab-btn-reg').className = (mode === 'reg' ? 'active' : '');
+    document.getElementById('btn-login-action').style.display = (mode === 'login' ? 'block' : 'none');
+    document.getElementById('btn-reg-action').style.display = (mode === 'reg' ? 'block' : 'none');
 }
 
-function logout() { localStorage.clear(); location.reload(); }
 window.onload = checkCookies;
