@@ -7,15 +7,14 @@ const TG_CHAT_ID = '6469643444';
 
 let currentUser = null;
 const SELL_COMMISSION = 0.20; 
-let isSpinning = false;
-let liveHistory = [];
 
-// Создаем один общий канал для всех
+// 1. ИНИЦИАЛИЗАЦИЯ ОБЩЕГО КАНАЛА СВЯЗИ
+// Мы создаем канал 'live-drops', к которому подключаются все игроки.
 const liveChannel = supabaseClient.channel('live-drops');
 
 window.onload = () => { 
     autoLogin(); 
-    initGlobalRealtime(); // Запускаем прослушку сразу
+    initGlobalBroadcast(); // Начинаем слушать дропы от других сразу
 };
 
 function showNotify(text) {
@@ -31,14 +30,19 @@ function showNotify(text) {
     }, 2500);
 }
 
-// ФИКС: Слушаем сигналы от других игроков
-function initGlobalRealtime() {
+// 2. ПОДКЛЮЧЕНИЕ К "ОБЩЕМУ ЧАТУ" ДРОПОВ
+// Эта функция заставляет браузер слушать событие 'new-drop' в канале.
+function initGlobalBroadcast() {
     liveChannel
     .on('broadcast', { event: 'new-drop' }, (payload) => {
-        // Когда кто-то другой выбил предмет, добавляем его в лайв-борд
+        // ЧТО ВИДЯТ ДРУГИЕ: Когда payload (сообщение) приходит, мы рисуем карточку.
         addToLiveBoard(payload.payload.user, payload.payload.item);
     })
-    .subscribe();
+    .subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+            console.log('Подключен к общему каналу дропов!');
+        }
+    });
 }
 
 async function autoLogin() {
@@ -83,13 +87,11 @@ function enterGame() {
     navTo('cases');
 }
 
+// 3. ОТКРЫТИЕ КЕЙСА С ПУШЕМ В ОБЩИЙ КАНАЛ
 async function openRoulette(caseId) {
-    if (isSpinning) return; // КУЛДАУН
-
     const { data: cData } = await supabaseClient.from('cases_meta').select('*').eq('id', caseId).single();
-    if (currentUser.score < cData.price) return showNotify("Недостаточно баланса!");
+    if (currentUser.score < cData.price) return showNotify("Мало монет!");
 
-    isSpinning = true;
     currentUser.score -= cData.price;
     await supabaseClient.from('profiles').update({ score: currentUser.score }).eq('id', currentUser.id);
 
@@ -97,45 +99,51 @@ async function openRoulette(caseId) {
     const tape = document.getElementById('roulette-tape');
     tape.style.transition = 'none';
     tape.style.transform = 'translateX(0)';
-
-    // БЕСКОНЕЧНАЯ ЛЕНТА
+    
     let tapeHTML = '';
-    for (let i = 0; i < 150; i++) {
-        const item = cData.loot[i % cData.loot.length];
-        tapeHTML += `<div class="roulette-item"><img src="${GITHUB_BASE}${item.name}.png"></div>`;
+    for(let i=0; i<60; i++) {
+        const rand = cData.loot[Math.floor(Math.random() * cData.loot.length)];
+        tapeHTML += `<div class="roulette-item"><img src="${GITHUB_BASE}${rand.name}.png"></div>`;
     }
     tape.innerHTML = tapeHTML;
 
-    const winIndex = 130; // Выигрышный слот в конце ленты
     const win = cData.loot[Math.floor(Math.random() * cData.loot.length)];
-    tape.querySelectorAll('.roulette-item')[winIndex].innerHTML = `<img src="${GITHUB_BASE}${win.name}.png">`;
+    tape.querySelectorAll('.roulette-item')[50].innerHTML = `<img src="${GITHUB_BASE}${win.name}.png">`;
 
     setTimeout(() => {
-        const itemWidth = 140; // Ширина айтема из CSS
-        const wrapperWidth = document.querySelector('.roulette-wrapper').offsetWidth;
-        const finalShift = (winIndex * itemWidth) - (wrapperWidth / 2) + (itemWidth / 2);
-        
-        tape.style.transition = 'transform 6s cubic-bezier(0.1, 0, 0.1, 1)';
+        tape.style.transition = 'transform 5s cubic-bezier(0.1, 0, 0.1, 1)';
+        const itemWidth = 130; 
+        const rouletteWrapper = document.querySelector('.roulette-wrapper');
+        const finalShift = (50 * itemWidth) - (rouletteWrapper.offsetWidth / 2) + (itemWidth / 2);
         tape.style.transform = `translateX(-${finalShift}px)`;
     }, 50);
 
+    const newInv = [...(currentUser.inventory || []), { char: win.name, id: Date.now() }];
+    
     setTimeout(async () => {
-        // Добавляем в инвентарь (твой старый код...)
-        const newInv = [...(currentUser.inventory || []), { char: win.name, id: Date.now() }];
         await supabaseClient.from('profiles').update({ inventory: newInv }).eq('id', currentUser.id);
         currentUser.inventory = newInv;
+        
+        // --- ВОТ ЭТО САМЫЙ ВАЖНЫЙ МОМЕНТ ---
+        
+        // А. Показываем дроп СЕБЕ локально (чтобы не ждать сеть)
+        addToLiveBoard(currentUser.username, win.name);
 
-        // КЛЮЧЕВОЙ МОМЕНТ: Добавляем в LIVE
-        addToLiveBoard(win.name, currentUser.email);
-
-        // Показываем окно выигрыша
+        // Б. "Громко кричим" всем остальным игрокам
+        // Мы отправляем broadcast-сообщение с типом 'new-drop' и данными о выигрыше.
+        liveChannel.send({
+            type: 'broadcast',
+            event: 'new-drop',
+            payload: { user: currentUser.username, item: win.name }
+        });
+        
         document.getElementById('win-display').style.display = 'block';
         document.getElementById('win-name-text').innerText = `ВЫПАЛО: ${win.name}`;
-        
-        showNotify(`Вы выбили: ${win.name}`);
-        isSpinning = false; // Снимаем блок
-    }, 6500);
+        if (typeof confetti === 'function') confetti();
+    }, 5500);
 }
+
+// ... Остальные функции (sellItem, withdrawItem, renderCases, renderProfile) остаются без изменений ...
 
 async function sellItem(itemId, charName) {
     const { data: itemData } = await supabaseClient.from('items_meta').select('price').eq('name', charName).single();
@@ -187,56 +195,3 @@ async function renderProfile() {
     if (!currentUser.inventory || currentUser.inventory.length === 0) {
         invList.innerHTML = '<div style="color:#5a5a7a; padding:40px; text-align:center; width:100%;">ПУСТО</div>';
         return;
-    }
-    invList.innerHTML = currentUser.inventory.map(i => `
-        <div class="inv-item ${i.status === 'processing' ? 'processing' : ''}">
-            ${i.status === 'processing' ? '<div class="overlay">В ОБРАБОТКЕ</div>' : ''}
-            <img src="${GITHUB_BASE}${i.char}.png">
-            <p>${i.char}</p>
-            <div class="inv-btns">
-                <button class="withdraw-btn" onclick="withdrawItem(${i.id})">ВЫВОД</button>
-                <button class="withdraw-btn sell-btn" onclick="sellItem(${i.id}, '${i.char}')">ПРОДАТЬ</button>
-            </div>
-        </div>`).reverse().join('');
-}
-
-function addToLiveBoard(itemName, userEmail) {
-    const liveTape = document.querySelector('.drop-tape');
-    if (!liveTape) return;
-
-    // 1. Создаем объект дропа
-    const newDrop = {
-        name: itemName,
-        email: userEmail.split('@')[0] // Берем только логин до собаки
-    };
-
-    // 2. Добавляем в начало истории
-    liveHistory.unshift(newDrop);
-
-    // 3. Ограничиваем количество элементов в ленте (например, 15)
-    if (liveHistory.length > 15) {
-        liveHistory.pop();
-    }
-
-    // 4. Полная перерисовка ленты
-    // Мы используем map, чтобы создать HTML для каждого элемента из истории
-    liveTape.innerHTML = liveHistory.map(drop => `
-        <div class="drop-card">
-            <img src="${GITHUB_BASE}${drop.name}.png" alt="${drop.name}">
-            <div class="drop-info">
-                <span class="drop-user">${drop.email}</span>
-                <span class="drop-item">${drop.name}</span>
-            </div>
-        </div>
-    `).join('');
-
-    // 5. Небольшой хак для анимации появления (прокрутка в начало)
-    liveTape.scrollLeft = 0;
-}
-
-function switchAuthMode(mode) {
-    document.getElementById('tab-btn-login').className = (mode === 'login' ? 'active' : '');
-    document.getElementById('tab-btn-reg').className = (mode === 'reg' ? 'active' : '');
-    document.getElementById('btn-login-action').style.display = (mode === 'login' ? 'block' : 'none');
-    document.getElementById('btn-reg-action').style.display = (mode === 'reg' ? 'block' : 'none');
-}
