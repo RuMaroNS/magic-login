@@ -1,5 +1,9 @@
 /* Сброс стилей */
-* { box-sizing: border-box; margin: 0; padding: 0; }
+* { 
+    box-sizing: border-box; 
+    margin: 0; 
+    padding: 0; 
+}
 
 body {
     background: #0b0b14; /* Темно-синий/черный */
@@ -9,6 +13,7 @@ body {
     justify-content: center;
     align-items: center;
     min-height: 100vh;
+    overflow: hidden;
 }
 
 /* Контейнеры */
@@ -20,6 +25,8 @@ body {
     width: 360px;
     text-align: center;
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.7), 0 0 20px rgba(0, 212, 255, 0.1);
+    position: relative;
+    overflow: hidden; /* Чтобы LiveBoard не вылезал за скругления */
 }
 
 .logo {
@@ -27,6 +34,25 @@ body {
     font-size: 28px;
     letter-spacing: 2px;
     margin-bottom: 20px;
+}
+
+/* LiveBoard - Панель последних выпадений */
+.live-board {
+    background: #0a0a15;
+    border-bottom: 2px solid #00d4ff;
+    padding: 10px;
+    font-size: 10px;
+    margin: -25px -25px 20px -25px; /* Прижимаем к краям контейнера */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-transform: uppercase;
+}
+
+#live-text {
+    color: #aaa;
+    margin-left: 5px;
+    display: inline-block;
 }
 
 /* Навигация */
@@ -51,8 +77,9 @@ nav button {
     transition: 0.3s;
 }
 
-nav button:hover { color: #00d4ff; }
-.logout-btn { color: #ff4444 !important; max-width: 40px; }
+nav button:hover { 
+    color: #00d4ff; 
+}
 
 /* Кнопки */
 .main-btn {
@@ -66,6 +93,11 @@ nav button:hover { color: #00d4ff; }
     cursor: pointer;
     text-transform: uppercase;
     box-shadow: 0 4px 15px rgba(0, 212, 255, 0.3);
+    transition: transform 0.1s;
+}
+
+.main-btn:active {
+    transform: scale(0.98);
 }
 
 .btn-outline {
@@ -85,9 +117,14 @@ input, textarea {
     border-radius: 10px;
     margin-bottom: 12px;
     outline: none;
+    font-family: sans-serif;
 }
 
-/* Кейс */
+input:focus {
+    border-color: #00d4ff;
+}
+
+/* Кейс и Визуализация */
 #case-display {
     height: 160px;
     background: radial-gradient(circle, #252545 0%, #151525 100%);
@@ -97,10 +134,11 @@ input, textarea {
     display: flex;
     align-items: center;
     justify-content: center;
+    overflow: hidden;
 }
 
 #case-display img {
-    max-width: 130px;
+    max-width: 110px;
     filter: drop-shadow(0 0 10px #00d4ff);
 }
 
@@ -114,48 +152,87 @@ input, textarea {
     padding: 10px 5px;
 }
 
+/* Стилизация скроллбара */
+#inventory-list::-webkit-scrollbar {
+    width: 4px;
+}
+#inventory-list::-webkit-scrollbar-thumb {
+    background: #2a2a45;
+    border-radius: 10px;
+}
+
 .inv-item {
     background: #1c1c2e;
     border: 1px solid #2a2a45;
     padding: 10px;
     border-radius: 15px;
     text-align: center;
+    transition: 0.2s;
 }
 
-.inv-item img { width: 50px; height: 50px; margin-bottom: 5px; }
-.inv-item p { font-size: 10px; color: #aaa; margin-bottom: 5px; }
+.inv-item:hover {
+    border-color: #00d4ff;
+}
 
-.inv-item button {
-    background: #2ecc71;
-    color: white;
-    border: none;
-    padding: 5px;
-    width: 100%;
-    border-radius: 6px;
-    font-size: 10px;
-    cursor: pointer;
+.inv-item img { 
+    width: 50px; 
+    height: 50px; 
+    margin-bottom: 5px; 
+    object-fit: contain;
+}
+
+.inv-item p { 
+    font-size: 10px; 
+    color: #aaa; 
+    margin-bottom: 5px; 
 }
 
 /* Уведомления */
-.notification {
+#notification-container {
     position: fixed;
     top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    pointer-events: none;
+}
+
+.notification {
     background: #00d4ff;
     color: #000;
     padding: 12px 25px;
     border-radius: 50px;
     font-weight: bold;
+    font-size: 12px;
     box-shadow: 0 5px 20px rgba(0, 212, 255, 0.4);
-    z-index: 1000;
+    opacity: 0;
+    transform: translateY(-20px);
+    transition: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.notification.show {
+    opacity: 1;
+    transform: translateY(0);
 }
 
 /* Анимации */
-.spinning { animation: shake 0.1s infinite; }
+.spinning { 
+    animation: shake 0.1s infinite; 
+}
+
 @keyframes shake {
     0% { transform: rotate(-2deg); }
     50% { transform: rotate(2deg); }
 }
 
-.back-link { font-size: 11px; color: #555; cursor: pointer; margin-top: 10px; }
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-5px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Вспомогательные классы */
+.back-link { font-size: 11px; color: #555; cursor: pointer; margin-top: 10px; display: block; }
 .balance-card { font-size: 18px; color: #2ecc71; margin-bottom: 15px; }
-.title { font-size: 14px; margin-bottom: 10px; color: #00d4ff; }
