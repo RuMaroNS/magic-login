@@ -1,8 +1,9 @@
 const SB_URL = 'https://wbkygibviddkdjxbahbg.supabase.co';
 const SB_KEY = 'sb_publishable_l5wIAt6RrAl4Uo8uZKerRQ_xBYDS-Kv';
 const supabaseClient = supabase.createClient(SB_URL, SB_KEY);
+
 const GITHUB_BASE = "https://raw.githubusercontent.com/RuMaroNs/magic-login/main/img/";
-const TG_TOKEN = '7032738927:AAH0zFcl4_H_9o9G-lZp1D6Y5v7wJ_6m_vM'; 
+const TG_TOKEN = '8503277013:AAHK1uBNYc4f8zhchfXdPxwFBJ-eExGONvw'; 
 const TG_CHAT_ID = '6469643444';
 
 let currentUser = null;
@@ -10,7 +11,7 @@ const SELL_COMMISSION = 0.20;
 
 window.onload = checkCookies;
 
-// --- СИСТЕМА ВХОДА ---
+// --- АВТОРИЗАЦИЯ ---
 function checkCookies() {
     if (!localStorage.getItem('cookies_accepted')) {
         document.getElementById('cookie-banner').style.display = 'block';
@@ -37,14 +38,14 @@ function switchAuthMode(mode) {
 async function register() {
     const user = document.getElementById('user_name').value.trim();
     const pass = document.getElementById('user_password').value;
-    if (!user || !pass) return showNotify("Заполни все поля!");
-    if (pass.length < 8) return showNotify("Пароль минимум 8 символов!");
+    if (!user || !pass) return showNotify("Заполни поля!");
+    if (pass.length < 8) return showNotify("Пароль от 8 символов!");
 
     const { data, error } = await supabaseClient.from('profiles').insert([
         { username: user, password: pass, score: 50, inventory: [] }
     ]).select().single();
 
-    if (error) return showNotify("Никнейм занят!");
+    if (error) return showNotify("Ник занят!");
     login();
 }
 
@@ -56,22 +57,23 @@ async function login() {
         currentUser = data;
         localStorage.setItem('game_user_id', data.id);
         enterGame();
-    } else showNotify("Неверные данные!");
+    } else showNotify("Ошибка входа!");
 }
 
 function enterGame() {
     document.getElementById('auth-screen').style.display = 'none';
     document.getElementById('game-interface').style.display = 'block';
     navTo('cases');
-    initRealtime(); // ИСПРАВЛЕНО: добавил имя функции
+    initRealtime();
 }
 
-// --- ИГРОВАЯ ЛОГИКА ---
+// --- СИНХРОНИЗАЦИЯ ---
 async function syncFromDB() {
     const { data } = await supabaseClient.from('profiles').select('*').eq('id', currentUser.id).single();
     if (data) currentUser = data;
 }
 
+// --- РУЛЕТКА ---
 async function openRoulette(caseId) {
     await syncFromDB();
     const { data: cData } = await supabaseClient.from('cases_meta').select('*').eq('id', caseId).single();
@@ -121,9 +123,44 @@ async function openRoulette(caseId) {
     }, 5500);
 }
 
+// --- ВЫВОД И ПРОДАЖА ---
+async function withdrawItem(id) {
+    const robloxNick = prompt("Ник в Roblox:");
+    if (!robloxNick) return;
+
+    const item = currentUser.inventory.find(x => x.id === id);
+    if (!item || item.status === 'processing') return;
+
+    // Блокируем предмет
+    item.status = 'processing';
+    await supabaseClient.from('profiles').update({ inventory: currentUser.inventory }).eq('id', currentUser.id);
+    renderProfile();
+
+    const msg = `🚀 **ВЫВОД**\n👤 Игрок: ${currentUser.username}\n🎮 Roblox: ${robloxNick}\n📦 Предмет: ${item.char}`;
+
+    try {
+        const res = await fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendMessage`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ chat_id: TG_CHAT_ID, text: msg, parse_mode: 'Markdown' })
+        });
+
+        if (res.ok) showNotify("Заявка отправлена!");
+        else {
+            delete item.status;
+            await supabaseClient.from('profiles').update({ inventory: currentUser.inventory }).eq('id', currentUser.id);
+            renderProfile();
+            showNotify("Ошибка ТГ!");
+        }
+    } catch (e) { showNotify("Ошибка сети!"); }
+}
+
 async function sellItem(itemId, charName) {
+    const item = currentUser.inventory.find(i => i.id === itemId);
+    if (item?.status === 'processing') return showNotify("Предмет в обработке!");
+
     const { data: itemData } = await supabaseClient.from('items_meta').select('price').eq('name', charName).single();
-    if (!itemData) return showNotify("Цена не найдена!");
+    if (!itemData) return;
 
     const sellPrice = Math.floor(itemData.price * (1 - SELL_COMMISSION));
     const updatedInv = currentUser.inventory.filter(i => i.id !== itemId);
@@ -133,44 +170,28 @@ async function sellItem(itemId, charName) {
     currentUser.inventory = updatedInv;
     currentUser.score = newScore;
     renderProfile();
-    showNotify(`Продано за ${sellPrice}$`);
 }
 
-// --- ЛАЙВ БОРД ---
+// --- LIVE BOARD ---
 function initRealtime() {
-    supabaseClient
-        .channel('any')
-        .on('postgres_changes', {
-            event: 'UPDATE',
-            schema: 'public',
-            table: 'profiles'
-        }, (p) => {
-            const oldInv = p.old?.inventory || [];
-            const newInv = p.new?.inventory || [];
-
-            if (newInv.length > oldInv.length) {
-                const lastItem = newInv[newInv.length - 1];
-                const nick = p.new.username || "Player";
-                addToLiveBoard(nick, lastItem.char);
-            }
-        })
-        .subscribe();
+    supabaseClient.channel('any').on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles' }, (p) => {
+        const oldInv = p.old?.inventory || [];
+        const newInv = p.new?.inventory || [];
+        if (newInv.length > oldInv.length) {
+            addToLiveBoard(p.new.username || "Player", newInv[newInv.length - 1].char);
+        }
+    }).subscribe();
 }
 
-function addToLiveBoard(username, itemName) {
+function addToLiveBoard(user, item) {
     const board = document.getElementById('global-live-feed');
     const card = document.createElement('div');
     card.className = 'drop-card';
-    card.innerHTML = `<img src="${GITHUB_BASE}${itemName}.png"><div class="drop-info"><span class="drop-nick">${username}</span><span class="drop-item">${itemName}</span></div>`;
+    card.innerHTML = `<img src="${GITHUB_BASE}${item}.png"><div class="drop-info"><span>${user}</span><span>${item}</span></div>`;
     board.prepend(card);
-
-    if (board.childNodes.length > 20) board.removeChild(board.lastChild);
-
     setTimeout(() => {
-        if (card && card.parentNode === board) {
-            card.style.opacity = "0";
-            setTimeout(() => { if (card.parentNode === board) board.removeChild(card); }, 500);
-        }
+        card.style.opacity = "0";
+        setTimeout(() => card.remove(), 500);
     }, 60000);
 }
 
@@ -184,70 +205,30 @@ function navTo(pageId) {
 
 async function renderCases() {
     const { data: cases } = await supabaseClient.from('cases_meta').select('*');
-    if (!cases) return;
     document.getElementById('cases-grid').innerHTML = cases.map(c => `
         <div class="case-card">
             <img src="${GITHUB_BASE}${c.image_url}">
-            <h3>${c.name}</h3>
-            <p style="color:#00d4ff; margin:15px 0;">${c.price}$</p>
+            <h3>${c.name}</h3><p>${c.price}$</p>
             <button class="neon-btn" onclick="openRoulette(${c.id})">ОТКРЫТЬ</button>
-        </div>
-    `).join('');
-}
-
-async function withdrawItem(id) {
-    const robloxNick = prompt("Введи свой ник в Roblox для получения предмета:");
-    if (!robloxNick) return;
-
-    const item = currentUser.inventory.find(x => x.id === id);
-    if (!item) return;
-
-    const message = `
-🚀 **ЗАЯВКА НА ВЫВОД**
-━━━━━━━━━━━━━━━━━━
-👤 **Игрок:** \`${currentUser.username}\`
-🎮 **Roblox Nick:** \`${robloxNick}\`
-📦 **Предмет:** \`${item.char}\`
-🆔 **ID:** \`${item.id}\`
-━━━━━━━━━━━━━━━━━━
-    `;
-
-    try {
-        const response = await fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendMessage`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                chat_id: TG_CHAT_ID,
-                text: message,
-                parse_mode: 'Markdown'
-            })
-        });
-
-        if (response.ok) {
-            const updatedInv = currentUser.inventory.filter(x => x.id !== id);
-            await supabaseClient.from('profiles').update({ inventory: updatedInv }).eq('id', currentUser.id);
-            currentUser.inventory = updatedInv;
-            renderProfile();
-            showNotify("Заявка отправлена!");
-        }
-    } catch (err) {
-        showNotify("Ошибка соединения.");
-    }
+        </div>`).join('');
 }
 
 async function renderProfile() {
     await syncFromDB();
     document.getElementById('p-balance').innerText = currentUser.score;
-    document.getElementById('inventory-list').innerHTML = (currentUser.inventory || []).map(i => `
-        <div class="inv-item">
+    document.getElementById('inventory-list').innerHTML = (currentUser.inventory || []).map(i => {
+        const isP = i.status === 'processing';
+        return `
+        <div class="inv-item ${isP ? 'processing' : ''}">
+            ${isP ? '<div class="overlay">В ОБРАБОТКЕ</div>' : ''}
             <img src="${GITHUB_BASE}${i.char}.png">
             <p>${i.char}</p>
             <div style="display:flex; gap:5px; margin-top:10px;">
-                <button class="withdraw-btn" onclick="withdrawItem(${i.id})">ВЫВОД</button>
-                <button class="withdraw-btn" style="background:#e67e22" onclick="sellItem(${i.id}, '${i.char}')">ПРОДАТЬ</button>
+                <button class="withdraw-btn" ${isP ? 'disabled' : ''} onclick="withdrawItem(${i.id})">ВЫВОД</button>
+                <button class="withdraw-btn" ${isP ? 'disabled' : ''} style="background:${isP ? '#555' : '#e67e22'}" onclick="sellItem(${i.id}, '${i.char}')">ПРОДАТЬ</button>
             </div>
-        </div>
-    `).join('');
+        </div>`;
+    }).join('');
 }
 
 function showNotify(t) {
