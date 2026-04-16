@@ -19,7 +19,6 @@ const items = [
     {char: 'LosAdminBlocks', price: 67, chance: 0.055}
 ];
 
-// --- УВЕДОМЛЕНИЯ ---
 function showNotify(text) {
     const container = document.getElementById('notification-container');
     if (!container) return;
@@ -33,7 +32,149 @@ function showNotify(text) {
     }, 2500);
 }
 
-// --- АВТОРИЗАЦИЯ И ЭКРАНЫ ---
+function showAuth(mode) {
+    const choice = document.getElementById('step-choice');
+    const form = document.getElementById('step-form');
+    const code = document.getElementById('step-code');
+    const regBtn = document.getElementById('btn-reg');
+    const logBtn = document.getElementById('btn-login');
+
+    if (choice) choice.style.display = (mode === 'choice' ? 'block' : 'none');
+    if (form) form.style.display = (mode === 'choice' ? 'none' : 'block');
+    if (code) code.style.display = (mode === 'otp' ? 'block' : 'none');
+
+    if (regBtn) regBtn.style.display = (mode === 'reg' ? 'block' : 'none');
+    if (logBtn) logBtn.style.display = (mode === 'login' ? 'block' : 'none');
+}
+
+async function login() {
+    const email = document.getElementById('user_email').value;
+    const pass = document.getElementById('user_password').value;
+    const { data } = await supabaseClient.from('profiles').select('*').eq('email', email).eq('password', pass).single();
+    if (data) loginSuccess(data); else showNotify("Ошибка входа!");
+}
+
+function loginSuccess(profile) {
+    currentUser = profile;
+    localStorage.setItem('game_user', JSON.stringify(profile));
+    document.getElementById('auth-container').style.display = 'none';
+    document.getElementById('game-ui').style.display = 'block';
+    updateUI();
+}
+
+async function openCase() {
+    if (!currentUser || currentUser.score < 50) return showNotify("Мало денег!");
+    const display = document.getElementById('case-display');
+    
+    // Простая логика выбора по шансам
+    const totalChance = items.reduce((s, i) => s + i.chance, 0);
+    let random = Math.random() * totalChance;
+    let win = items[0];
+    for (let i of items) {
+        if (random < i.chance) { win = i; break; }
+        random -= i.chance;
+    }
+
+    const newInv = [...(currentUser.inventory || []), { ...win, id: Date.now() }];
+    const newScore = currentUser.score - 50;
+
+    const { error } = await supabaseClient.from('profiles').update({ score: newScore, inventory: newInv }).eq('email', currentUser.email);
+    
+    if (!error) {
+        currentUser.score = newScore;
+        currentUser.inventory = newInv;
+        display.innerHTML = `<img src="${GITHUB_BASE}${win.char}.png" style="width:120px;">`;
+        updateUI();
+        showNotify("Выпал " + win.char);
+    }
+}
+
+// ТВОЙ БЛОК: updateUI
+function updateUI() {
+    const balanceEl = document.getElementById('p-balance');
+    if (balanceEl && currentUser) {
+        balanceEl.innerText = currentUser.score;
+    }
+
+    const list = document.getElementById('inventory-list');
+    if (!list) return;
+
+    list.innerHTML = ''; 
+
+    if (currentUser && currentUser.inventory) {
+        currentUser.inventory.forEach(item => {
+            list.innerHTML += `
+                <div class="inv-item">
+                    <img src="${GITHUB_BASE}${item.char}.png">
+                    <p>${item.char}</p>
+                    <button onclick="requestWithdraw(${item.id})">ВЫВОД</button>
+                </div>`;
+        });
+    }
+}
+
+// ТВОЙ БЛОК: requestWithdraw
+async function requestWithdraw(id) {
+    const nick = prompt("Твой ник в Roblox:");
+    if (!nick) return;
+
+    const item = currentUser.inventory.find(i => i.id === id);
+    if (!item) return;
+
+    const text = `💰 ВЫВОД: ${currentUser.email} | Ник: ${nick} | Предмет: ${item.char}`;
+
+    await fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendMessage?chat_id=${TG_CHAT_ID}&text=${encodeURIComponent(text)}`);
+    
+    const upd = currentUser.inventory.filter(i => i.id !== id);
+    const { error } = await supabaseClient.from('profiles').update({ inventory: upd }).eq('email', currentUser.email);
+    
+    if (!error) {
+        currentUser.inventory = upd;
+        updateUI();
+        showNotify("Заявка у админа!");
+    } else {
+        showNotify("Ошибка при выводе!");
+    }
+}
+
+async function sendOTP() {
+    generatedOTP = Math.floor(1000 + Math.random() * 9000);
+    const email = document.getElementById('user_email').value;
+    if(!email) return showNotify("Введи Email!");
+    
+    emailjs.send('service_j9ls8lo', 'template_ebxnpr6', {to_email: email, passcode: generatedOTP})
+    .then(() => {
+        showNotify("Код отправлен!");
+        document.getElementById('step-form').style.display = 'none';
+        document.getElementById('step-code').style.display = 'block';
+    });
+}
+
+async function register() {
+    if (document.getElementById('otp_input').value == generatedOTP) {
+        const email = document.getElementById('user_email').value;
+        const pass = document.getElementById('user_password').value;
+        const { data } = await supabaseClient.from('profiles').insert([{ email, password: pass, score: 100, inventory: [] }]).select().single();
+        if (data) loginSuccess(data);
+    } else showNotify("Неверный код!");
+}
+
+function switchTab(t) {
+    document.querySelectorAll('.tab').forEach(x => x.style.display = 'none');
+    const target = document.getElementById('tab-' + t);
+    if (target) target.style.display = 'block';
+}
+
+function logout() { localStorage.clear(); location.reload(); }
+
+window.onload = async () => {
+    const saved = localStorage.getItem('game_user');
+    if (saved) {
+        const u = JSON.parse(saved);
+        const { data } = await supabaseClient.from('profiles').select('*').eq('email', u.email).single();
+        if (data) loginSuccess(data);
+    }
+};
 function showAuth(mode) {
     const choice = document.getElementById('step-choice');
     const form = document.getElementById('step-form');
