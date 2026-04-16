@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Magic Cases</title>
+    <title>Magic Cases | LIVE</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -13,34 +13,38 @@
         <div class="live-status">
             <div class="live-title">LIVE</div>
             <div class="live-title">DROPS</div>
-            <div class="live-indicator">
-                <div class="dot"></div> ЭФИР
+            <div class="live-indicator"><div class="dot"></div> ЭФИР</div>
+        </div>
+        <div class="drop-tape" id="global-live-feed"></div>
+    </div>
+
+    <div id="auth-screen" class="full-screen">
+        <div class="auth-card">
+            <div class="auth-form">
+                <h2 style="text-align:center; color:#00d4ff; margin-bottom:20px;">ВХОД</h2>
+                <input type="text" id="login-username" placeholder="Ваш никнейм">
+                <button class="neon-btn" onclick="simpleLogin()">ВОЙТИ</button>
             </div>
         </div>
-        <div class="drop-tape" id="global-live-feed">
-            </div>
     </div>
 
     <div id="game-interface" style="display:none;">
-        
-        <div id="page-cases" class="page active">
-            <div id="cases-grid"></div>
-        </div>
+        <div id="page-cases" class="page active"><div id="cases-grid"></div></div>
 
         <div id="page-opening" class="page">
             <div class="roulette-wrapper">
                 <div class="selector"></div>
                 <div class="tape" id="roulette-tape"></div>
             </div>
-            <div id="win-display" style="display:none;">
-                <h2 id="win-name-text">ВЫ ВЫБИЛИ!</h2>
-                <button class="neon-btn" style="width:200px; margin-top:20px;" onclick="navTo('cases')">НАЗАД К КЕЙСАМ</button>
+            <div id="win-display" style="display:none; text-align:center;">
+                <h2 id="win-name-text" style="color:#00d4ff;"></h2>
+                <button class="neon-btn" style="width:200px; margin-top:20px;" onclick="navTo('cases')">ЗАКРЫТЬ</button>
             </div>
         </div>
 
         <div id="page-profile" class="page">
             <h2 id="p-username">ПРОФИЛЬ</h2>
-            <p style="color:#2ecc71; font-size:20px; margin: 10px 0;">БАЛАНС: <span id="p-balance">0</span>$</p>
+            <p style="color:#2ecc71; font-size:20px; margin:10px 0;">БАЛАНС: <span id="p-balance">0</span>$</p>
             <div id="inventory-list"></div>
         </div>
 
