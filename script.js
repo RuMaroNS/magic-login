@@ -70,7 +70,7 @@ async function login() {
 async function register() {
     const user = document.getElementById('user_name').value.trim();
     const pass = document.getElementById('user_password').value;
-    const { data, error } = await supabaseClient.from('profiles').insert([{ username: user, password: pass, score: 50, inventory: [] }]).select().single();
+    const { data, error } = await supabaseClient.from('profiles').insert([{ username: user, password: pass, score: 120, inventory: [] }]).select().single();
     if (error) return showNotify("Ник занят!");
     login();
 }
