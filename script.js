@@ -53,13 +53,18 @@ async function register() {
     if (!user || !pass) return showNotify("Поля не могут быть пустыми!");
     if (pass.length < 8) return showNotify("Пароль должен быть от 8 символов!");
 
+    // score: 50 — это стартовый капитал, здесь НЕТ комиссий
     const { data, error } = await supabaseClient.from('profiles').insert([
         { username: user, password: pass, score: 50, inventory: [] }
     ]).select().single();
 
-    if (error) return showNotify("Никнейм уже занят или ошибка БД!");
-    showNotify("Регистрация успешна!");
-    login();
+    if (error) {
+        console.error(error);
+        return showNotify("Никнейм уже занят!");
+    }
+    
+    showNotify("Аккаунт создан! +50 монет.");
+    login(); // После рега сразу входим
 }
 
 async function login() {
@@ -159,11 +164,13 @@ async function openRoulette(caseId) {
 // --- ПРОДАЖА ПРЕДМЕТА ---
 async function sellItem(itemId, charName) {
     const { data: itemData } = await supabaseClient.from('items_meta').select('price').eq('name', charName).single();
-    if (!itemData) return showNotify("Цена не найдена!");
+    if (!itemData) return showNotify("Цена предмета не найдена!");
 
-    const sellPrice = Math.floor(itemData.price * (1 - SELL_COMMISSION));
+    // Вычисляем сколько получит игрок: Цена * 0.8 (если комиссия 20%)
+    const moneyToReceive = Math.floor(itemData.price * (1 - SELL_COMMISSION));
+    
     const updatedInv = currentUser.inventory.filter(i => i.id !== itemId);
-    const newScore = currentUser.score + sellPrice;
+    const newScore = currentUser.score + moneyToReceive;
 
     const { error } = await supabaseClient.from('profiles').update({
         inventory: updatedInv,
@@ -174,7 +181,7 @@ async function sellItem(itemId, charName) {
         currentUser.inventory = updatedInv;
         currentUser.score = newScore;
         renderProfile();
-        showNotify(`Продано за ${sellPrice}$ (комиссия 20%)`);
+        showNotify(`Продано! Вы получили ${moneyToReceive}$`);
     }
 }
 
@@ -187,9 +194,12 @@ function navTo(pageId) {
 }
 
 async function renderProfile() {
-    await syncFromDB();
-    document.getElementById('p-balance').innerText = currentUser.score;
-    document.getElementById('inventory-list').innerHTML = (currentUser.inventory || []).map(i => `
+    await syncFromDB(); 
+    // Просто выводим число из базы, БЕЗ математики
+    document.getElementById('p-balance').innerText = currentUser.score; 
+    
+    const invList = document.getElementById('inventory-list');
+    invList.innerHTML = (currentUser.inventory || []).map(i => `
         <div class="inv-item">
             <img src="${GITHUB_BASE}${i.char}.png">
             <p>${i.char}</p>
