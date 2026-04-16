@@ -7,7 +7,8 @@ const TG_CHAT_ID = '6176762600';
 
 let currentUser = null;
 const SELL_COMMISSION = 0.20;
-let isSpinning = false; // КУЛДАУН
+let isSpinning = false;
+let liveDrops = [];
 
 // Создаем один общий канал для всех
 const liveChannel = supabaseClient.channel('live-drops');
@@ -37,7 +38,7 @@ function initGlobalRealtime() {
     liveChannel
     .on('broadcast', { event: 'new-drop' }, (payload) => {
         // Когда кто-то другой выбил предмет, добавляем его в лайв-борд
-        addToLiveBoard(payload.payload.user, payload.payload.item);
+        addToLive(win.name, currentUser.email);
     })
     .subscribe();
 }
@@ -85,67 +86,56 @@ function enterGame() {
 }
 
 async function openRoulette(caseId) {
-    if (isSpinning) return; // Если крутим — игнорим нажатие
-    
-    // Получаем данные кейса (замени на свою логику получения cData)
-    const { data: cData } = await supabaseClient.from('cases_meta').select('*').eq('id', caseId).single();
-    
-    if (currentUser.score < cData.price) {
-        showNotify("Недостаточно баланса!");
-        return;
-    }
+    if (isSpinning) return; // КУЛДАУН
 
-    isSpinning = true; // Блокируем кнопку
-    
-    // Переходим на экран открытия
+    const { data: cData } = await supabaseClient.from('cases_meta').select('*').eq('id', caseId).single();
+    if (currentUser.score < cData.price) return showNotify("Недостаточно баланса!");
+
+    isSpinning = true;
+    currentUser.score -= cData.price;
+    await supabaseClient.from('profiles').update({ score: currentUser.score }).eq('id', currentUser.id);
+
     navTo('opening');
-    
     const tape = document.getElementById('roulette-tape');
-    tape.style.transition = 'none'; // Сброс анимации
+    tape.style.transition = 'none';
     tape.style.transform = 'translateX(0)';
-    
-    // ГЕНЕРАЦИЯ БЕСКОНЕЧНОЙ ЛЕНТЫ
+
+    // БЕСКОНЕЧНАЯ ЛЕНТА
     let tapeHTML = '';
-    const itemsCount = 150; // Генерим 150 предметов, чтобы лента была очень длинной
-    for (let i = 0; i < itemsCount; i++) {
-        // Берем предмет из кейса по кругу (0, 1, 2, 0, 1, 2...)
+    for (let i = 0; i < 150; i++) {
         const item = cData.loot[i % cData.loot.length];
         tapeHTML += `<div class="roulette-item"><img src="${GITHUB_BASE}${item.name}.png"></div>`;
     }
     tape.innerHTML = tapeHTML;
 
-    // ОПРЕДЕЛЯЕМ ВЫИГРЫШ
-    // Пусть выигрышный предмет будет на 130-й позиции (далеко в конце ленты)
-    const winIndex = 130; 
+    const winIndex = 130; // Выигрышный слот в конце ленты
     const win = cData.loot[Math.floor(Math.random() * cData.loot.length)];
-    
-    // Подменяем картинку на 130-й позиции на реальный выигрыш
-    const itemsNodes = tape.querySelectorAll('.roulette-item');
-    itemsNodes[winIndex].innerHTML = `<img src="${GITHUB_BASE}${win.name}.png">`;
+    tape.querySelectorAll('.roulette-item')[winIndex].innerHTML = `<img src="${GITHUB_BASE}${win.name}.png">`;
 
-    // ЗАПУСК КРУТИЛКИ
     setTimeout(() => {
-        const itemWidth = 130; // Ширина одного айтема из CSS
+        const itemWidth = 140; // Ширина айтема из CSS
         const wrapperWidth = document.querySelector('.roulette-wrapper').offsetWidth;
-        
-        // Считаем сдвиг: (индекс * ширина) - (половина экрана) + (половина айтема для центра)
         const finalShift = (winIndex * itemWidth) - (wrapperWidth / 2) + (itemWidth / 2);
         
         tape.style.transition = 'transform 6s cubic-bezier(0.1, 0, 0.1, 1)';
         tape.style.transform = `translateX(-${finalShift}px)`;
     }, 50);
 
-    // КОНЕЦ КРУТИЛКИ
     setTimeout(async () => {
-        // Тут твоя логика сохранения предмета в БД...
-        
+        // Добавляем в инвентарь (твой старый код...)
+        const newInv = [...(currentUser.inventory || []), { char: win.name, id: Date.now() }];
+        await supabaseClient.from('profiles').update({ inventory: newInv }).eq('id', currentUser.id);
+        currentUser.inventory = newInv;
+
+        // КЛЮЧЕВОЙ МОМЕНТ: Добавляем в LIVE
+        addToLive(win.name, currentUser.email);
+
         // Показываем окно выигрыша
-        const winDisplay = document.getElementById('win-display');
-        winDisplay.style.display = 'block';
+        document.getElementById('win-display').style.display = 'block';
         document.getElementById('win-name-text').innerText = `ВЫПАЛО: ${win.name}`;
         
-        showNotify(`Поздравляем! Вы выбили ${win.name}`);
-        isSpinning = false; // Разблокируем кнопку
+        showNotify(`Вы выбили: ${win.name}`);
+        isSpinning = false; // Снимаем блок
     }, 6500);
 }
 
@@ -190,6 +180,20 @@ async function renderCases() {
         </div>`).join('');
 }
 
+function renderLiveHeader() {
+    const container = document.querySelector('.drop-tape');
+    if (!container) return;
+    container.innerHTML = liveDrops.map(d => `
+        <div class="drop-card">
+            <img src="${GITHUB_BASE}${d.name}.png">
+            <div class="drop-info">
+                <span class="drop-user">${d.email.split('@')[0]}</span>
+                <span class="drop-item">${d.name}</span>
+            </div>
+        </div>
+    `).join('');
+}
+
 async function renderProfile() {
     const { data } = await supabaseClient.from('profiles').select('*').eq('id', currentUser.id).single();
     if (data) currentUser = data;
@@ -212,13 +216,10 @@ async function renderProfile() {
         </div>`).reverse().join('');
 }
 
-function addToLiveBoard(user, item) {
-    const board = document.getElementById('global-live-feed');
-    const card = document.createElement('div');
-    card.className = 'drop-card';
-    card.innerHTML = `<img src="${GITHUB_BASE}${item}.png"><div><div style="font-size:10px;color:#5a5a7a">${user}</div><div style="font-size:12px">${item}</div></div>`;
-    board.prepend(card);
-    if (board.children.length > 15) board.lastElementChild.remove();
+function addToLive(itemName, userEmail) {
+    liveDrops.unshift({ name: itemName, email: userEmail });
+    if (liveDrops.length > 12) liveDrops.pop(); // Ограничиваем длину
+    renderLiveHeader();
 }
 
 function switchAuthMode(mode) {
