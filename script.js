@@ -37,10 +37,17 @@ function showNotify(text) {
 function validateFields() {
     const email = document.getElementById('user_email').value.trim();
     const pass = document.getElementById('user_password').value.trim();
+    
     if (!email || !pass) {
-        showNotify("Email и пароль не могут быть пустыми!");
+        showNotify("ЗАПОЛНИ ВСЕ ПОЛЯ!");
         return false;
     }
+    
+    if (pass.length < 8) {
+        showNotify("ПАРОЛЬ ДОЛЖЕН БЫТЬ ОТ 8 СИМВОЛОВ!");
+        return false;
+    }
+    
     return { email, pass };
 }
 
@@ -82,18 +89,41 @@ async function punishUser(email) {
     logout();
 }
 
-// LiveBoard Логика
+function addToLiveBoard(username, itemName) {
+    const board = document.getElementById('live-text');
+    if (!board) return;
+
+    // Создаем новый блок для конкретного выпадения
+    const dropBlock = document.createElement('div');
+    dropBlock.className = 'drop-entry';
+    dropBlock.innerHTML = `
+        <span class="drop-user">${username}</span>: 
+        <span class="drop-item">${itemName}</span>
+    `;
+
+    // Добавляем в начало ленты
+    board.prepend(dropBlock);
+
+    // Ограничиваем количество блоков в ленте (например, максимум 10), чтобы не лагало
+    if (board.childNodes.length > 10) {
+        board.removeChild(board.lastChild);
+    }
+}
+
+// Обновленная логика LiveBoard (добавление новых блоков, а не замена)
 function initRealtime() {
     supabaseClient
-        .channel('schema-db-changes')
+        .channel('live-drops')
         .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles' }, payload => {
             const newInv = payload.new.inventory;
             const oldInv = payload.old.inventory;
+            
+            // Проверяем, что инвентарь увеличился (значит был дроп)
             if (newInv && newInv.length > (oldInv ? oldInv.length : 0)) {
                 const lastItem = newInv[newInv.length - 1];
-                const userEmail = payload.new.email.split('@')[0];
-                document.getElementById('live-text').innerHTML = 
-                    `<span style="color:#00d4ff">${userEmail}</span> выбил <span style="color:#2ecc71">${lastItem.char}</span>!`;
+                const userEmail = payload.new.email.split('@')[0]; // Ник из почты
+                
+                addToLiveBoard(userEmail, lastItem.char);
             }
         })
         .subscribe();
