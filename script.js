@@ -11,13 +11,18 @@ const SELL_COMMISSION = 0.20;
 
 window.onload = checkCookies;
 
-// --- АВТОРИЗАЦИЯ ---
-function checkCookies() {
-    if (!localStorage.getItem('cookies_accepted')) {
-        document.getElementById('cookie-banner').style.display = 'block';
-    } else {
-        autoLogin();
+function acceptCookies() {
+    // Скрываем баннер визуально
+    const banner = document.getElementById('cookie-banner');
+    if (banner) {
+        banner.style.display = 'none';
     }
+    
+    // Записываем в память, чтобы больше не показывалось
+    localStorage.setItem('cookies_accepted', 'true');
+    
+    // Сразу пробуем войти, если данные есть
+    autoLogin();
 }
 
 async function autoLogin() {
