@@ -7,7 +7,6 @@ const TG_CHAT_ID = '6469643444';
 
 let currentUser = null;
 let isSpinning = false; 
-const SELL_COMMISSION = 0.20; 
 
 const liveChannel = supabaseClient.channel('live-drops');
 
@@ -16,7 +15,7 @@ window.onload = () => {
     initGlobalBroadcast();
 };
 
-// --- УВЕДОМЛЕНИЯ ---
+// --- УВЕДОМЛЕНИЯ (ПОД ТВОЙ ДИЗАЙН) ---
 function showNotify(text) {
     const container = document.getElementById('notification-container');
     const n = document.createElement('div');
@@ -52,25 +51,36 @@ function enterGame() {
     navTo('cases');
 }
 
-// --- БЕСКОНЕЧНАЯ РУЛЕТКА ---
+// --- ФУНКЦИЯ ОТКРЫТИЯ (ФИКС) ---
 async function openRoulette(caseId) {
     if (isSpinning) return;
 
-    const { data: cData } = await supabaseClient.from('cases_meta').select('*').eq('id', caseId).single();
-    if (currentUser.score < cData.price) return showNotify("Мало монет!");
+    // 1. Получаем инфу о кейсе
+    const { data: cData, error } = await supabaseClient.from('cases_meta').select('*').eq('id', caseId).single();
+    if (error || !cData) return showNotify("Ошибка кейса!");
+
+    // 2. Проверка баланса
+    if (currentUser.score < cData.price) return showNotify("Недостаточно монет!");
 
     isSpinning = true;
+    
+    // Снимаем деньги сразу
     currentUser.score -= cData.price;
     await supabaseClient.from('profiles').update({ score: currentUser.score }).eq('id', currentUser.id);
+    document.getElementById('p-balance').innerText = currentUser.score;
 
+    // Переходим на страницу открытия
     navTo('opening');
+    document.getElementById('win-display').style.display = 'none';
+
     const tape = document.getElementById('roulette-tape');
     tape.style.transition = 'none';
     tape.style.transform = 'translateX(0)';
     
+    // Генерируем ленту (100+ предметов для красоты)
     let tapeHTML = '';
-    const itemsCount = 150; 
-    const winIndex = 135; 
+    const itemsCount = 100; 
+    const winIndex = 85; // На каком предмете остановимся
 
     for(let i = 0; i < itemsCount; i++) {
         const rand = cData.loot[Math.floor(Math.random() * cData.loot.length)];
@@ -78,38 +88,46 @@ async function openRoulette(caseId) {
     }
     tape.innerHTML = tapeHTML;
 
+    // Определяем реальный выигрыш
     const win = cData.loot[Math.floor(Math.random() * cData.loot.length)];
-    tape.querySelectorAll('.roulette-item')[winIndex].innerHTML = `<img src="${GITHUB_BASE}${win.name}.png">`;
+    // Подменяем картинку в целевой ячейке
+    const winSlot = tape.querySelectorAll('.roulette-item')[winIndex];
+    winSlot.innerHTML = `<img src="${GITHUB_BASE}${win.name}.png">`;
 
+    // Запускаем анимацию
     setTimeout(() => {
-        const itemWidth = 110; // min-width 100 + margin 10
+        const itemWidth = 130; // Из твоего CSS (min-width)
         const wrapperWidth = document.querySelector('.roulette-wrapper').offsetWidth;
         const finalShift = (winIndex * itemWidth) - (wrapperWidth / 2) + (itemWidth / 2);
         
-        tape.style.transition = 'transform 6s cubic-bezier(0.1, 0, 0.1, 1)';
+        tape.style.transition = 'transform 7s cubic-bezier(0.1, 0, 0.1, 1)';
         tape.style.transform = `translateX(-${finalShift}px)`;
-    }, 50);
+    }, 100);
 
+    // Финал прокрутки
     setTimeout(async () => {
+        // Сохраняем в базу
         const newInv = [...(currentUser.inventory || []), { char: win.name, id: Date.now(), status: 'active' }];
         await supabaseClient.from('profiles').update({ inventory: newInv }).eq('id', currentUser.id);
         currentUser.inventory = newInv;
         
-        addToLiveBoard(currentUser.username, win.name);
+        // Broadcast в ленту
         liveChannel.send({
             type: 'broadcast',
             event: 'new-drop',
             payload: { user: currentUser.username, item: win.name }
         });
         
+        // Показываем кнопку "Забрать" и текст
         document.getElementById('win-display').style.display = 'block';
         document.getElementById('win-name-text').innerText = `ВЫПАЛО: ${win.name}`;
+        
         if (typeof confetti === 'function') confetti();
         isSpinning = false;
-    }, 6500);
+    }, 7200);
 }
 
-// --- ПОЛНЫЙ РЕНДЕР ИНВЕНТАРЯ ---
+// --- ОСТАЛЬНАЯ ЛОГИКА ---
 async function renderProfile() {
     const { data } = await supabaseClient.from('profiles').select('*').eq('id', currentUser.id).single();
     if (data) currentUser = data;
@@ -121,15 +139,14 @@ async function renderProfile() {
     invList.innerHTML = ''; 
 
     if (!currentUser.inventory || currentUser.inventory.length === 0) {
-        invList.innerHTML = '<div style="color:#5a5a7a; padding:40px; text-align:center; width:100%;">ИНВЕНТАРЬ ПУСТ</div>';
+        invList.innerHTML = '<div style="grid-column: 1/-1; text-align:center; padding:50px; color:#5a5a7a;">ИНВЕНТАРЬ ПУСТ</div>';
         return;
     }
 
     currentUser.inventory.slice().reverse().forEach(item => {
-        const itemCard = document.createElement('div');
-        itemCard.className = `inv-item ${item.status === 'processing' ? 'processing' : ''}`;
-        
-        itemCard.innerHTML = `
+        const card = document.createElement('div');
+        card.className = `inv-item ${item.status === 'processing' ? 'processing' : ''}`;
+        card.innerHTML = `
             ${item.status === 'processing' ? '<div class="overlay">В ОБРАБОТКЕ</div>' : ''}
             <img src="${GITHUB_BASE}${item.char}.png">
             <h3>${item.char}</h3>
@@ -138,65 +155,80 @@ async function renderProfile() {
                 <button class="sell-btn" onclick="sellItem('${item.id}', '${item.char}')">ПРОДАТЬ</button>
             </div>
         `;
-        invList.appendChild(itemCard);
+        invList.appendChild(card);
     });
 }
 
 async function renderCases() {
     const { data: cases } = await supabaseClient.from('cases_meta').select('*');
+    if (!cases) return;
     document.getElementById('cases-grid').innerHTML = cases.map(c => `
         <div class="case-card">
             <img src="${GITHUB_BASE}${c.image_url}">
             <h3>${c.name.toUpperCase()}</h3>
-            <p class="case-price">$${c.price}</p>
+            <p class="case-price">${c.price}$</p>
             <button class="neon-btn" onclick="openRoulette(${c.id})">ОТКРЫТЬ</button>
         </div>`).join('');
 }
 
 function navTo(pageId) {
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-    document.getElementById('page-' + pageId).classList.add('active');
+    document.querySelectorAll('.bottom-navbar button').forEach(b => b.classList.remove('active'));
+    
+    const targetPage = document.getElementById('page-' + pageId);
+    if (targetPage) targetPage.classList.add('active');
+    
+    const targetBtn = document.getElementById('nav-' + pageId);
+    if (targetBtn) targetBtn.classList.add('active');
+
     if(pageId === 'profile') renderProfile();
     if(pageId === 'cases') renderCases();
 }
 
 async function sellItem(itemId, charName) {
     const { data: itemData } = await supabaseClient.from('items_meta').select('price').eq('name', charName).single();
-    const sellPrice = Math.floor(itemData.price * (1 - SELL_COMMISSION));
+    const sellPrice = Math.floor(itemData.price * 0.8);
     
     currentUser.inventory = currentUser.inventory.filter(i => String(i.id) !== String(itemId));
     currentUser.score += sellPrice;
     
     await supabaseClient.from('profiles').update({ inventory: currentUser.inventory, score: currentUser.score }).eq('id', currentUser.id);
     renderProfile();
-    showNotify(`+$${sellPrice}`);
+    showNotify(`Продано за $${sellPrice}`);
 }
 
 async function withdrawItem(id) {
-    const nick = prompt("Ник в Roblox:");
+    const nick = prompt("Твой ник в Roblox:");
     if (!nick) return;
     const item = currentUser.inventory.find(x => String(x.id) === String(id));
     item.status = 'processing';
     await supabaseClient.from('profiles').update({ inventory: currentUser.inventory }).eq('id', currentUser.id);
     renderProfile();
-    showNotify("Заявка отправлена!");
-    fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendMessage?chat_id=${TG_CHAT_ID}&text=${encodeURIComponent('Вывод: ' + nick + '\nПредмет: ' + item.char)}`);
+    showNotify("Заявка отправлена модератору!");
+    fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendMessage?chat_id=${TG_CHAT_ID}&text=${encodeURIComponent('КЛИЕНТ: ' + nick + '\nПРЕДМЕТ: ' + item.char)}`);
 }
 
 function addToLiveBoard(username, itemName) {
     const board = document.getElementById('global-live-feed');
+    if (!board) return;
     const card = document.createElement('div');
     card.className = 'drop-card';
-    card.innerHTML = `<img src="${GITHUB_BASE}${itemName}.png"><div class="drop-info"><span class="drop-nick">${username}</span><span class="drop-item">${itemName}</span></div>`;
+    card.innerHTML = `
+        <img src="${GITHUB_BASE}${itemName}.png">
+        <div class="drop-info">
+            <span class="drop-nick">${username}</span>
+            <span class="drop-item">${itemName}</span>
+        </div>
+    `;
     board.prepend(card);
-    if (board.childNodes.length > 20) board.removeChild(board.lastChild);
+    if (board.childNodes.length > 15) board.removeChild(board.lastChild);
 }
 
 function switchAuthMode(mode) {
     document.getElementById('btn-login-action').style.display = mode === 'login' ? 'block' : 'none';
     document.getElementById('btn-reg-action').style.display = mode === 'reg' ? 'block' : 'none';
-    document.getElementById('tab-btn-login').className = mode === 'login' ? 'active' : '';
-    document.getElementById('tab-btn-reg').className = mode === 'reg' ? 'active' : '';
+    document.getElementById('tab-btn-login').classList.toggle('active', mode === 'login');
+    document.getElementById('tab-btn-reg').classList.toggle('active', mode === 'reg');
 }
 
 async function login() {
@@ -207,15 +239,15 @@ async function login() {
         currentUser = data;
         localStorage.setItem('game_user_id', data.id);
         enterGame();
-        showNotify(`Привет, ${user}!`);
-    } else showNotify("Ошибка входа!");
+    } else showNotify("Неверный логин или пароль!");
 }
 
 async function register() {
     const user = document.getElementById('user_name').value.trim();
     const pass = document.getElementById('user_password').value;
-    const { data, error } = await supabaseClient.from('profiles').insert([{ username: user, password: pass, score: 50, inventory: [] }]).select().single();
-    if (error) return showNotify("Ник занят!");
+    if (user.length < 3) return showNotify("Короткий ник!");
+    const { data, error } = await supabaseClient.from('profiles').insert([{ username: user, password: pass, score: 100, inventory: [] }]).select().single();
+    if (error) return showNotify("Ник уже занят!");
     currentUser = data;
     localStorage.setItem('game_user_id', data.id);
     enterGame();
