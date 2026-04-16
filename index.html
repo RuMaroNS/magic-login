@@ -13,7 +13,9 @@
         <div class="live-status">
             <div class="live-title">LIVE</div>
             <div class="live-title">DROPS</div>
-            <div class="live-indicator"><div class="dot"></div> ЭФИР</div>
+            <div class="live-indicator">
+                <div class="dot"></div> ЭФИР
+            </div>
         </div>
         <div class="drop-tape" id="global-live-feed"></div>
     </div>
@@ -21,15 +23,18 @@
     <div id="auth-screen" class="full-screen">
         <div class="auth-card">
             <div class="auth-form">
-                <h2 style="text-align:center; color:#00d4ff; margin-bottom:20px;">ВХОД</h2>
+                <h2 style="text-align:center; color:#00d4ff; margin-bottom:20px;">ВХОД В СИСТЕМУ</h2>
                 <input type="text" id="login-username" placeholder="Ваш никнейм">
-                <button class="neon-btn" onclick="simpleLogin()">ВОЙТИ</button>
+                <button class="neon-btn" onclick="simpleLogin()">НАЧАТЬ ИГРУ</button>
             </div>
         </div>
     </div>
 
     <div id="game-interface" style="display:none;">
-        <div id="page-cases" class="page active"><div id="cases-grid"></div></div>
+        
+        <div id="page-cases" class="page active">
+            <div id="cases-grid"></div>
+        </div>
 
         <div id="page-opening" class="page">
             <div class="roulette-wrapper">
@@ -37,21 +42,23 @@
                 <div class="tape" id="roulette-tape"></div>
             </div>
             <div id="win-display" style="display:none; text-align:center;">
-                <h2 id="win-name-text" style="color:#00d4ff;"></h2>
-                <button class="neon-btn" style="width:200px; margin-top:20px;" onclick="navTo('cases')">ЗАКРЫТЬ</button>
+                <h2 id="win-name-text" style="color:#00d4ff; font-size: 24px;"></h2>
+                <button class="neon-btn" style="width:220px; margin-top:20px;" onclick="navTo('cases')">К КЕЙСАМ</button>
             </div>
         </div>
 
         <div id="page-profile" class="page">
-            <h2 id="p-username">ПРОФИЛЬ</h2>
-            <p style="color:#2ecc71; font-size:20px; margin:10px 0;">БАЛАНС: <span id="p-balance">0</span>$</p>
+            <h2 id="p-username" style="font-size: 28px; color: #00d4ff;"></h2>
+            <p style="color:#2ecc71; font-size:22px; margin:15px 0; font-weight: bold;">
+                БАЛАНС: <span id="p-balance">0</span>$
+            </p>
             <div id="inventory-list"></div>
         </div>
 
         <nav class="bottom-navbar">
-            <button onclick="navTo('cases')">КЕЙСЫ</button>
-            <button onclick="navTo('profile')">ПРОФИЛЬ</button>
-            <button onclick="location.reload()" style="color:#ff4444;">ВЫХОД</button>
+            <button onclick="navTo('cases')">МАГАЗИН</button>
+            <button onclick="navTo('profile')">ИНВЕНТАРЬ</button>
+            <button onclick="location.reload()" style="color:#ff4444;">ВЫЙТИ</button>
         </nav>
     </div>
 
