@@ -6,7 +6,6 @@
     <title>BRAINROT CASES | LIVE</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
 </head>
 <body>
 
@@ -23,52 +22,43 @@
     <div id="auth-screen" class="full-screen">
         <div class="auth-card">
             <h1 class="logo">BRAINROT</h1>
-            <div id="auth-steps">
-                <div id="step-choice">
-                    <button class="main-btn" onclick="showAuth('reg')">СОЗДАТЬ АККАУНТ</button>
-                    <button class="main-btn btn-outline" onclick="showAuth('login')">ВОЙТИ</button>
-                </div>
-                <div id="step-form" style="display:none;">
-                    <input type="email" id="user_email" placeholder="Email">
-                    <input type="password" id="user_password" placeholder="Пароль (8+ символов)">
-                    <button id="btn-reg" class="main-btn" onclick="sendOTP()" style="display:none;">ПОЛУЧИТЬ КОД</button>
-                    <button id="btn-login" class="main-btn" onclick="login()" style="display:none;">ВОЙТИ</button>
-                    <p class="back-link" onclick="showAuth('choice')">назад</p>
-                </div>
-                <div id="step-code" style="display:none;">
-                    <input type="number" id="otp_input" placeholder="Код подтверждения">
-                    <button class="main-btn" onclick="register()">ПОДТВЕРДИТЬ</button>
-                </div>
+            <div id="step-choice">
+                <button class="main-btn" onclick="showAuth('reg')">РЕГИСТРАЦИЯ</button>
+                <button class="main-btn btn-outline" onclick="showAuth('login')">ВХОД</button>
+            </div>
+            <div id="step-form" style="display:none;">
+                <input type="email" id="user_email" placeholder="Email">
+                <input type="password" id="user_password" placeholder="Пароль (8+ символов)">
+                <button id="btn-login" class="main-btn" onclick="login()">ВОЙТИ</button>
+                <p class="back-link" onclick="showAuth('choice')">назад</p>
             </div>
         </div>
     </div>
 
     <main id="game-interface" style="display:none;">
-        
         <section id="page-cases" class="page active">
-            <h2 class="section-title">ВЫБЕРИ КЕЙС</h2>
+            <h2 class="section-title">КЕЙСЫ</h2>
             <div id="cases-grid"></div>
         </section>
 
         <section id="page-opening" class="page">
-            <div class="opening-container">
-                <div id="case-render">🎁</div>
-                <h3 id="win-name">Крутим...</h3>
-                <button class="main-btn" onclick="navTo('cases')" id="btn-back-after" style="display:none;">К КЕЙСАМ</button>
+            <div class="roulette-wrapper">
+                <div class="selector"></div>
+                <div id="roulette-tape" class="tape"></div>
+            </div>
+            <div id="win-display" style="display:none; text-align:center; margin-top:20px;">
+                <h2 id="win-name-text"></h2>
+                <button class="main-btn" onclick="navTo('cases')">ЗАБРАТЬ ДРОП</button>
             </div>
         </section>
 
         <section id="page-profile" class="page">
-            <div class="profile-header">
-                <div class="balance-view">
-                    <p>ВАШ БАЛАНС</p>
-                    <h2 id="p-balance">0$</h2>
-                </div>
+            <div class="balance-view">
+                <p>БАЛАНС</p>
+                <h2 id="p-balance">0$</h2>
             </div>
-            
             <h3 class="sub-title">ИНВЕНТАРЬ</h3>
             <div id="inventory-list"></div>
-
             <h3 class="sub-title">ИСТОРИЯ ВЫВОДОВ</h3>
             <div id="withdraw-history"></div>
         </section>
