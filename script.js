@@ -192,6 +192,7 @@ async function renderCases() {
 async function renderProfile() {
     await syncFromDB();
     document.getElementById('p-balance').innerText = currentUser.score;
+    
     document.getElementById('inventory-list').innerHTML = (currentUser.inventory || []).map(i => {
         const isP = i.status === 'processing';
         return `
@@ -199,9 +200,9 @@ async function renderProfile() {
             ${isP ? '<div class="overlay">В ОБРАБОТКЕ</div>' : ''}
             <img src="${GITHUB_BASE}${i.char}.png">
             <p>${i.char}</p>
-            <div style="display:flex; gap:5px; margin-top:10px;">
+            <div class="inv-btns">
                 <button class="withdraw-btn" ${isP ? 'disabled' : ''} onclick="withdrawItem(${i.id})">ВЫВОД</button>
-                <button class="withdraw-btn" ${isP ? 'disabled' : ''} style="background:${isP ? '#444' : '#e67e22'}" onclick="sellItem(${i.id}, '${i.char}')">ПРОДАТЬ</button>
+                <button class="withdraw-btn sell-btn" ${isP ? 'disabled' : ''} onclick="sellItem(${i.id}, '${i.char}')">ПРОДАТЬ</button>
             </div>
         </div>`;
     }).join('');
