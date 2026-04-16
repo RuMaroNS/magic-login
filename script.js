@@ -8,6 +8,7 @@ const TG_CHAT_ID = '6469643444';
 let currentUser = null;
 const SELL_COMMISSION = 0.20; 
 let isSpinning = false;
+let liveHistory = [];
 
 // Создаем один общий канал для всех
 const liveChannel = supabaseClient.channel('live-drops');
@@ -199,13 +200,38 @@ async function renderProfile() {
         </div>`).reverse().join('');
 }
 
-function addToLiveBoard(user, item) {
-    const board = document.getElementById('global-live-feed');
-    const card = document.createElement('div');
-    card.className = 'drop-card';
-    card.innerHTML = `<img src="${GITHUB_BASE}${item}.png"><div><div style="font-size:10px;color:#5a5a7a">${user}</div><div style="font-size:12px">${item}</div></div>`;
-    board.prepend(card);
-    if (board.children.length > 15) board.lastElementChild.remove();
+function addToLiveBoard(itemName, userEmail) {
+    const liveTape = document.querySelector('.drop-tape');
+    if (!liveTape) return;
+
+    // 1. Создаем объект дропа
+    const newDrop = {
+        name: itemName,
+        email: userEmail.split('@')[0] // Берем только логин до собаки
+    };
+
+    // 2. Добавляем в начало истории
+    liveHistory.unshift(newDrop);
+
+    // 3. Ограничиваем количество элементов в ленте (например, 15)
+    if (liveHistory.length > 15) {
+        liveHistory.pop();
+    }
+
+    // 4. Полная перерисовка ленты
+    // Мы используем map, чтобы создать HTML для каждого элемента из истории
+    liveTape.innerHTML = liveHistory.map(drop => `
+        <div class="drop-card">
+            <img src="${GITHUB_BASE}${drop.name}.png" alt="${drop.name}">
+            <div class="drop-info">
+                <span class="drop-user">${drop.email}</span>
+                <span class="drop-item">${drop.name}</span>
+            </div>
+        </div>
+    `).join('');
+
+    // 5. Небольшой хак для анимации появления (прокрутка в начало)
+    liveTape.scrollLeft = 0;
 }
 
 function switchAuthMode(mode) {
