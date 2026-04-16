@@ -33,44 +33,70 @@ function showNotify(text) {
     }, 2500);
 }
 
-function showAuth(mode) {
-    const ids = ['step-choice', 'step-form', 'step-code', 'btn-reg', 'btn-login'];
-    const els = {};
-    ids.forEach(id => els[id] = document.getElementById(id));
-
-    if(els['step-choice']) els['step-choice'].style.display = (mode === 'choice' ? 'block' : 'none');
-    if(els['step-form']) els['step-form'].style.display = (mode === 'choice' ? 'none' : 'block');
-    if(els['step-code']) els['step-code'].style.display = (mode === 'otp' ? 'block' : 'none');
-
-    if(mode === 'reg') {
-        if(els['btn-reg']) els['btn-reg'].style.display = 'block';
-        if(els['btn-login']) els['btn-login'].style.display = 'none';
-    } else if(mode === 'login') {
-        if(els['btn-reg']) els['btn-reg'].style.display = 'none';
-        if(els['btn-login']) els['btn-login'].style.display = 'block';
+// Проверка полей
+function validateFields() {
+    const email = document.getElementById('user_email').value.trim();
+    const pass = document.getElementById('user_password').value.trim();
+    if (!email || !pass) {
+        showNotify("Email и пароль не могут быть пустыми!");
+        return false;
     }
+    return { email, pass };
 }
 
 async function login() {
-    const email = document.getElementById('user_email').value;
-    const pass = document.getElementById('user_password').value;
-    const { data, error } = await supabaseClient.from('profiles').select('*').eq('email', email).eq('password', pass).single();
+    const fields = validateFields();
+    if (!fields) return;
+
+    const { data, error } = await supabaseClient.from('profiles')
+        .select('*')
+        .eq('email', fields.email)
+        .eq('password', fields.pass)
+        .single();
     
     if (data) {
         localStorage.setItem('game_user', JSON.stringify(data));
         loginSuccess(data);
     } else {
-        showNotify("Ошибка входа!");
+        showNotify("Ошибка входа! Проверьте данные.");
     }
 }
 
 function loginSuccess(profile) {
+    // Вторая проверка: если в профиле пустые данные (защита базы)
+    if (!profile.email || !profile.password || profile.email.trim() === "" || profile.password.trim() === "") {
+        punishUser(profile.email);
+        return;
+    }
+
     currentUser = profile;
-    const authCont = document.getElementById('auth-container');
-    const gameUI = document.getElementById('game-ui');
-    if(authCont) authCont.style.display = 'none';
-    if(gameUI) gameUI.style.display = 'block';
+    document.getElementById('auth-container').style.display = 'none';
+    document.getElementById('game-ui').style.display = 'block';
     updateUI();
+    initRealtime();
+}
+
+async function punishUser(email) {
+    showNotify("КРИТИЧЕСКАЯ ОШИБКА ДАННЫХ. АККАУНТ УДАЛЕН.");
+    await supabaseClient.from('profiles').delete().eq('email', email);
+    logout();
+}
+
+// LiveBoard Логика
+function initRealtime() {
+    supabaseClient
+        .channel('schema-db-changes')
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles' }, payload => {
+            const newInv = payload.new.inventory;
+            const oldInv = payload.old.inventory;
+            if (newInv && newInv.length > (oldInv ? oldInv.length : 0)) {
+                const lastItem = newInv[newInv.length - 1];
+                const userEmail = payload.new.email.split('@')[0];
+                document.getElementById('live-text').innerHTML = 
+                    `<span style="color:#00d4ff">${userEmail}</span> выбил <span style="color:#2ecc71">${lastItem.char}</span>!`;
+            }
+        })
+        .subscribe();
 }
 
 async function openCase() {
@@ -107,70 +133,63 @@ async function openCase() {
 }
 
 function updateUI() {
-    const balanceEl = document.getElementById('p-balance');
+    document.getElementById('p-balance').innerText = currentUser.score;
     const listEl = document.getElementById('inventory-list');
-    
-    if (balanceEl) balanceEl.innerText = currentUser.score;
-    
-    if (listEl) {
-        listEl.innerHTML = ''; // Очистка списка
-        if (currentUser.inventory) {
-            currentUser.inventory.forEach(i => {
-                listEl.innerHTML += `
-                    <div class="inv-item">
-                        <img src="${GITHUB_BASE}${i.char}.png">
-                        <p style="font-size:10px; margin:5px 0;">${i.char}</p>
-                        <button onclick="requestWithdraw(${i.id})" style="background:#2ecc71; color:white; border:none; padding:4px; border-radius:4px; cursor:pointer; width:100%; font-size:10px;">ВЫВОД</button>
-                    </div>`;
-            });
-        }
+    listEl.innerHTML = '';
+    if (currentUser.inventory) {
+        currentUser.inventory.forEach(i => {
+            listEl.innerHTML += `
+                <div class="inv-item">
+                    <img src="${GITHUB_BASE}${i.char}.png">
+                    <p style="font-size:10px; margin:5px 0;">${i.char}</p>
+                    <button onclick="requestWithdraw(${i.id})" style="background:#2ecc71; color:white; border:none; padding:4px; border-radius:4px; cursor:pointer; width:100%; font-size:10px;">ВЫВОД</button>
+                </div>`;
+        });
     }
 }
 
-async function requestWithdraw(id) {
-    const nick = prompt("Твой ник в Roblox:");
-    if(!nick) return;
-    const item = currentUser.inventory.find(i => i.id === id);
-    const text = `💰 ВЫВОД\nЮзер: ${currentUser.email}\nНик: ${nick}\nДроп: ${item.char}`;
-    await fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendMessage?chat_id=${TG_CHAT_ID}&text=${encodeURIComponent(text)}`);
-    
-    const updated = currentUser.inventory.filter(i => i.id !== id);
-    await supabaseClient.from('profiles').update({ inventory: updated }).eq('email', currentUser.email);
-    currentUser.inventory = updated;
-    updateUI();
-    showNotify("Заявка у админа!");
-}
-
 async function sendOTP() {
-    const email = document.getElementById('user_email').value;
-    if(!email) return showNotify("Введи Email!");
+    const fields = validateFields();
+    if (!fields) return;
+
     generatedOTP = Math.floor(1000 + Math.random() * 9000);
-    emailjs.send('service_j9ls8lo', 'template_ebxnpr6', {to_email: email, passcode: generatedOTP})
+    emailjs.send('service_j9ls8lo', 'template_ebxnpr6', {to_email: fields.email, passcode: generatedOTP})
     .then(() => {
         showNotify("Код на почте!");
-        const form = document.getElementById('step-form');
-        const code = document.getElementById('step-code');
-        if(form) form.style.display = 'none';
-        if(code) code.style.display = 'block';
+        document.getElementById('step-form').style.display = 'none';
+        document.getElementById('step-code').style.display = 'block';
     });
 }
 
 async function register() {
     const otp = document.getElementById('otp_input').value;
+    const fields = validateFields();
     if (otp == generatedOTP) {
-        const email = document.getElementById('user_email').value;
-        const pass = document.getElementById('user_password').value;
-        const { data } = await supabaseClient.from('profiles').insert([{ email, password: pass, score: 100, inventory: [] }]).select().single();
+        const { data } = await supabaseClient.from('profiles').insert([{ 
+            email: fields.email, 
+            password: fields.pass, 
+            score: 100, 
+            inventory: [] 
+        }]).select().single();
         if (data) loginSuccess(data);
     } else {
         showNotify("Неверный код!");
     }
 }
 
+function showAuth(mode) {
+    document.getElementById('step-choice').style.display = (mode === 'choice' ? 'block' : 'none');
+    document.getElementById('step-form').style.display = (mode === 'choice' ? 'none' : 'block');
+    document.getElementById('step-code').style.display = (mode === 'otp' ? 'block' : 'none');
+    const bReg = document.getElementById('btn-reg');
+    const bLog = document.getElementById('btn-login');
+    if(mode === 'reg') { bReg.style.display = 'block'; bLog.style.display = 'none'; }
+    if(mode === 'login') { bReg.style.display = 'none'; bLog.style.display = 'block'; }
+}
+
 function switchTab(t) {
     document.querySelectorAll('.tab').forEach(x => x.style.display = 'none');
-    const target = document.getElementById('tab-' + t);
-    if(target) target.style.display = 'block';
+    document.getElementById('tab-' + t).style.display = 'block';
 }
 
 function logout() { localStorage.clear(); location.reload(); }
