@@ -6,11 +6,9 @@ const GITHUB_BASE = "https://raw.githubusercontent.com/RuMaroNs/magic-login/main
 let currentUser = null;
 const SELL_COMMISSION = 0.20; 
 
-// --- ИНИЦИАЛИЗАЦИЯ ПРИ ЗАГРУЗКЕ ---
-window.onload = () => {
-    checkCookies();
-};
+window.onload = checkCookies;
 
+// --- СИСТЕМА ВХОДА ---
 function checkCookies() {
     if (!localStorage.getItem('cookies_accepted')) {
         document.getElementById('cookie-banner').style.display = 'block';
@@ -19,29 +17,17 @@ function checkCookies() {
     }
 }
 
-function acceptCookies() {
-    localStorage.setItem('cookies_accepted', 'true');
-    document.getElementById('cookie-banner').style.display = 'none';
-    autoLogin();
-}
-
 async function autoLogin() {
     const savedId = localStorage.getItem('game_user_id');
     if (savedId) {
-        const { data, error } = await supabaseClient.from('profiles').select('*').eq('id', savedId).single();
-        if (data && !error) {
-            currentUser = data;
-            enterGame();
-        } else {
-            localStorage.removeItem('game_user_id');
-        }
+        const { data } = await supabaseClient.from('profiles').select('*').eq('id', savedId).single();
+        if (data) { currentUser = data; enterGame(); }
     }
 }
 
-// --- ВХОД И РЕГИСТРАЦИЯ (Username + 8 символов) ---
 function switchAuthMode(mode) {
-    document.getElementById('tab-btn-login').classList.toggle('active', mode === 'login');
-    document.getElementById('tab-btn-reg').classList.toggle('active', mode === 'reg');
+    document.getElementById('tab-btn-login').className = (mode === 'login' ? 'active' : '');
+    document.getElementById('tab-btn-reg').className = (mode === 'reg' ? 'active' : '');
     document.getElementById('btn-login-action').style.display = (mode === 'login' ? 'block' : 'none');
     document.getElementById('btn-reg-action').style.display = (mode === 'reg' ? 'block' : 'none');
 }
@@ -49,37 +35,26 @@ function switchAuthMode(mode) {
 async function register() {
     const user = document.getElementById('user_name').value.trim();
     const pass = document.getElementById('user_password').value;
+    if (!user || !pass) return showNotify("Заполни все поля!");
+    if (pass.length < 8) return showNotify("Пароль минимум 8 символов!");
 
-    if (!user || !pass) return showNotify("Поля не могут быть пустыми!");
-    if (pass.length < 8) return showNotify("Пароль должен быть от 8 символов!");
-
-    // score: 50 — это стартовый капитал, здесь НЕТ комиссий
     const { data, error } = await supabaseClient.from('profiles').insert([
         { username: user, password: pass, score: 50, inventory: [] }
     ]).select().single();
 
-    if (error) {
-        console.error(error);
-        return showNotify("Никнейм уже занят!");
-    }
-    
-    showNotify("Аккаунт создан! +50 монет.");
-    login(); // После рега сразу входим
+    if (error) return showNotify("Никнейм занят!");
+    login();
 }
 
 async function login() {
     const user = document.getElementById('user_name').value.trim();
     const pass = document.getElementById('user_password').value;
-    
-    const { data, error } = await supabaseClient.from('profiles').select('*').eq('username', user).eq('password', pass).single();
-
+    const { data } = await supabaseClient.from('profiles').select('*').eq('username', user).eq('password', pass).single();
     if(data) {
         currentUser = data;
         localStorage.setItem('game_user_id', data.id);
         enterGame();
-    } else {
-        showNotify("Неверный ник или пароль!");
-    }
+    } else showNotify("Неверные данные!");
 }
 
 function enterGame() {
@@ -89,36 +64,15 @@ function enterGame() {
     initRealtime();
 }
 
-// --- СИНХРОНИЗАЦИЯ И ЭКОНОМИКА ---
+// --- ИГРОВАЯ ЛОГИКА ---
 async function syncFromDB() {
     const { data } = await supabaseClient.from('profiles').select('*').eq('id', currentUser.id).single();
     if (data) currentUser = data;
 }
 
-async function renderCases() {
-    const { data: cases, error } = await supabaseClient.from('cases_meta').select('*');
-    if (error) {
-        console.error("Ошибка БД:", error);
-        return showNotify("Ошибка загрузки данных!");
-    }
-    
-    const grid = document.getElementById('cases-grid');
-    if (!grid) return; // Защита от ошибок
-
-    grid.innerHTML = cases.map(c => `
-        <div class="case-card">
-            <img src="${GITHUB_BASE}${c.image_url || 'Case_Basic.png'}">
-            <h3>${c.name}</h3>
-            <p style="color:#00d4ff; margin:15px 0; font-size:20px;">${c.price}$</p>
-            <button class="neon-btn" onclick="openRoulette(${c.id})">ОТКРЫТЬ</button>
-        </div>
-    `).join('');
-}
-
 async function openRoulette(caseId) {
     await syncFromDB();
     const { data: cData } = await supabaseClient.from('cases_meta').select('*').eq('id', caseId).single();
-    
     if (currentUser.score < cData.price) return showNotify("Мало монет!");
 
     const newScore = currentUser.score - cData.price;
@@ -127,8 +81,15 @@ async function openRoulette(caseId) {
 
     navTo('opening');
     const tape = document.getElementById('roulette-tape');
-    const loot = cData.loot;
+    const winDisplay = document.getElementById('win-display');
+    
+    // ФИКС БАГА РУЛЕТКИ (СБРОС)
+    winDisplay.style.display = 'none';
+    tape.style.transition = 'none';
+    tape.style.transform = 'translateX(0)';
+    void tape.offsetHeight; // Force Reflow
 
+    const loot = cData.loot;
     let tapeHTML = '';
     for(let i=0; i<60; i++) {
         const rand = loot[Math.floor(Math.random() * loot.length)];
@@ -141,7 +102,6 @@ async function openRoulette(caseId) {
         cum += itm.chance;
         if (rand <= cum) { win = itm; break; }
     }
-
     tape.querySelectorAll('.roulette-item')[50].innerHTML = `<img src="${GITHUB_BASE}${win.name}.png">`;
 
     setTimeout(() => {
@@ -150,42 +110,62 @@ async function openRoulette(caseId) {
         tape.style.transform = `translateX(-${shift}px)`;
     }, 50);
 
-    const newItem = { char: win.name, id: Date.now() };
-    const newInv = [...(currentUser.inventory || []), newItem];
+    const newInv = [...(currentUser.inventory || []), { char: win.name, id: Date.now() }];
     await supabaseClient.from('profiles').update({ inventory: newInv }).eq('id', currentUser.id);
     currentUser.inventory = newInv;
 
     setTimeout(() => {
-        document.getElementById('win-display').style.display = 'block';
+        winDisplay.style.display = 'block';
         document.getElementById('win-name-text').innerText = `ВЫПАЛО: ${win.name}`;
     }, 5500);
 }
 
-// --- ПРОДАЖА ПРЕДМЕТА ---
 async function sellItem(itemId, charName) {
     const { data: itemData } = await supabaseClient.from('items_meta').select('price').eq('name', charName).single();
-    if (!itemData) return showNotify("Цена предмета не найдена!");
+    if (!itemData) return showNotify("Цена не найдена!");
 
-    // Вычисляем сколько получит игрок: Цена * 0.8 (если комиссия 20%)
-    const moneyToReceive = Math.floor(itemData.price * (1 - SELL_COMMISSION));
-    
+    const sellPrice = Math.floor(itemData.price * (1 - SELL_COMMISSION));
     const updatedInv = currentUser.inventory.filter(i => i.id !== itemId);
-    const newScore = currentUser.score + moneyToReceive;
+    const newScore = currentUser.score + sellPrice;
 
-    const { error } = await supabaseClient.from('profiles').update({
-        inventory: updatedInv,
-        score: newScore
-    }).eq('id', currentUser.id);
-
-    if (!error) {
-        currentUser.inventory = updatedInv;
-        currentUser.score = newScore;
-        renderProfile();
-        showNotify(`Продано! Вы получили ${moneyToReceive}$`);
-    }
+    await supabaseClient.from('profiles').update({ inventory: updatedInv, score: newScore }).eq('id', currentUser.id);
+    currentUser.inventory = updatedInv;
+    currentUser.score = newScore;
+    renderProfile();
+    showNotify(`Продано за ${sellPrice}$`);
 }
 
-// --- НАВИГАЦИЯ И УВЕДОМЛЕНИЯ ---
+// --- ЛАЙВ БОРД (САМООЧИСТКА 60с) ---
+function initRealtime() {
+    supabaseClient.channel('any').on('postgres_changes', {event:'UPDATE', schema:'public', table:'profiles'}, p => {
+        const oldInv = p.old?.inventory || [];
+        const newInv = p.new?.inventory || [];
+        if(newInv.length > oldInv.length) {
+            const lastItem = newInv[newInv.length - 1];
+            addToLiveBoard(p.new.username || "Player", lastItem.char);
+        }
+    }).subscribe();
+}
+
+function addToLiveBoard(username, itemName) {
+    const board = document.getElementById('global-live-feed');
+    const card = document.createElement('div');
+    card.className = 'drop-card';
+    card.innerHTML = `<img src="${GITHUB_BASE}${itemName}.png"><div class="drop-info"><span class="drop-nick">${username}</span><span class="drop-item">${itemName}</span></div>`;
+    board.prepend(card);
+
+    if (board.childNodes.length > 20) board.removeChild(board.lastChild);
+
+    // Удаление через 60 секунд
+    setTimeout(() => {
+        if (card && card.parentNode === board) {
+            card.style.opacity = "0";
+            setTimeout(() => { if (card.parentNode === board) board.removeChild(card); }, 500);
+        }
+    }, 60000);
+}
+
+// --- ИНТЕРФЕЙС ---
 function navTo(pageId) {
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
     document.getElementById('page-' + pageId).classList.add('active');
@@ -193,13 +173,22 @@ function navTo(pageId) {
     if(pageId === 'cases') renderCases();
 }
 
+async function renderCases() {
+    const { data: cases } = await supabaseClient.from('cases_meta').select('*');
+    document.getElementById('cases-grid').innerHTML = cases.map(c => `
+        <div class="case-card">
+            <img src="${GITHUB_BASE}${c.image_url}">
+            <h3>${c.name}</h3>
+            <p style="color:#00d4ff; margin:15px 0;">${c.price}$</p>
+            <button class="neon-btn" onclick="openRoulette(${c.id})">ОТКРЫТЬ</button>
+        </div>
+    `).join('');
+}
+
 async function renderProfile() {
-    await syncFromDB(); 
-    // Просто выводим число из базы, БЕЗ математики
-    document.getElementById('p-balance').innerText = currentUser.score; 
-    
-    const invList = document.getElementById('inventory-list');
-    invList.innerHTML = (currentUser.inventory || []).map(i => `
+    await syncFromDB();
+    document.getElementById('p-balance').innerText = currentUser.score;
+    document.getElementById('inventory-list').innerHTML = (currentUser.inventory || []).map(i => `
         <div class="inv-item">
             <img src="${GITHUB_BASE}${i.char}.png">
             <p>${i.char}</p>
@@ -216,37 +205,6 @@ function showNotify(t) {
     const n = document.createElement('div'); n.className = 'notification'; n.innerText = t;
     c.appendChild(n); setTimeout(() => n.classList.add('show'), 10);
     setTimeout(() => { n.classList.remove('show'); setTimeout(() => n.remove(), 500); }, 2000);
-}
-
-function initRealtime() {
-    supabaseClient.channel('any').on('postgres_changes', {event:'UPDATE', schema:'public', table:'profiles'}, p => {
-        const oldInv = p.old?.inventory || [];
-        const newInv = p.new?.inventory || [];
-        if(newInv.length > oldInv.length) {
-            const lastItem = newInv[newInv.length - 1];
-            const nick = p.new.username || "Player";
-            addToLiveBoard(nick, lastItem.char);
-        }
-    }).subscribe();
-}
-
-function addToLiveBoard(username, itemName) {
-    const board = document.getElementById('global-live-feed');
-    const card = document.createElement('div');
-    card.className = 'drop-card';
-    card.innerHTML = `<img src="${GITHUB_BASE}${itemName}.png"><div class="drop-info"><span class="drop-nick">${username}</span><span class="drop-item">${itemName}</span></div>`;
-    board.prepend(card);
-    if (board.childNodes.length > 20) board.removeChild(board.lastChild);
-}
-
-async function withdrawItem(id) {
-    const nick = prompt("Твой ник в Roblox для вывода:");
-    if(!nick) return;
-    const item = currentUser.inventory.find(x => x.id === id);
-    currentUser.inventory = currentUser.inventory.filter(x => x.id !== id);
-    await supabaseClient.from('profiles').update({ inventory: currentUser.inventory }).eq('id', currentUser.id);
-    renderProfile();
-    showNotify("Заявка на вывод создана!");
 }
 
 function logout() { localStorage.removeItem('game_user_id'); location.reload(); }
