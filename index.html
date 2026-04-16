@@ -3,72 +3,57 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Brainrot Cases - LIVE</title>
+    <title>Magic Cases</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
 </head>
 <body>
 
-    <div id="notification-container"></div>
-
-    <header class="live-header">
+    <div class="live-header">
         <div class="live-status">
-            <span class="dot"></span>
-            <span class="live-label">LIVE DROPS</span>
-        </div>
-        <div id="global-live-feed" class="drop-tape">
-            </div>
-    </header>
-
-    <div id="auth-screen" class="full-screen">
-        <div class="auth-card">
-            <div class="auth-tabs">
-                <button id="tab-btn-login" class="active" onclick="switchAuthMode('login')">ВХОД</button>
-                <button id="tab-btn-reg" onclick="switchAuthMode('reg')">РЕГИСТРАЦИЯ</button>
-            </div>
-
-            <div class="auth-form">
-                <input type="text" id="user_name" placeholder="Roblox Username">
-                <input type="password" id="user_password" placeholder="Пароль (от 8 символов)">
-    
-                <button id="btn-login-action" class="neon-btn" onclick="login()">ВОЙТИ</button>
-                <button id="btn-reg-action" class="neon-btn" onclick="register()" style="display:none;">СОЗДАТЬ АККАУНТ</button>
+            <div class="live-title">LIVE</div>
+            <div class="live-title">DROPS</div>
+            <div class="live-indicator">
+                <div class="dot"></div> ЭФИР
             </div>
         </div>
+        <div class="drop-tape" id="global-live-feed">
+            </div>
     </div>
 
-    <main id="game-interface" style="display:none;">
+    <div id="game-interface" style="display:none;">
         
-        <section id="page-cases" class="page active">
+        <div id="page-cases" class="page active">
             <div id="cases-grid"></div>
-        </section>
+        </div>
 
-        <section id="page-opening" class="page">
+        <div id="page-opening" class="page">
             <div class="roulette-wrapper">
                 <div class="selector"></div>
-                <div id="roulette-tape" class="tape"></div>
+                <div class="tape" id="roulette-tape"></div>
             </div>
-            <div id="win-display" style="display:none; text-align:center; margin-top:20px;">
-                <h2 id="win-name-text"></h2>
-                <button class="neon-btn" style="width: 200px;" onclick="navTo('cases')">ЗАБРАТЬ</button>
+            <div id="win-display" style="display:none;">
+                <h2 id="win-name-text">ВЫ ВЫБИЛИ!</h2>
+                <button class="neon-btn" style="width:200px; margin-top:20px;" onclick="navTo('cases')">НАЗАД К КЕЙСАМ</button>
             </div>
-        </section>
+        </div>
 
-        <section id="page-profile" class="page">
-            <div class="balance-display">БАЛАНС: <span id="p-balance">0</span>$</div>
+        <div id="page-profile" class="page">
+            <h2 id="p-username">ПРОФИЛЬ</h2>
+            <p style="color:#2ecc71; font-size:20px; margin: 10px 0;">БАЛАНС: <span id="p-balance">0</span>$</p>
             <div id="inventory-list"></div>
-        </section>
+        </div>
 
         <nav class="bottom-navbar">
             <button onclick="navTo('cases')">КЕЙСЫ</button>
             <button onclick="navTo('profile')">ПРОФИЛЬ</button>
-            <button onclick="logout()" class="exit-link">ВЫХОД</button>
+            <button onclick="location.reload()" style="color:#ff4444;">ВЫХОД</button>
         </nav>
-    </main>
+    </div>
 
+    <div id="notification-container"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <script src="script.js"></script>
-</div>
-    
 </body>
 </html>
