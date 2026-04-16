@@ -19,15 +19,15 @@
         <div class="drop-tape" id="global-live-feed"></div>
     </div>
 
-    <div id="auth-screen" class="full-screen" style="display: flex; align-items: center; justify-content: center; height: 100vh;">
+    <div id="auth-screen" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #05050a; z-index: 10000; display: flex; align-items: center; justify-content: center;">
         <div class="auth-card" style="background: #0f0f1e; padding: 30px; border-radius: 20px; border: 1px solid #2a2a45; width: 90%; max-width: 400px;">
             <div class="auth-tabs" style="display: flex; gap: 10px; margin-bottom: 20px;">
-                <button id="tab-btn-login" class="active neon-btn" onclick="switchAuthMode('login')">ВХОД</button>
-                <button id="tab-btn-reg" class="neon-btn" onclick="switchAuthMode('reg')">РЕГА</button>
+                <button id="tab-btn-login" class="active neon-btn" onclick="switchAuthMode('login')" style="flex:1">ВХОД</button>
+                <button id="tab-btn-reg" class="neon-btn" onclick="switchAuthMode('reg')" style="flex:1">РЕГА</button>
             </div>
             <div class="auth-form">
-                <input type="text" id="user_name" placeholder="Никнейм" style="width: 100%; padding: 12px; margin-bottom: 10px; border-radius: 10px; border: none; background: #1c1c2e; color: #fff;">
-                <input type="password" id="user_password" placeholder="Пароль" style="width: 100%; padding: 12px; margin-bottom: 20px; border-radius: 10px; border: none; background: #1c1c2e; color: #fff;">
+                <input type="text" id="user_name" placeholder="Никнейм">
+                <input type="password" id="user_password" placeholder="Пароль">
                 <button id="btn-login-action" class="neon-btn" onclick="login()">ВОЙТИ</button>
                 <button id="btn-reg-action" class="neon-btn" style="display:none;" onclick="register()">СОЗДАТЬ</button>
             </div>
@@ -35,7 +35,6 @@
     </div>
 
     <div id="game-interface" style="display:none;">
-        
         <div id="page-cases" class="page active">
             <div id="cases-grid"></div>
         </div>
@@ -45,17 +44,17 @@
                 <div class="roulette-wrapper">
                     <div class="tape" id="roulette-tape"></div>
                 </div>
-                <div id="win-display" style="display:none; margin-top: 20px;">
-                    <h2 id="win-name-text" style="color:#00d4ff; text-shadow: 0 0 10px #00d4ff; margin-bottom: 15px;"></h2>
-                    <button class="neon-btn" style="max-width:200px;" onclick="navTo('cases')">ЗАБРАТЬ</button>
+                <div id="win-display" style="display:none; text-align: center; margin-top: 20px;">
+                    <h2 id="win-name-text"></h2>
+                    <button class="neon-btn" style="width: 200px; margin: 10px auto;" onclick="navTo('cases')">ЗАБРАТЬ</button>
                 </div>
             </div>
         </div>
 
         <div id="page-profile" class="page">
-            <div class="profile-info" style="margin-bottom: 30px; text-align: center;">
-                <h2 id="p-username" style="color:#00d4ff; font-size: 28px;"></h2>
-                <p class="balance-text" style="font-size: 20px; color: #2ecc71;">БАЛАНС: <span id="p-balance">0</span>$</p>
+            <div class="profile-info">
+                <h2 id="p-username"></h2>
+                <p class="balance-text">БАЛАНС: <span id="p-balance">0</span>$</p>
             </div>
             <div id="inventory-list"></div>
         </div>
