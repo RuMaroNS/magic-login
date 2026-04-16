@@ -3,56 +3,46 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Brainrot Case Simulator</title>
+    <title>Brainrot Cases - LIVE</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
 </head>
 <body>
 
-    <div id="global-live-feed"></div>
+    <header>
+        <div class="live-indicator">
+            <span class="red-dot"></span>
+            <span class="live-text">LIVE FEED</span>
+        </div>
+        <div id="global-live-feed"></div>
+    </header>
+
+    <main id="app">
+        <section id="page-cases" class="page active">
+            <h1 class="page-title">МАГАЗИН КЕЙСОВ</h1>
+            <div id="cases-grid">
+                </div>
+        </section>
+
+        <section id="page-profile" class="page">
+            <h1 class="page-title">ВАШ ИНВЕНТАРЬ</h1>
+            <div class="user-stats">
+                <span id="p-balance">0</span><span class="currency">$</span>
+            </div>
+            <div id="inventory-list"></div>
+            
+            <h2 class="sub-title">ИСТОРИЯ ВЫВОДОВ</h2>
+            <div id="withdraw-history"></div>
+        </section>
+    </main>
+
+    <nav class="bottom-nav">
+        <button onclick="navTo('cases')">КЕЙСЫ</button>
+        <button onclick="navTo('profile')">ПРОФИЛЬ</button>
+        <button onclick="logout()" class="exit-btn">ВЫХОД</button>
+    </nav>
 
     <div id="notification-container"></div>
-
-    <div id="auth-container">
-        <h1 class="logo">BRAINROT</h1>
-        <div id="step-choice">
-            <button class="main-btn" onclick="showAuth('reg')">РЕГИСТРАЦИЯ</button>
-            <button class="main-btn btn-outline" onclick="showAuth('login')">ВХОД</button>
-        </div>
-        
-        <div id="step-form" style="display:none;">
-            <input type="email" id="user_email" placeholder="Email">
-            <input type="password" id="user_password" placeholder="Пароль (от 8 символов)">
-            <button id="btn-reg" class="main-btn" onclick="sendOTP()" style="display:none;">ПОЛУЧИТЬ КОД</button>
-            <button id="btn-login" class="main-btn" onclick="login()" style="display:none;">ВОЙТИ</button>
-            <span class="back-link" onclick="showAuth('choice')">← Назад</span>
-        </div>
-
-        <div id="step-code" style="display:none;">
-            <input type="number" id="otp_input" placeholder="Код">
-            <button class="main-btn" onclick="register()">ПОДТВЕРДИТЬ</button>
-        </div>
-    </div>
-
-    <div id="game-ui" style="display:none;">
-        <nav>
-            <button onclick="switchTab('cases')">КЕЙСЫ</button>
-            <button onclick="switchTab('profile')">ПРОФИЛЬ</button>
-            <button onclick="logout()" class="logout-btn">ВЫХОД</button>
-        </nav>
-        
-        <div id="tab-cases" class="tab">
-            <div id="case-display">🎁</div>
-            <button class="main-btn" onclick="openCase()">ОТКРЫТЬ (50$)</button>
-        </div>
-
-        <div id="tab-profile" class="tab" style="display:none;">
-            <div class="balance-card"><span id="p-balance">0</span>$</div>
-            <div id="inventory-list"></div>
-        </div>
-    </div>
-
     <script src="script.js"></script>
 </body>
 </html>
