@@ -3,58 +3,62 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pizdonetor</title>
+    <title>Brainrot Case Simulator</title>
     <link rel="stylesheet" href="style.css">
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
 </head>
 <body>
+
     <div id="notification-container"></div>
 
-    <div id="auth-container" class="box shadow">
-        <h1 class="logo">PIZDA <span>NOTER</span></h1>
-        
+    <div id="auth-container">
         <div id="step-choice">
-            <button class="btn main-btn" onclick="showAuth('login')">ВОЙТИ</button>
-            <button class="btn sub-btn" onclick="showAuth('reg')">РЕГИСТРАЦИЯ</button>
+            <h1>БРАЙНРОТ КЕЙСЫ</h1>
+            <button onclick="showAuth('reg')">Регистрация</button>
+            <button onclick="showAuth('login')">Войти</button>
         </div>
 
         <div id="step-form" style="display:none;">
-            <input type="email" id="user_email" placeholder="Твой Email">
-            <input type="password" id="user_password" placeholder="Пароль (мин. 8 знаков)">
-            <button id="btn-send-otp" class="btn main-btn" onclick="sendOTP()">ПОЛУЧИТЬ КОД</button>
-            <button id="btn-login" class="btn main-btn" style="display:none;" onclick="login()">ВОЙТИ</button>
-            <p class="link-back" onclick="showAuth('choice')">Назад</p>
+            <h2 id="auth-title">Вход</h2>
+            <input type="email" id="user_email" placeholder="Email"><br>
+            <input type="password" id="user_password" placeholder="Пароль"><br>
+            <button id="btn-reg" onclick="sendOTP()" style="display:none;">Получить код</button>
+            <button id="btn-login" onclick="login()" style="display:none;">Войти в игру</button>
+            <p onclick="showAuth('choice')" class="back-link">← Назад</p>
         </div>
 
         <div id="step-code" style="display:none;">
-            <input type="number" id="otp_input" placeholder="Код из письма">
-            <button id="btn-reg" class="btn main-btn" onclick="register()">ПОДТВЕРДИТЬ</button>
+            <h2>Введите код из письма</h2>
+            <input type="number" id="otp_input" placeholder="0000"><br>
+            <button onclick="register()">Подтвердить</button>
         </div>
     </div>
 
     <div id="game-ui" style="display:none;">
-        <div class="top-bar shadow">
-            <div class="balance">💰 <span id="p-balance">0</span></div>
-            <nav class="tabs">
-                <button onclick="switchTab('cases')">КЕЙСЫ</button>
-                <button onclick="switchTab('inv')">ИНВЕНТАРЬ</button>
-                <button class="logout" onclick="logout()">ВЫХОД</button>
-            </nav>
-        </div>
+        <nav>
+            <button onclick="switchTab('cases')">🎁 Кейсы</button>
+            <button onclick="switchTab('profile')">👤 Профиль</button>
+            <button onclick="switchTab('support')">🛠 Поддержка</button>
+            <button onclick="logout()" style="background: #ff4444;">Выход</button>
+        </nav>
 
         <div id="tab-cases" class="tab">
-            <div class="case-card box">
-                <div id="case-display" class="display-area">
-                    <img src="https://raw.githubusercontent.com/RuMaroNs/magic-login/main/img/TacoBlock.png" style="width:120px;">
-                </div>
-                <button class="btn open-btn" onclick="openCase()">ОТКРЫТЬ (50$)</button>
-            </div>
+            <h1>ОТКРЫВАЙ КЕЙС</h1>
+            <div id="case-display">🎁</div>
+            <button id="spin-btn" onclick="openCase()">Открыть за 50$</button>
         </div>
 
-        <div id="tab-inv" class="tab" style="display:none;">
-            <h2 style="text-align:center;">Твой Инвентарь</h2>
-            <div id="inventory-list" class="inv-grid"></div>
+        <div id="tab-profile" class="tab" style="display:none;">
+            <h2>Твой профиль</h2>
+            <p>Email: <span id="p-email"></span></p>
+            <p>Баланс: <span id="p-balance"></span>$</p>
+        </div>
+
+        <div id="tab-support" class="tab" style="display:none;">
+            <h2>Техподдержка</h2>
+            <textarea id="support-msg" placeholder="Опиши проблему админу..."></textarea>
+            <button onclick="sendSupport()">Отправить в Telegram</button>
         </div>
     </div>
 
