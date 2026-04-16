@@ -143,6 +143,24 @@ async function openRoulette(caseId) {
     }, 5500);
 }
 
+function addToLiveBoard(username, itemName) {
+    const board = document.getElementById('global-live-feed');
+    const card = document.createElement('div');
+    card.className = 'drop-card';
+    card.innerHTML = `<img src="${GITHUB_BASE}${itemName}.png"><div class="drop-info"><span class="drop-nick">${username}</span><span class="drop-item">${itemName}</span></div>`;
+    board.prepend(card);
+
+    if (board.childNodes.length > 20) board.removeChild(board.lastChild);
+
+    // Удаление через 60 секунд
+    setTimeout(() => {
+        if (card && card.parentNode === board) {
+            card.style.opacity = "0";
+            setTimeout(() => { if (card.parentNode === board) board.removeChild(card); }, 500);
+        }
+    }, 60000);
+}
+
 // ... Остальные функции (sellItem, withdrawItem, renderCases, renderProfile) остаются без изменений ...
 
 async function sellItem(itemId, charName) {
