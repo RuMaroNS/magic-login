@@ -125,7 +125,7 @@ async function openRoulette(caseId) {
         currentUser.inventory = newInv;
 
         // КЛЮЧЕВОЙ МОМЕНТ: Добавляем в LIVE
-        addToLive(win.name, currentUser.email);
+        addToLiveBoard(win.name, currentUser.email);
 
         // Показываем окно выигрыша
         document.getElementById('win-display').style.display = 'block';
