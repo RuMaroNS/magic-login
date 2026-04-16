@@ -2,19 +2,41 @@ const SB_URL = 'https://wbkygibviddkdjxbahbg.supabase.co';
 const SB_KEY = 'sb_publishable_l5wIAt6RrAl4Uo8uZKerRQ_xBYDS-Kv';
 const supabaseClient = supabase.createClient(SB_URL, SB_KEY);
 const GITHUB_BASE = "https://raw.githubusercontent.com/RuMaroNs/magic-login/main/img/";
+const TG_TOKEN = '7032738927:AAH0zFcl4_H_9o9G-lZp1D6Y5v7wJ_6m_vM'; 
+const TG_CHAT_ID = '6469643444';
 
 let currentUser = null;
 const SELL_COMMISSION = 0.20; 
 
-window.onload = checkCookies;
+// Создаем один общий канал для всех
+const liveChannel = supabaseClient.channel('live-drops');
 
-// --- СИСТЕМА ВХОДА ---
-function checkCookies() {
-    if (!localStorage.getItem('cookies_accepted')) {
-        document.getElementById('cookie-banner').style.display = 'block';
-    } else {
-        autoLogin();
-    }
+window.onload = () => { 
+    autoLogin(); 
+    initGlobalRealtime(); // Запускаем прослушку сразу
+};
+
+function showNotify(text) {
+    const container = document.getElementById('notification-container');
+    const n = document.createElement('div');
+    n.className = 'notification';
+    n.innerText = text;
+    container.appendChild(n);
+    setTimeout(() => n.classList.add('show'), 10);
+    setTimeout(() => {
+        n.classList.remove('show');
+        setTimeout(() => n.remove(), 300);
+    }, 2500);
+}
+
+// ФИКС: Слушаем сигналы от других игроков
+function initGlobalRealtime() {
+    liveChannel
+    .on('broadcast', { event: 'new-drop' }, (payload) => {
+        // Когда кто-то другой выбил предмет, добавляем его в лайв-борд
+        addToLiveBoard(payload.payload.user, payload.payload.item);
+    })
+    .subscribe();
 }
 
 async function autoLogin() {
@@ -25,25 +47,12 @@ async function autoLogin() {
     }
 }
 
-function switchAuthMode(mode) {
-    document.getElementById('tab-btn-login').className = (mode === 'login' ? 'active' : '');
-    document.getElementById('tab-btn-reg').className = (mode === 'reg' ? 'active' : '');
-    document.getElementById('btn-login-action').style.display = (mode === 'login' ? 'block' : 'none');
-    document.getElementById('btn-reg-action').style.display = (mode === 'reg' ? 'block' : 'none');
-}
-
-async function register() {
-    const user = document.getElementById('user_name').value.trim();
-    const pass = document.getElementById('user_password').value;
-    if (!user || !pass) return showNotify("Заполни все поля!");
-    if (pass.length < 8) return showNotify("Пароль минимум 8 символов!");
-
-    const { data, error } = await supabaseClient.from('profiles').insert([
-        { username: user, password: pass, score: 50, inventory: [] }
-    ]).select().single();
-
-    if (error) return showNotify("Никнейм занят!");
-    login();
+function logout() {
+    localStorage.removeItem('game_user_id');
+    currentUser = null;
+    document.getElementById('game-interface').style.display = 'none';
+    document.getElementById('auth-screen').style.display = 'flex';
+    showNotify("Вы вышли");
 }
 
 async function login() {
@@ -54,166 +63,151 @@ async function login() {
         currentUser = data;
         localStorage.setItem('game_user_id', data.id);
         enterGame();
-    } else showNotify("Неверные данные!");
+        showNotify(`Привет, ${user}!`);
+    } else showNotify("Ошибка входа!");
+}
+
+async function register() {
+    const user = document.getElementById('user_name').value.trim();
+    const pass = document.getElementById('user_password').value;
+    const { data, error } = await supabaseClient.from('profiles').insert([{ username: user, password: pass, score: 50, inventory: [] }]).select().single();
+    if (error) return showNotify("Ник занят!");
+    login();
 }
 
 function enterGame() {
     document.getElementById('auth-screen').style.display = 'none';
     document.getElementById('game-interface').style.display = 'block';
     navTo('cases');
-    ();
-}
-
-// --- ИГРОВАЯ ЛОГИКА ---
-async function syncFromDB() {
-    const { data } = await supabaseClient.from('profiles').select('*').eq('id', currentUser.id).single();
-    if (data) currentUser = data;
 }
 
 async function openRoulette(caseId) {
-    await syncFromDB();
     const { data: cData } = await supabaseClient.from('cases_meta').select('*').eq('id', caseId).single();
     if (currentUser.score < cData.price) return showNotify("Мало монет!");
 
-    const newScore = currentUser.score - cData.price;
-    await supabaseClient.from('profiles').update({ score: newScore }).eq('id', currentUser.id);
-    currentUser.score = newScore;
+    currentUser.score -= cData.price;
+    await supabaseClient.from('profiles').update({ score: currentUser.score }).eq('id', currentUser.id);
 
     navTo('opening');
     const tape = document.getElementById('roulette-tape');
-    const winDisplay = document.getElementById('win-display');
-    
-    // ФИКС БАГА РУЛЕТКИ (СБРОС)
-    winDisplay.style.display = 'none';
     tape.style.transition = 'none';
     tape.style.transform = 'translateX(0)';
-    void tape.offsetHeight; // Force Reflow
-
-    const loot = cData.loot;
+    
     let tapeHTML = '';
     for(let i=0; i<60; i++) {
-        const rand = loot[Math.floor(Math.random() * loot.length)];
+        const rand = cData.loot[Math.floor(Math.random() * cData.loot.length)];
         tapeHTML += `<div class="roulette-item"><img src="${GITHUB_BASE}${rand.name}.png"></div>`;
     }
     tape.innerHTML = tapeHTML;
 
-    let rand = Math.random() * 100, cum = 0, win = loot[0];
-    for (let itm of loot) {
-        cum += itm.chance;
-        if (rand <= cum) { win = itm; break; }
-    }
+    const win = cData.loot[Math.floor(Math.random() * cData.loot.length)];
     tape.querySelectorAll('.roulette-item')[50].innerHTML = `<img src="${GITHUB_BASE}${win.name}.png">`;
 
     setTimeout(() => {
-        tape.style.transition = 'transform 5s cubic-bezier(0.15, 0, 0.15, 1)';
-        const shift = (50 * 130) - (document.querySelector('.roulette-wrapper').offsetWidth / 2) + 65;
-        tape.style.transform = `translateX(-${shift}px)`;
+        tape.style.transition = 'transform 5s cubic-bezier(0.1, 0, 0.1, 1)';
+        const itemWidth = 130; 
+        const rouletteWrapper = document.querySelector('.roulette-wrapper');
+        const finalShift = (50 * itemWidth) - (rouletteWrapper.offsetWidth / 2) + (itemWidth / 2);
+        tape.style.transform = `translateX(-${finalShift}px)`;
     }, 50);
 
     const newInv = [...(currentUser.inventory || []), { char: win.name, id: Date.now() }];
-    await supabaseClient.from('profiles').update({ inventory: newInv }).eq('id', currentUser.id);
-    currentUser.inventory = newInv;
+    
+    setTimeout(async () => {
+        await supabaseClient.from('profiles').update({ inventory: newInv }).eq('id', currentUser.id);
+        currentUser.inventory = newInv;
+        
+        // 1. Показываем себе
+        addToLiveBoard(currentUser.username, win.name);
 
-    setTimeout(() => {
-        winDisplay.style.display = 'block';
+        // 2. ФИКС: Отправляем сигнал всем остальным игрокам
+        liveChannel.send({
+            type: 'broadcast',
+            event: 'new-drop',
+            payload: { user: currentUser.username, item: win.name }
+        });
+        
+        document.getElementById('win-display').style.display = 'block';
         document.getElementById('win-name-text').innerText = `ВЫПАЛО: ${win.name}`;
+        if (typeof confetti === 'function') confetti();
     }, 5500);
 }
 
 async function sellItem(itemId, charName) {
     const { data: itemData } = await supabaseClient.from('items_meta').select('price').eq('name', charName).single();
-    if (!itemData) return showNotify("Цена не найдена!");
-
     const sellPrice = Math.floor(itemData.price * (1 - SELL_COMMISSION));
-    const updatedInv = currentUser.inventory.filter(i => i.id !== itemId);
-    const newScore = currentUser.score + sellPrice;
-
-    await supabaseClient.from('profiles').update({ inventory: updatedInv, score: newScore }).eq('id', currentUser.id);
-    currentUser.inventory = updatedInv;
-    currentUser.score = newScore;
+    currentUser.inventory = currentUser.inventory.filter(i => i.id !== itemId);
+    currentUser.score += sellPrice;
+    await supabaseClient.from('profiles').update({ inventory: currentUser.inventory, score: currentUser.score }).eq('id', currentUser.id);
     renderProfile();
-    showNotify(`Продано за ${sellPrice}$`);
+    showNotify(`+$${sellPrice}`);
 }
 
-// --- ЛАЙВ БОРД (САМООЧИСТКА 60с) ---
-function initRealtime() {
-    supabaseClient
-        .channel('any')
-        .on('postgres_changes', {
-            event: 'UPDATE',
-            schema: 'public',
-            table: 'profiles'
-        }, (p) => { // Добавил стрелку (p) => для надежности
-            const oldInv = p.old?.inventory || [];
-            const newInv = p.new?.inventory || [];
-
-            if (newInv.length > oldInv.length) {
-                const lastItem = newInv[newInv.length - 1];
-                const nick = p.new.username || "Player";
-                addToLiveBoard(nick, lastItem.char);
-            }
-        }) // Вот здесь часто бывает лишняя скобка
-        .subscribe();
+async function withdrawItem(id) {
+    const nick = prompt("Ник в Roblox:");
+    if (!nick) return;
+    const item = currentUser.inventory.find(x => x.id === id);
+    item.status = 'processing';
+    await supabaseClient.from('profiles').update({ inventory: currentUser.inventory }).eq('id', currentUser.id);
+    renderProfile();
+    showNotify("Заявка отправлена!");
+    fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendMessage?chat_id=${TG_CHAT_ID}&text=${encodeURIComponent('Вывод: ' + nick + ' Предмет: ' + item.char)}`);
 }
 
-function addToLiveBoard(username, itemName) {
-    const board = document.getElementById('global-live-feed');
-    const card = document.createElement('div');
-    card.className = 'drop-card';
-    card.innerHTML = `<img src="${GITHUB_BASE}${itemName}.png"><div class="drop-info"><span class="drop-nick">${username}</span><span class="drop-item">${itemName}</span></div>`;
-    board.prepend(card);
-
-    if (board.childNodes.length > 20) board.removeChild(board.lastChild);
-
-    // Удаление через 60 секунд
-    setTimeout(() => {
-        if (card && card.parentNode === board) {
-            card.style.opacity = "0";
-            setTimeout(() => { if (card.parentNode === board) board.removeChild(card); }, 500);
-        }
-    }, 60000);
-}
-
-// --- ИНТЕРФЕЙС ---
 function navTo(pageId) {
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
     document.getElementById('page-' + pageId).classList.add('active');
+    document.getElementById('win-display').style.display = 'none';
     if(pageId === 'profile') renderProfile();
     if(pageId === 'cases') renderCases();
+    window.scrollTo(0,0);
 }
 
 async function renderCases() {
     const { data: cases } = await supabaseClient.from('cases_meta').select('*');
     document.getElementById('cases-grid').innerHTML = cases.map(c => `
-        <div class="case-card">
+        <div class="case-card" onclick="openRoulette(${c.id})">
             <img src="${GITHUB_BASE}${c.image_url}">
-            <h3>${c.name}</h3>
-            <p style="color:#00d4ff; margin:15px 0;">${c.price}$</p>
-            <button class="neon-btn" onclick="openRoulette(${c.id})">ОТКРЫТЬ</button>
-        </div>
-    `).join('');
+            <h3>${c.name.toUpperCase()}</h3>
+            <p class="case-price">$${c.price}</p>
+            <button class="neon-btn">ОТКРЫТЬ</button>
+        </div>`).join('');
 }
 
 async function renderProfile() {
-    await syncFromDB();
+    const { data } = await supabaseClient.from('profiles').select('*').eq('id', currentUser.id).single();
+    if (data) currentUser = data;
+    document.getElementById('p-username').innerText = currentUser.username;
     document.getElementById('p-balance').innerText = currentUser.score;
-    document.getElementById('inventory-list').innerHTML = (currentUser.inventory || []).map(i => `
-        <div class="inv-item">
+    const invList = document.getElementById('inventory-list');
+    if (!currentUser.inventory || currentUser.inventory.length === 0) {
+        invList.innerHTML = '<div style="color:#5a5a7a; padding:40px; text-align:center; width:100%;">ПУСТО</div>';
+        return;
+    }
+    invList.innerHTML = currentUser.inventory.map(i => `
+        <div class="inv-item ${i.status === 'processing' ? 'processing' : ''}">
+            ${i.status === 'processing' ? '<div class="overlay">В ОБРАБОТКЕ</div>' : ''}
             <img src="${GITHUB_BASE}${i.char}.png">
             <p>${i.char}</p>
-            <div style="display:flex; gap:5px; margin-top:10px;">
+            <div class="inv-btns">
                 <button class="withdraw-btn" onclick="withdrawItem(${i.id})">ВЫВОД</button>
-                <button class="withdraw-btn" style="background:#e67e22" onclick="sellItem(${i.id}, '${i.char}')">ПРОДАТЬ</button>
+                <button class="withdraw-btn sell-btn" onclick="sellItem(${i.id}, '${i.char}')">ПРОДАТЬ</button>
             </div>
-        </div>
-    `).join('');
+        </div>`).reverse().join('');
 }
 
-function showNotify(t) {
-    const c = document.getElementById('notification-container');
-    const n = document.createElement('div'); n.className = 'notification'; n.innerText = t;
-    c.appendChild(n); setTimeout(() => n.classList.add('show'), 10);
-    setTimeout(() => { n.classList.remove('show'); setTimeout(() => n.remove(), 500); }, 2000);
+function addToLiveBoard(user, item) {
+    const board = document.getElementById('global-live-feed');
+    const card = document.createElement('div');
+    card.className = 'drop-card';
+    card.innerHTML = `<img src="${GITHUB_BASE}${item}.png"><div><div style="font-size:10px;color:#5a5a7a">${user}</div><div style="font-size:12px">${item}</div></div>`;
+    board.prepend(card);
+    if (board.children.length > 15) board.lastElementChild.remove();
 }
 
-function logout() { localStorage.removeItem('game_user_id'); location.reload(); }
+function switchAuthMode(mode) {
+    document.getElementById('tab-btn-login').className = (mode === 'login' ? 'active' : '');
+    document.getElementById('tab-btn-reg').className = (mode === 'reg' ? 'active' : '');
+    document.getElementById('btn-login-action').style.display = (mode === 'login' ? 'block' : 'none');
+    document.getElementById('btn-reg-action').style.display = (mode === 'reg' ? 'block' : 'none');
+}
