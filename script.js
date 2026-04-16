@@ -100,16 +100,16 @@ function updateUI() {
     list.innerHTML = ''; // Очищаем старый список
 
     if (currentUser && currentUser.inventory) {
-        currentUser.inventory.forEach(item => {
-            // ВАЖНО: Весь блок ниже обернут в ОБРАТНЫЕ КАВЫЧКИ  
-            list.innerHTML += 
-                div class="inv-item">
-                    `<img src="${GITHUB_BASE}${item.char}.png">`
-                    `<p>${item.char}</p>`
-                    `<button onclick="requestWithdraw(${item.id})">ВЫВОД</button>`
-                </div>;
-        });
-    }
+    currentUser.inventory.forEach(item => {
+        // ОДНА открывающая обратная кавычка в начале блока
+        listEl.innerHTML += `
+            <div class="inv-item">
+                <img src="${GITHUB_BASE}${item.char}.png">
+                <p style="font-size:10px; margin:5px 0;">${item.char}</p>
+                <button onclick="requestWithdraw(${item.id})" style="background:#2ecc71; color:white; border:none; padding:4px; border-radius:4px; cursor:pointer; width:100%; font-size:10px;">ВЫВОД</button>
+            </div>
+        `; // ОДНА закрывающая обратная кавычка в конце
+    });
 }
 
 async function requestWithdraw(id) {
