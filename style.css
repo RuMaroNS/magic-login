@@ -1,94 +1,89 @@
-/* ОБЩИЙ КОНТЕЙНЕР ДЛЯ ПРОФИЛЯ */
-#page-profile {
-    max-width: 1200px;
-    margin: 0 auto;
-    text-align: center;
-}
+/* 1. БАЗОВЫЕ СТИЛИ И ЖИВОЙ ФОН */
+* { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Arial Black', sans-serif; }
 
-/* СЕТКА ИНВЕНТАРЯ */
-#inventory-list { 
-    display: flex; 
-    flex-wrap: wrap; 
-    gap: 20px; 
-    justify-content: center; 
-    padding-top: 20px;
-}
-
-/* КАРТОЧКА ПРЕДМЕТА (ФИКСИРОВАННАЯ) */
-.inv-item { 
-    position: relative; 
-    background: #111122; 
-    width: 220px; /* Фиксируем ширину */
-    height: 320px; /* Фиксируем высоту */
-    border: 1px solid #2a2a45; 
-    padding: 20px; 
-    border-radius: 15px; 
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    align-items: center;
-    transition: 0.3s ease;
-    overflow: hidden;
-}
-
-.inv-item:hover {
-    border-color: #00d4ff;
-    transform: translateY(-5px);
-    box-shadow: 0 5px 20px rgba(0, 212, 255, 0.1);
-}
-
-/* КАРТИНКА ПРЕДМЕТА */
-.inv-item img { 
-    width: 130px; 
-    height: 130px; 
-    object-fit: contain; 
-    filter: drop-shadow(0 5px 10px rgba(0,0,0,0.5));
-}
-
-.inv-item p { 
-    font-size: 14px; 
-    font-weight: bold; 
-    color: #fff;
-    margin: 10px 0;
-}
-
-/* КНОПКИ В ИНВЕНТАРЕ */
-.inv-btns {
-    display: flex;
-    gap: 8px;
-    width: 100%;
-}
-
-.withdraw-btn { 
-    flex: 1;
-    background: #2ecc71; 
-    border: none; 
+body { 
+    background: radial-gradient(circle at top center, #11112b 0%, #08080f 100%); 
+    background-attachment: fixed;
     color: #fff; 
-    padding: 10px 5px; 
-    border-radius: 8px; 
-    font-size: 11px;
-    font-weight: bold; 
-    cursor: pointer; 
-    text-transform: uppercase;
-    transition: 0.2s;
+    overflow-x: hidden; 
+    min-height: 100vh; 
 }
 
-.withdraw-btn:hover:not(:disabled) {
-    filter: brightness(1.2);
-    transform: scale(1.05);
+/* 2. ЛАЙВ ХЕДЕР (LIVE DROPS) */
+.live-header { 
+    position: fixed; top: 0; width: 100%; height: 110px; 
+    background: rgba(10, 10, 21, 0.9); backdrop-filter: blur(10px); 
+    border-bottom: 1px solid #1f1f35; z-index: 1000; padding: 15px; 
 }
-
-/* СТИЛЬ ДЛЯ ПРОДАЖИ */
-.sell-btn {
-    background: #e67e22 !important;
+.drop-tape { display: flex; gap: 15px; overflow-x: auto; scrollbar-width: none; }
+.drop-tape::-webkit-scrollbar { display: none; }
+.drop-card { 
+    min-width: 200px; height: 60px; background: #151525; 
+    border: 2px solid #2a2a45; border-radius: 10px; 
+    display: flex; align-items: center; padding: 8px 15px; gap: 12px; 
 }
+.drop-card img { height: 45px; }
 
-/* ОВЕРЛЕЙ "В ОБРАБОТКЕ" */
+/* 3. АВТОРИЗАЦИЯ */
+.full-screen { display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+.auth-card { background: #111122; width: 400px; border-radius: 12px; border: 1px solid #1f1f35; overflow: hidden; }
+.auth-tabs { display: flex; border-bottom: 1px solid #2a2a45; }
+.auth-tabs button { flex: 1; padding: 20px; background: none; border: none; color: #5a5a7a; font-weight: bold; cursor: pointer; }
+.auth-tabs button.active { color: #00d4ff; border-bottom: 2px solid #00d4ff; }
+.auth-form { padding: 30px; }
+input { width: 100%; padding: 15px; background: #0a0a15; border: 1px solid #2a2a45; color: #fff; border-radius: 8px; margin-bottom: 15px; }
+
+/* 4. КЕЙСЫ (ФИКСИРОВАННЫЕ КАРТОЧКИ) */
+#cases-grid { display: flex; flex-wrap: wrap; gap: 30px; justify-content: center; }
+.case-card { 
+    background: #151525; width: 280px; height: 400px; padding: 30px; 
+    border-radius: 20px; text-align: center; border: 1px solid #2a2a45; 
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); 
+    display: flex; flex-direction: column; justify-content: space-between; align-items: center; cursor: pointer;
+}
+.case-card:hover { transform: translateY(-10px); border-color: #00d4ff; box-shadow: 0 0 30px rgba(0, 212, 255, 0.2); }
+.case-card img { width: 180px; height: 180px; object-fit: contain; filter: drop-shadow(0 10px 15px rgba(0,0,0,0.5)); transition: 0.3s; }
+.case-card:hover img { transform: scale(1.1) rotate(3deg); }
+.case-price { color: #2ecc71; font-size: 24px; font-weight: bold; margin: 10px 0; }
+
+/* 5. ИНВЕНТАРЬ (ПРОФИЛЬ) — ТОТ САМЫЙ КОД */
+#page-profile { max-width: 1200px; margin: 0 auto; text-align: center; }
+#inventory-list { display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; padding-top: 20px; }
+.inv-item { 
+    position: relative; background: #111122; width: 220px; height: 320px; 
+    border: 1px solid #2a2a45; padding: 20px; border-radius: 15px; 
+    display: flex; flex-direction: column; justify-content: space-between; align-items: center; transition: 0.3s ease; overflow: hidden; 
+}
+.inv-item:hover { border-color: #00d4ff; transform: translateY(-5px); box-shadow: 0 5px 20px rgba(0, 212, 255, 0.1); }
+.inv-item img { width: 130px; height: 130px; object-fit: contain; filter: drop-shadow(0 5px 10px rgba(0,0,0,0.5)); }
+.inv-item p { font-size: 14px; font-weight: bold; color: #fff; margin: 10px 0; }
+.inv-btns { display: flex; gap: 8px; width: 100%; }
+
+/* КНОПКИ */
+.withdraw-btn { flex: 1; background: #2ecc71; border: none; color: #fff; padding: 10px 5px; border-radius: 8px; font-size: 11px; font-weight: bold; cursor: pointer; text-transform: uppercase; transition: 0.2s; }
+.sell-btn { background: #e67e22 !important; }
+.neon-btn { background: none; border: 2px solid #00d4ff; color: #00d4ff; padding: 12px 30px; border-radius: 10px; width: 100%; font-weight: bold; cursor: pointer; text-transform: uppercase; transition: 0.3s; }
+.case-card:hover .neon-btn { background: #00d4ff; color: #000; box-shadow: 0 0 20px #00d4ff; }
+
+/* 6. ЭФФЕКТЫ И ОВЕРЛЕИ */
 .inv-item.processing { filter: grayscale(0.9); }
-.inv-item .overlay {
-    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-    background: rgba(0,0,0,0.85); color: #00d4ff;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 16px; font-weight: bold; z-index: 20;
-    letter-spacing: 1px;
+.inv-item .overlay { 
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
+    background: rgba(0,0,0,0.85); color: #00d4ff; 
+    display: flex; align-items: center; justify-content: center; 
+    font-size: 16px; font-weight: bold; z-index: 20; letter-spacing: 1px; 
 }
+.sell-animation { animation: sellEffect 0.5s forwards; }
+@keyframes sellEffect { to { transform: scale(0.5) translateY(-50px); opacity: 0; } }
+
+/* 7. ИНТЕРФЕЙС И НАВИГАЦИЯ */
+.page { display: none; padding: 160px 20px 100px; }
+.page.active { display: block; }
+.bottom-navbar { position: fixed; bottom: 0; width: 100%; height: 80px; background: #0d0d19; display: flex; align-items: center; border-top: 1px solid #1f1f35; z-index: 1000; }
+.bottom-navbar button { flex: 1; background: none; border: none; color: #5a5a7a; font-weight: bold; cursor: pointer; }
+.bottom-navbar button:hover { color: #00d4ff; }
+
+/* УВЕДОМЛЕНИЯ */
+#notification-container { position: fixed; top: 120px; left: 50%; transform: translateX(-50%); z-index: 9999; }
+.notification { background: #00d4ff; color: #000; padding: 12px 40px; border-radius: 50px; font-weight: bold; margin-bottom: 10px; opacity: 0; transition: 0.3s; }
+.notification.show { opacity: 1; }
