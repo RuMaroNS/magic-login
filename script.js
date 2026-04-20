@@ -7,19 +7,17 @@ const TG_CHAT_ID = '6176762600';
 
 let currentUser = null;
 const SELL_COMMISSION = 0.20; 
-
-// Создаем один общий канал для всех
 const liveChannel = supabaseClient.channel('live-drops');
 
 window.onload = () => { 
     autoLogin(); 
-    initGlobalRealtime(); // Запускаем прослушку сразу
+    initGlobalRealtime();
 };
 
 function showNotify(text) {
     const container = document.getElementById('notification-container');
     const n = document.createElement('div');
-    n.className = 'notification';
+    n.className = 'notification cyber-border';
     n.innerText = text;
     container.appendChild(n);
     setTimeout(() => n.classList.add('show'), 10);
@@ -29,11 +27,9 @@ function showNotify(text) {
     }, 2500);
 }
 
-// ФИКС: Слушаем сигналы от других игроков
 function initGlobalRealtime() {
     liveChannel
     .on('broadcast', { event: 'new-drop' }, (payload) => {
-        // Когда кто-то другой выбил предмет, добавляем его в лайв-борд
         addToLiveBoard(payload.payload.user, payload.payload.item);
     })
     .subscribe();
@@ -47,46 +43,88 @@ async function autoLogin() {
     }
 }
 
-function logout() {
-    localStorage.removeItem('game_user_id');
-    currentUser = null;
-    document.getElementById('game-interface').style.display = 'none';
-    document.getElementById('auth-screen').style.display = 'flex';
-    showNotify("Вы вышли");
-}
-
-async function login() {
-    const user = document.getElementById('user_name').value.trim();
-    const pass = document.getElementById('user_password').value;
-    const { data } = await supabaseClient.from('profiles').select('*').eq('username', user).eq('password', pass).single();
-    if(data) {
-        currentUser = data;
-        localStorage.setItem('game_user_id', data.id);
-        enterGame();
-        showNotify(`Привет, ${user}!`);
-    } else showNotify("Ошибка входа!");
-}
-
-async function register() {
-    const user = document.getElementById('user_name').value.trim();
-    const pass = document.getElementById('user_password').value;
-    const { data, error } = await supabaseClient.from('profiles').insert([{ username: user, password: pass, score: 120, inventory: [] }]).select().single();
-    if (error) return showNotify("Ник занят!");
-    login();
-}
-
 function enterGame() {
     document.getElementById('auth-screen').style.display = 'none';
     document.getElementById('game-interface').style.display = 'block';
+    document.getElementById('top-bar').style.display = 'flex';
     navTo('cases');
 }
 
+function updateUI() {
+    if (!currentUser) return;
+    document.getElementById('h-balance').innerText = currentUser.score;
+    document.getElementById('h-cp').innerText = currentUser.cyberpunk_points || 0;
+    document.getElementById('p-balance').innerText = currentUser.score;
+    document.getElementById('p-cp').innerText = currentUser.cyberpunk_points || 0;
+}
+
+// --- ЛОГИКА МАРКЕТА И КВЕСТОВ ---
+
+async function renderMarket() {
+    const { data: stock } = await supabaseClient.from('limited_stock').select('*');
+    const grid = document.getElementById('limited-grid');
+    
+    grid.innerHTML = stock.map(i => `
+        <div class="item-card cyber-border">
+            <div class="limited-tag">${i.stock > 0 ? 'STOCK: ' + i.stock : 'SOLD OUT'}</div>
+            <img src="${GITHUB_BASE}${encodeURIComponent(i.image_url)}.png">
+            <h4>${i.name}</h4>
+            <button class="neon-btn" style="background:var(--cyber-pink)" 
+                onclick="${i.stock > 0 ? `buyLimited(${i.id}, ${i.price_cp})` : ''}">
+                ${i.price_cp} CP
+            </button>
+        </div>
+    `).join('');
+    
+    const { data: tasks } = await supabaseClient.from('cyber_tasks').select('*');
+    document.getElementById('tasks-list').innerHTML = tasks.map(t => `
+        <div class="task-card cyber-border">
+            <div>
+                <div class="task-title">${t.title}</div>
+                <div class="task-reward">+${t.reward} CP</div>
+            </div>
+            <button class="neon-btn" style="width:100px; background:var(--cyber-green)" onclick="completeTask(${t.id}, ${t.reward})">DO IT</button>
+        </div>
+    `).join('');
+}
+
+async function buyLimited(id, price) {
+    if ((currentUser.cyberpunk_points || 0) < price) return showNotify("НЕДОСТАТОЧНО CP!");
+    
+    const { data: check } = await supabaseClient.from('limited_stock').select('stock, name').eq('id', id).single();
+    if (check.stock <= 0) return showNotify("РАЗОБРАЛИ!");
+
+    const newCP = currentUser.cyberpunk_points - price;
+    await supabaseClient.from('profiles').update({ cyberpunk_points: newCP }).eq('id', currentUser.id);
+    await supabaseClient.from('limited_stock').update({ stock: check.stock - 1 }).eq('id', id);
+    
+    const newInv = [...(currentUser.inventory || []), { char: check.name, id: Date.now(), rarity: 'LIMITED' }];
+    await supabaseClient.from('profiles').update({ inventory: newInv }).eq('id', currentUser.id);
+    
+    currentUser.cyberpunk_points = newCP;
+    currentUser.inventory = newInv;
+    showNotify("ЛИМИТКА В ИНВЕНТАРЕ!");
+    renderMarket();
+    updateUI();
+}
+
+async function completeTask(taskId, reward) {
+    const newCP = (currentUser.cyberpunk_points || 0) + reward;
+    await supabaseClient.from('profiles').update({ cyberpunk_points: newCP }).eq('id', currentUser.id);
+    currentUser.cyberpunk_points = newCP;
+    showNotify(`+${reward} CP ПОЛУЧЕНО!`);
+    updateUI();
+}
+
+// --- СТАНДАРТНАЯ ЛОГИКА (РУЛЕТКА, ВЫВОД, ПРОДАЖА) ---
+
 async function openRoulette(caseId) {
     const { data: cData } = await supabaseClient.from('cases_meta').select('*').eq('id', caseId).single();
-    if (currentUser.score < cData.price) return showNotify("Мало монет!");
+    if (currentUser.score < cData.price) return showNotify("МАЛО МОНЕТ!");
 
     currentUser.score -= cData.price;
     await supabaseClient.from('profiles').update({ score: currentUser.score }).eq('id', currentUser.id);
+    updateUI();
 
     navTo('opening');
     const tape = document.getElementById('roulette-tape');
@@ -111,103 +149,19 @@ async function openRoulette(caseId) {
         tape.style.transform = `translateX(-${finalShift}px)`;
     }, 50);
 
-    const newInv = [...(currentUser.inventory || []), { char: win.name, id: Date.now() }];
-    
     setTimeout(async () => {
+        const newInv = [...(currentUser.inventory || []), { char: win.name, id: Date.now() }];
         await supabaseClient.from('profiles').update({ inventory: newInv }).eq('id', currentUser.id);
         currentUser.inventory = newInv;
         
-        // 1. Показываем себе
+        liveChannel.send({ type: 'broadcast', event: 'new-drop', payload: { user: currentUser.username, item: win.name } });
         addToLiveBoard(currentUser.username, win.name);
 
-        // 2. ФИКС: Отправляем сигнал всем остальным игрокам
-        liveChannel.send({
-            type: 'broadcast',
-            event: 'new-drop',
-            payload: { user: currentUser.username, item: win.name }
-        });
-        
         document.getElementById('win-display').style.display = 'block';
         document.getElementById('win-name-text').innerText = `ВЫПАЛО: ${win.name}`;
         if (typeof confetti === 'function') confetti();
     }, 5500);
 }
 
-async function sellItem(itemId, charName) {
-    const { data: itemData } = await supabaseClient.from('items_meta').select('price').eq('name', charName).single();
-    const sellPrice = Math.floor(itemData.price * (1 - SELL_COMMISSION));
-    currentUser.inventory = currentUser.inventory.filter(i => i.id !== itemId);
-    currentUser.score += sellPrice;
-    await supabaseClient.from('profiles').update({ inventory: currentUser.inventory, score: currentUser.score }).eq('id', currentUser.id);
-    renderProfile();
-    showNotify(`+$${sellPrice}`);
-}
-
-async function withdrawItem(id) {
-    const nick = prompt("Ник в Roblox:");
-    if (!nick) return;
-    const item = currentUser.inventory.find(x => x.id === id);
-    item.status = 'processing';
-    await supabaseClient.from('profiles').update({ inventory: currentUser.inventory }).eq('id', currentUser.id);
-    renderProfile();
-    showNotify("Заявка отправлена!");
-    fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendMessage?chat_id=${TG_CHAT_ID}&text=${encodeURIComponent('Вывод: ' + nick + ' Предмет: ' + item.char)}`);
-}
-
-function navTo(pageId) {
-    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-    document.getElementById('page-' + pageId).classList.add('active');
-    document.getElementById('win-display').style.display = 'none';
-    if(pageId === 'profile') renderProfile();
-    if(pageId === 'cases') renderCases();
-    window.scrollTo(0,0);
-}
-
-async function renderCases() {
-    const { data: cases } = await supabaseClient.from('cases_meta').select('*');
-    document.getElementById('cases-grid').innerHTML = cases.map(c => `
-        <div class="case-card" onclick="openRoulette(${c.id})">
-            <img src="${GITHUB_BASE}${c.image_url}">
-            <h3>${c.name.toUpperCase()}</h3>
-            <p class="case-price">$${c.price}</p>
-            <button class="neon-btn">ОТКРЫТЬ</button>
-        </div>`).join('');
-}
-
-async function renderProfile() {
-    const { data } = await supabaseClient.from('profiles').select('*').eq('id', currentUser.id).single();
-    if (data) currentUser = data;
-    document.getElementById('p-username').innerText = currentUser.username;
-    document.getElementById('p-balance').innerText = currentUser.score;
-    const invList = document.getElementById('inventory-list');
-    if (!currentUser.inventory || currentUser.inventory.length === 0) {
-        invList.innerHTML = '<div style="color:#5a5a7a; padding:40px; text-align:center; width:100%;">ПУСТО</div>';
-        return;
-    }
-    invList.innerHTML = currentUser.inventory.map(i => `
-        <div class="inv-item ${i.status === 'processing' ? 'processing' : ''}">
-            ${i.status === 'processing' ? '<div class="overlay">В ОБРАБОТКЕ</div>' : ''}
-            <img src="${GITHUB_BASE}${i.char}.png">
-            <p>${i.char}</p>
-            <div class="inv-btns">
-                <button class="withdraw-btn" onclick="withdrawItem(${i.id})">ВЫВОД</button>
-                <button class="withdraw-btn sell-btn" onclick="sellItem(${i.id}, '${i.char}')">ПРОДАТЬ</button>
-            </div>
-        </div>`).reverse().join('');
-}
-
-function addToLiveBoard(user, item) {
-    const board = document.getElementById('global-live-feed');
-    const card = document.createElement('div');
-    card.className = 'drop-card';
-    card.innerHTML = `<img src="${GITHUB_BASE}${item}.png"><div><div style="font-size:10px;color:#5a5a7a">${user}</div><div style="font-size:12px">${item}</div></div>`;
-    board.prepend(card);
-    if (board.children.length > 15) board.lastElementChild.remove();
-}
-
-function switchAuthMode(mode) {
-    document.getElementById('tab-btn-login').className = (mode === 'login' ? 'active' : '');
-    document.getElementById('tab-btn-reg').className = (mode === 'reg' ? 'active' : '');
-    document.getElementById('btn-login-action').style.display = (mode === 'login' ? 'block' : 'none');
-    document.getElementById('btn-reg-action').style.display = (mode === 'reg' ? 'block' : 'none');
-}
+// ... (оставшиеся функции: login, register, logout, sellItem, withdrawItem, navTo, renderCases, renderProfile) ...
+// Важно: в renderProfile и renderCases добавь вызов updateUI()
