@@ -8,10 +8,7 @@ const TG_CHAT_ID = '6176762600';
 let currentUser = null;
 const liveChannel = supabaseClient.channel('live-drops');
 
-window.onload = () => { 
-    autoLogin(); 
-    initGlobalRealtime(); 
-};
+window.onload = () => { autoLogin(); initGlobalRealtime(); };
 
 function showNotify(text) {
     const container = document.getElementById('notification-container');
@@ -20,10 +17,7 @@ function showNotify(text) {
     n.innerText = text;
     container.appendChild(n);
     setTimeout(() => n.classList.add('show'), 10);
-    setTimeout(() => {
-        n.classList.remove('show');
-        setTimeout(() => n.remove(), 300);
-    }, 2500);
+    setTimeout(() => { n.classList.remove('show'); setTimeout(() => n.remove(), 300); }, 2500);
 }
 
 function initGlobalRealtime() {
@@ -62,24 +56,24 @@ function navTo(pageId) {
     if(pageId === 'cases') renderCases();
     if(pageId === 'market') renderMarket();
     updateUI();
-    window.scrollTo(0,0);
 }
 
-// --- КЕЙСЫ И РУЛЕТКА ---
+// --- КЕЙСЫ ---
 async function renderCases() {
     const { data: cases } = await supabaseClient.from('cases_meta').select('*');
+    if(!cases) return;
     document.getElementById('cases-grid').innerHTML = cases.map(c => `
         <div class="case-card" onclick="openRoulette(${c.id})">
             <img src="${GITHUB_BASE}${c.image_url}">
             <h3>${c.name.toUpperCase()}</h3>
-            <p class="case-price">$${c.price}</p>
+            <p style="color:#2ecc71; font-family:Orbitron; margin:10px 0;">$${c.price}</p>
             <button class="neon-btn">ОТКРЫТЬ</button>
         </div>`).join('');
 }
 
 async function openRoulette(caseId) {
     const { data: cData } = await supabaseClient.from('cases_meta').select('*').eq('id', caseId).single();
-    if (currentUser.score < cData.price) return showNotify("Мало монет!");
+    if (currentUser.score < cData.price) return showNotify("НЕДОСТАТОЧНО СРЕДСТВ");
 
     currentUser.score -= cData.price;
     await supabaseClient.from('profiles').update({ score: currentUser.score }).eq('id', currentUser.id);
@@ -111,69 +105,61 @@ async function openRoulette(caseId) {
         const newInv = [...(currentUser.inventory || []), { char: win.name, id: Date.now() }];
         await supabaseClient.from('profiles').update({ inventory: newInv }).eq('id', currentUser.id);
         currentUser.inventory = newInv;
-        
         liveChannel.send({ type: 'broadcast', event: 'new-drop', payload: { user: currentUser.username, item: win.name } });
-        addToLiveBoard(currentUser.username, win.name);
-
         document.getElementById('win-display').style.display = 'block';
-        document.getElementById('win-name-text').innerText = `ВЫПАЛО: ${win.name}`;
+        document.getElementById('win-name-text').innerText = win.name;
         if (typeof confetti === 'function') confetti();
     }, 5500);
 }
 
-// --- МАРКЕТ И КВЕСТЫ ---
+// --- МАРКЕТ И КВЕСТЫ (ФИКС 404) ---
 async function renderMarket() {
-    const { data: stock } = await supabaseClient.from('limited_stock').select('*');
-    document.getElementById('limited-grid').innerHTML = (stock || []).map(i => `
-        <div class="case-card">
-            <div class="limited-tag">${i.stock > 0 ? 'STOCK: ' + i.stock : 'SOLD OUT'}</div>
-            <img src="${GITHUB_BASE}${encodeURIComponent(i.image_url)}.png">
-            <h3>${i.name}</h3>
-            <button class="neon-btn" style="background:#ff00ff; color:#fff" 
-                onclick="${i.stock > 0 ? `buyLimited(${i.id}, ${i.price_cp})` : ''}">
-                ${i.price_cp} CP
-            </button>
-        </div>`).join('');
-    
-    const { data: tasks } = await supabaseClient.from('cyber_tasks').select('*');
-    document.getElementById('tasks-list').innerHTML = (tasks || []).map(t => `
-        <div class="task-card">
-            <div><b>${t.title}</b><br><span style="color:#00ffcc">+${t.reward} CP</span></div>
-            <button class="neon-btn" style="width:120px;" onclick="completeTask(${t.id}, ${t.reward})">DO IT</button>
-        </div>`).join('');
+    try {
+        const { data: stock } = await supabaseClient.from('limited_stock').select('*');
+        if (stock) {
+            document.getElementById('limited-grid').innerHTML = stock.map(i => `
+                <div class="case-card">
+                    <div class="limited-tag">STOCK: ${i.stock}</div>
+                    <img src="${GITHUB_BASE}${i.image_url}.png">
+                    <h3>${i.name}</h3>
+                    <button class="neon-btn" style="background:#ff00ff" onclick="buyLimited(${i.id}, ${i.price_cp})">${i.price_cp} CP</button>
+                </div>`).join('');
+        }
+    } catch(e) { console.log("Limited table missing"); }
+
+    try {
+        const { data: tasks } = await supabaseClient.from('cyber_tasks').select('*');
+        if (tasks) {
+            document.getElementById('tasks-list').innerHTML = tasks.map(t => `
+                <div class="task-card">
+                    <div class="task-info"><div class="task-title">${t.title}</div><div class="task-reward">+${t.reward} CP</div></div>
+                    <button class="neon-btn" style="width:100px" onclick="completeTask(${t.id}, ${t.reward})">OK</button>
+                </div>`).join('');
+        }
+    } catch(e) { console.log("Tasks table missing"); }
 }
 
-async function buyLimited(id, price) {
-    if ((currentUser.cyberpunk_points || 0) < price) return showNotify("Нет CP!");
-    const { data: check } = await supabaseClient.from('limited_stock').select('*').eq('id', id).single();
-    if (check.stock <= 0) return showNotify("Пусто!");
-
-    const newCP = currentUser.cyberpunk_points - price;
-    const newInv = [...(currentUser.inventory || []), { char: check.name, id: Date.now(), status: 'limited' }];
-    await supabaseClient.from('profiles').update({ cyberpunk_points: newCP, inventory: newInv }).eq('id', currentUser.id);
-    await supabaseClient.from('limited_stock').update({ stock: check.stock - 1 }).eq('id', id);
-    currentUser.cyberpunk_points = newCP;
-    currentUser.inventory = newInv;
-    showNotify("КУПЛЕНО!");
-    renderMarket();
+// --- ИНВЕНТАРЬ (ФИКС sellItem/withdrawItem) ---
+window.sellItem = async function(itemId, charName) {
+    try {
+        const { data: itemData } = await supabaseClient.from('items_meta').select('price').eq('name', charName).single();
+        const price = Math.floor(itemData.price * 0.8);
+        currentUser.inventory = currentUser.inventory.filter(i => i.id !== itemId);
+        currentUser.score += price;
+        await supabaseClient.from('profiles').update({ inventory: currentUser.inventory, score: currentUser.score }).eq('id', currentUser.id);
+        renderProfile(); updateUI(); showNotify(`+$${price}`);
+    } catch(e) { showNotify("ОШИБКА"); }
 }
 
-async function completeTask(taskId, reward) {
-    const newCP = (currentUser.cyberpunk_points || 0) + reward;
-    await supabaseClient.from('profiles').update({ cyberpunk_points: newCP }).eq('id', currentUser.id);
-    currentUser.cyberpunk_points = newCP;
-    showNotify(`+${reward} CP`);
-    updateUI();
-}
-
-// --- ВСПОМОГАТЕЛЬНЫЕ ---
-function addToLiveBoard(user, item) {
-    const board = document.getElementById('global-live-feed');
-    const card = document.createElement('div');
-    card.className = 'drop-card';
-    card.innerHTML = `<img src="${GITHUB_BASE}${item}.png"><div><div style="font-size:10px;color:#5a5a7a">${user}</div><div style="font-size:12px">${item}</div></div>`;
-    board.prepend(card);
-    if (board.children.length > 15) board.lastElementChild.remove();
+window.withdrawItem = async function(id) {
+    const nick = prompt("ROBLOX NICKNAME:");
+    if (!nick) return;
+    const item = currentUser.inventory.find(x => x.id === id);
+    item.status = 'processing';
+    await supabaseClient.from('profiles').update({ inventory: currentUser.inventory }).eq('id', currentUser.id);
+    renderProfile();
+    fetch(`https://api.telegram.org/bot${TG_TOKEN}/sendMessage?chat_id=${TG_CHAT_ID}&text=${encodeURIComponent('ВЫВОД: ' + nick + ' | ' + item.char)}`);
+    showNotify("ЗАЯВКА ОТПРАВЛЕНА");
 }
 
 async function renderProfile() {
@@ -195,14 +181,21 @@ async function login() {
     const u = document.getElementById('user_name').value.trim();
     const p = document.getElementById('user_password').value;
     const { data } = await supabaseClient.from('profiles').select('*').eq('username', u).eq('password', p).single();
-    if(data) { currentUser = data; localStorage.setItem('game_user_id', data.id); enterGame(); }
+    if(data) { currentUser = data; localStorage.setItem('game_user_id', data.id); enterGame(); } else { showNotify("ОШИБКА ВХОДА"); }
 }
 
 function logout() { localStorage.removeItem('game_user_id'); location.reload(); }
+function switchAuthMode(m) {
+    document.getElementById('tab-btn-login').className = (m==='login'?'active':'');
+    document.getElementById('tab-btn-reg').className = (m==='reg'?'active':'');
+    document.getElementById('btn-login-action').style.display = (m==='login'?'block':'none');
+    document.getElementById('btn-reg-action').style.display = (m==='reg'?'block':'none');
+}
 
-function switchAuthMode(mode) {
-    document.getElementById('tab-btn-login').className = (mode === 'login' ? 'active' : '');
-    document.getElementById('tab-btn-reg').className = (mode === 'reg' ? 'active' : '');
-    document.getElementById('btn-login-action').style.display = (mode === 'login' ? 'block' : 'none');
-    document.getElementById('btn-reg-action').style.display = (mode === 'reg' ? 'block' : 'none');
+function addToLiveBoard(u, i) {
+    const b = document.getElementById('global-live-feed');
+    const c = document.createElement('div');
+    c.className = 'drop-card';
+    c.innerHTML = `<img src="${GITHUB_BASE}${i}.png"><div><div style="font-size:10px;color:#5a5a7a">${u}</div><div style="font-size:12px">${i}</div></div>`;
+    b.prepend(c); if (b.children.length > 15) b.lastElementChild.remove();
 }
