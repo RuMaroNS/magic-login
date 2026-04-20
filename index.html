@@ -9,7 +9,6 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-
     <div class="cyber-bg"><div class="grid-overlay"></div></div>
 
     <div class="live-header">
@@ -50,12 +49,12 @@
         <div id="page-opening" class="page">
             <div class="roulette-container">
                 <div class="roulette-wrapper">
-                    <div class="selector"></div>
+                    <div class="selector-line"></div>
                     <div class="tape" id="roulette-tape"></div>
                 </div>
-                <div id="win-display" style="display:none;">
+                <div id="win-display" class="win-card" style="display:none;">
                     <h2 id="win-name-text"></h2>
-                    <button class="neon-btn" style="max-width:200px; margin-top:15px;" onclick="navTo('cases')">НАЗАД</button>
+                    <button class="neon-btn" style="width:200px; margin-top:15px;" onclick="navTo('cases')">ЗАБРАТЬ</button>
                 </div>
             </div>
         </div>
@@ -63,7 +62,7 @@
         <div id="page-market" class="page">
             <h2 class="section-heading">LIMITED STOCK</h2>
             <div id="limited-grid"></div>
-            <h2 class="section-heading" style="margin-top: 40px;">CYBER MISSIONS</h2>
+            <h2 class="section-heading" style="margin-top:40px;">CYBER MISSIONS</h2>
             <div id="tasks-list"></div>
         </div>
 
@@ -85,11 +84,11 @@
             <div id="inventory-list"></div>
         </div>
 
-        <nav class="bottom-navbar">
+        <nav class="bottom-nav">
             <button onclick="navTo('cases')">КЕЙСЫ</button>
             <button onclick="navTo('market')">МАРКЕТ</button>
             <button onclick="navTo('profile')">ПРОФИЛЬ</button>
-            <button onclick="logout()" style="color:#ff4444;">ВЫХОД</button>
+            <button onclick="logout()" class="exit-btn">ВЫХОД</button>
         </nav>
     </div>
 
