@@ -3,26 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Cyber Cases | Cartoon Edition</title>
+    <title>Cyber Magic Cases</title>
     <link rel="stylesheet" href="style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@900&family=Rajdhani:wght@600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <style>
-        /* ГАРАНТИРОВАННАЯ ЦЕНТРОВКА И СТИЛЬ РУЛЕТКИ */
-        .roulette-container { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; margin: 20px auto; overflow: hidden; }
-        .roulette-wrapper { position: relative; width: 95%; max-width: 800px; height: 130px; background: #0d0d19; border: 3px solid var(--cyber-blue); border-radius: 20px; overflow: hidden; box-shadow: 0 0 20px rgba(0,212,255,0.2), inset 0 0 30px rgba(0,0,0,0.8); }
-        .tape { display: flex; align-items: center; position: absolute; left: 0; height: 100%; will-change: transform; }
-        .roulette-item { min-width: 110px; height: 100px; margin: 0 10px; display: flex; justify-content: center; align-items: center; background: rgba(30,30,60,0.5); border-radius: 15px; border: 2px solid #2a2a45; }
-        .roulette-item img { width: 80px; height: 80px; object-fit: contain; filter: drop-shadow(0 0 10px rgba(0,212,255,0.5)); }
-        .selector { position: absolute; left: 50%; top: 0; width: 4px; height: 100%; background: var(--cyber-pink); z-index: 10; transform: translateX(-50%); box-shadow: 0 0 20px var(--cyber-pink); }
-    </style>
 </head>
 <body>
 
-    <div class="cyber-bg">
-        <div class="grid-overlay"></div>
-        <div class="scanline"></div>
-    </div>
+    <div class="cyber-bg"><div class="grid-overlay"></div></div>
 
     <div class="live-header">
         <div class="live-status">
@@ -32,31 +20,30 @@
         <div class="drop-tape" id="global-live-feed"></div>
     </div>
 
-    <div id="top-bar" class="cyber-top-bar" style="display:none;">
+    <div id="top-bar" class="currency-panel" style="display:none;">
         <div class="currency-badge cash">$ <span id="h-balance">0</span></div>
         <div class="currency-badge cp">⚡ <span id="h-cp">0</span> CP</div>
     </div>
 
     <div id="auth-screen" class="full-screen">
-        <div class="auth-card cyber-border">
+        <div class="auth-card">
             <h1 class="logo-text">CYBER<span>CASES</span></h1>
             <div class="auth-tabs">
                 <button id="tab-btn-login" class="active" onclick="switchAuthMode('login')">ВХОД</button>
                 <button id="tab-btn-reg" onclick="switchAuthMode('reg')">РЕГА</button>
             </div>
             <div class="auth-form">
-                <input type="text" id="user_name" placeholder="НИКНЕЙМ">
-                <input type="password" id="user_password" placeholder="ПАРОЛЬ">
-                <button id="btn-login-action" class="neon-btn main-btn" onclick="login()">ПОДКЛЮЧИТЬСЯ</button>
-                <button id="btn-reg-action" class="neon-btn main-btn" style="display:none;" onclick="register()">СОЗДАТЬ ID</button>
+                <input type="text" id="user_name" placeholder="Никнейм">
+                <input type="password" id="user_password" placeholder="Пароль">
+                <button id="btn-login-action" class="neon-btn" onclick="login()">ВОЙТИ</button>
+                <button id="btn-reg-action" class="neon-btn" style="display:none;" onclick="register()">СОЗДАТЬ</button>
             </div>
         </div>
     </div>
 
     <div id="game-interface" style="display:none;">
-        
         <div id="page-cases" class="page active">
-            <h2 class="section-title">CYBER CAPSULES</h2>
+            <h2 class="section-heading">CYBER CAPSULES</h2>
             <div id="cases-grid"></div>
         </div>
         
@@ -66,43 +53,43 @@
                     <div class="selector"></div>
                     <div class="tape" id="roulette-tape"></div>
                 </div>
-                <div id="win-display" style="display:none; margin-top: 30px;">
-                    <h2 id="win-name-text" class="neon-text-pink"></h2>
-                    <button class="neon-btn" style="max-width:250px; margin-top:20px;" onclick="navTo('cases')">ВЕРНУТЬСЯ</button>
+                <div id="win-display" style="display:none;">
+                    <h2 id="win-name-text"></h2>
+                    <button class="neon-btn" style="max-width:200px; margin-top:15px;" onclick="navTo('cases')">НАЗАД</button>
                 </div>
             </div>
         </div>
 
         <div id="page-market" class="page">
-            <h2 class="section-title">LIMITED STOCK</h2>
+            <h2 class="section-heading">LIMITED STOCK</h2>
             <div id="limited-grid"></div>
-            <h2 class="section-title" style="margin-top:40px;">CYBER MISSIONS</h2>
+            <h2 class="section-heading" style="margin-top: 40px;">CYBER MISSIONS</h2>
             <div id="tasks-list"></div>
         </div>
 
         <div id="page-profile" class="page">
-            <div class="profile-card cyber-border">
+            <div class="profile-card">
                 <div class="profile-header">
-                    <div class="cyber-avatar"></div>
-                    <div class="user-info">
-                        <h2 id="p-username" class="neon-text-blue"></h2>
-                        <div class="rank-label">ELITE RUNNER</div>
+                    <div class="avatar-box"></div>
+                    <div class="user-meta">
+                        <h2 id="p-username"></h2>
+                        <span class="rank-tag">ELITE RUNNER</span>
                     </div>
                 </div>
-                <div class="profile-stats">
-                    <div class="stat-box"><span>CASH</span><b id="p-balance">0</b></div>
-                    <div class="stat-box"><span>POINTS</span><b id="p-cp" style="color:var(--cyber-green)">0</b></div>
+                <div class="stats-row">
+                    <div class="stat-item"><span>CASH</span><b id="p-balance">0</b></div>
+                    <div class="stat-item"><span>POINTS</span><b id="p-cp">0</b></div>
                 </div>
             </div>
-            <h3 class="inventory-title">MY INVENTORY</h3>
+            <h2 class="section-heading">MY INVENTORY</h2>
             <div id="inventory-list"></div>
         </div>
 
-        <nav class="bottom-navbar cyber-nav">
-            <button onclick="navTo('cases')">📦 КЕЙСЫ</button>
-            <button onclick="navTo('market')">🛒 МАРКЕТ</button>
-            <button onclick="navTo('profile')">👤 ПРОФИЛЬ</button>
-            <button onclick="logout()" style="color:var(--cyber-pink); opacity:0.7;">ВЫХОД</button>
+        <nav class="bottom-navbar">
+            <button onclick="navTo('cases')">КЕЙСЫ</button>
+            <button onclick="navTo('market')">МАРКЕТ</button>
+            <button onclick="navTo('profile')">ПРОФИЛЬ</button>
+            <button onclick="logout()" style="color:#ff4444;">ВЫХОД</button>
         </nav>
     </div>
 
