@@ -393,11 +393,10 @@ function startSlowdown() {
     isSlowingDown = true;
     
     function checkAndStop() {
-        if (spinVelocity <= 0.5) {
+        if (spinVelocity <= 0.2) {
             // Полная остановка
             cancelAnimationFrame(spinAnimationId);
             spinAnimationId = null;
-            smoothStopOnTarget();
         } else {
             requestAnimationFrame(checkAndStop);
         }
