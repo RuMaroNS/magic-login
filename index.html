@@ -92,6 +92,27 @@
         </nav>
     </div>
 
+    <!-- ОВЕРЛЕЙ РУЛЕТКИ -->
+    <div id="roulette-overlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.98); z-index:10000; backdrop-filter:blur(8px);">
+        <div class="roulette-container">
+            <div class="roulette-header">
+                <span class="roulette-title">🔓 INITIALIZING CASE</span>
+                <span class="roulette-loader">LOADING...</span>
+            </div>
+            <div class="roulette-window">
+                <div class="roulette-track" id="rouletteTrack"></div>
+                <div class="roulette-pointer">▼</div>
+            </div>
+            <div class="roulette-result" id="rouletteResult">
+                <span class="result-icon">🎲</span>
+                <span class="result-text">ROLLING...</span>
+            </div>
+            <div class="roulette-progress">
+                <div class="progress-bar" id="rouletteProgress"></div>
+            </div>
+        </div>
+    </div>
+
     <template id="inv-item-template">
         <div class="mega-card inv-item">
             <img class="item-img" src="">
