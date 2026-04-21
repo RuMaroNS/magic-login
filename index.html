@@ -9,7 +9,10 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-    <div class="cyber-bg"><div class="grid-overlay"></div></div>
+    <div class="cyber-bg">
+        <div class="grid-overlay"></div>
+        <div class="scanlines"></div>
+    </div>
 
     <div class="live-header">
         <div class="live-status">
@@ -27,23 +30,24 @@
     <div id="auth-screen" class="full-screen">
         <div class="auth-card">
             <h1 class="logo-text">CYBER<span>CASES</span></h1>
-            <div class="auth-tabs">
-                <button id="tab-btn-login" class="active" onclick="switchAuthMode('login')">ВХОД</button>
-                <button id="tab-btn-reg" onclick="switchAuthMode('reg')">РЕГА</button>
-            </div>
-            <div class="auth-form">
-                <input type="text" id="user_name" placeholder="Никнейм">
-                <input type="password" id="user_password" placeholder="Пароль">
-                <button id="btn-login-action" class="neon-btn" onclick="login()">ВОЙТИ</button>
-                <button id="btn-reg-action" class="neon-btn" style="display:none;" onclick="register()">СОЗДАТЬ</button>
-            </div>
+            <input type="text" id="user_name" placeholder="LOGIN">
+            <input type="password" id="user_password" placeholder="PASS">
+            <button class="neon-btn" onclick="login()">ENTER SYSTEM</button>
         </div>
     </div>
 
     <div id="game-interface" style="display:none;">
+        
         <div id="page-cases" class="page active">
-            <h2 class="section-heading">CYBER CAPSULES</h2>
+            <h2 class="section-heading">CAPSULES SYSTEM</h2>
             <div id="cases-grid"></div>
+        </div>
+
+        <div id="page-case-info" class="page">
+            <button class="back-btn" onclick="navTo('cases')">← BACK</button>
+            <div id="case-detail-content"></div>
+            <h3 class="section-heading">POSSIBLE LOOT</h3>
+            <div id="loot-chances-grid"></div>
         </div>
         
         <div id="page-opening" class="page">
@@ -54,7 +58,7 @@
                 </div>
                 <div id="win-display" class="win-card" style="display:none;">
                     <h2 id="win-name-text"></h2>
-                    <button class="neon-btn" style="width:200px; margin-top:15px;" onclick="navTo('cases')">ЗАБРАТЬ</button>
+                    <button class="neon-btn" style="width:200px;" onclick="navTo('cases')">CONFIRM</button>
                 </div>
             </div>
         </div>
@@ -62,38 +66,26 @@
         <div id="page-market" class="page">
             <h2 class="section-heading">LIMITED STOCK</h2>
             <div id="limited-grid"></div>
-            <h2 class="section-heading" style="margin-top:40px;">CYBER MISSIONS</h2>
-            <div id="tasks-list"></div>
         </div>
 
         <div id="page-profile" class="page">
             <div class="profile-card">
-                <div class="profile-header">
-                    <div class="avatar-box"></div>
-                    <div class="user-meta">
-                        <h2 id="p-username"></h2>
-                        <span class="rank-tag">ELITE RUNNER</span>
-                    </div>
-                </div>
-                <div class="stats-row">
-                    <div class="stat-item"><span>CASH</span><b id="p-balance">0</b></div>
-                    <div class="stat-item"><span>POINTS</span><b id="p-cp">0</b></div>
-                </div>
+                <div class="profile-avatar"></div>
+                <h2 id="p-username" class="cyber-nick"></h2>
+                <div class="rank-badge">ELITE RUNNER</div>
             </div>
-            <h2 class="section-heading">MY INVENTORY</h2>
+            <h2 class="section-heading">INVENTORY</h2>
             <div id="inventory-list"></div>
         </div>
 
         <nav class="bottom-nav">
-            <button onclick="navTo('cases')">КЕЙСЫ</button>
-            <button onclick="navTo('market')">МАРКЕТ</button>
-            <button onclick="navTo('profile')">ПРОФИЛЬ</button>
-            <button onclick="logout()" class="exit-btn">ВЫХОД</button>
+            <button onclick="navTo('cases')"><span>CASES</span></button>
+            <button onclick="navTo('market')"><span>MARKET</span></button>
+            <button onclick="navTo('profile')"><span>PROFILE</span></button>
         </nav>
     </div>
 
     <div id="notification-container"></div>
-    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <script src="script.js"></script>
 </body>
 </html>
