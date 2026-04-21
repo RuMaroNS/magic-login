@@ -319,6 +319,57 @@ window.openCase = async function(caseId) {
     }
 };
 
+function startInfiniteSpin() {
+    if (rouletteInterval) clearInterval(rouletteInterval);
+    
+    const track = document.getElementById('rouletteTrack');
+    if (!track) return;
+    
+    const itemWidth = 150;
+    let currentOffset = 0;
+    
+    rouletteInterval = setInterval(() => {
+        currentOffset += 5;
+        if (currentOffset >= rouletteItemsArray.length * itemWidth) {
+            currentOffset = 0;
+        }
+        track.style.transition = 'none';
+        track.style.transform = `translateX(-${currentOffset}px)`;
+    }, 16);
+}
+
+async function stopSpinAndWin() {
+    if (rouletteInterval) {
+        clearInterval(rouletteInterval);
+        rouletteInterval = null;
+    }
+    
+    const track = document.getElementById('rouletteTrack');
+    if (!track) return;
+    
+    const itemWidth = 150;
+    const targetIndex = rouletteItemsArray.length - 3;
+    const targetPosition = targetIndex * itemWidth;
+    
+    const currentTransform = track.style.transform;
+    const currentMatch = currentTransform.match(/translateX\(-(\d+)px\)/);
+    const currentOffset = currentMatch ? parseInt(currentMatch[1]) : 0;
+    
+    let distanceToTarget = targetPosition - currentOffset;
+    const extraSpins = Math.floor(Math.random() * 3 + 2) * rouletteItemsArray.length * itemWidth;
+    const finalDistance = distanceToTarget + extraSpins;
+    
+    track.style.transition = 'transform 3s cubic-bezier(0.25, 0.1, 0.15, 1)';
+    track.style.transform = `translateX(-${currentOffset + finalDistance}px)`;
+    
+    await new Promise(resolve => setTimeout(resolve, 3200));
+    
+    const overlay = document.getElementById('roulette-overlay');
+    if (overlay) overlay.style.display = 'none';
+    
+    await showLootWin(currentSelectedLoot);
+}
+
 // ========== ОТКРЫТИЕ КЕЙСА С БЕСКОНЕЧНОЙ РУЛЕТКОЙ ==========
 window.openCaseWithAnimation = async function(caseId) {
     if (!currentUser) return;
