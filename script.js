@@ -160,6 +160,7 @@ window.showCaseInfo = async function(id) {
 };
 
 // ========== ОТКРЫТИЕ КЕЙСА (С УЧЁТОМ ШАНСОВ ИЗ loot) ==========
+// ========== ОТКРЫТИЕ КЕЙСА ==========
 window.openCase = async function(caseId) {
     if (!currentUser) return;
     const caseData = allCases.find(c => c.id == caseId);
@@ -169,7 +170,6 @@ window.openCase = async function(caseId) {
         return window.showNotify("INSUFFICIENT FUNDS", "error");
     }
 
-    // Получаем loot из JSONB колонки
     let lootItems = caseData.loot || [];
     if (typeof lootItems === 'string') {
         try {
@@ -183,24 +183,22 @@ window.openCase = async function(caseId) {
         return window.showNotify("NO LOOT IN THIS CASE", "error");
     }
 
-    // Выбираем предмет по шансам
     const selectedLoot = getRandomItemFromLoot(lootItems);
     if (!selectedLoot) {
         return window.showNotify("ERROR SELECTING ITEM", "error");
     }
 
-    // Получаем полную информацию о предмете из items_meta
     const itemFull = allItems[selectedLoot.name] || { 
         name: selectedLoot.name, 
         image_url: 'unknown.png',
-        sell_price: 100
+        price: 100  // цена по умолчанию
     };
 
     const newItem = {
         id: Date.now(),
         char: itemFull.image_url || selectedLoot.name,
         name: selectedLoot.name,
-        sell_price: itemFull.sell_price || 100
+        sell_price: itemFull.price || 100  // ← цена из items_meta.price
     };
 
     const newInventory = [...(currentUser.inventory || []), newItem];
@@ -256,12 +254,14 @@ window.buyLimited = async function(id, price) {
     const newStock = item.stock - 1;
     const newCP = (currentUser.cyberpunk_points || 0) - price;
     
-    // Добавляем предмет в инвентарь
+    // Находим цену предмета из items_meta по имени
+    const itemFull = allItems[item.name] || { price: 100 };
+    
     const newInventory = [...(currentUser.inventory || []), {
         id: Date.now(),
         char: item.image_url,
         name: item.name,
-        sell_price: item.price_cp || 0
+        sell_price: itemFull.price || 100
     }];
     
     await supabaseClient.from('cases_meta').update({ stock: newStock }).eq('id', id);
@@ -317,7 +317,72 @@ window.renderProfile = function() {
     });
 };
 
-// ========== ПРОДАЖА ==========
+// ========== ПРОДАЖА (С КОМИССИЕЙ 20%) ==========
 window.sellItem = async function(id, sellPrice = 150) {
     const idx = currentUser.inventory.findIndex(x => x.id === id);
-    if (idx === -1) return
+    if (idx === -1) return;
+    
+    // Комиссия 20% — игрок получает 80% от цены предмета
+    const commissionRate = 0.8;  // 80%
+    const playerGain = Math.floor(sellPrice * commissionRate);
+    
+    const newInventory = [...currentUser.inventory];
+    newInventory.splice(idx, 1);
+    const newScore = (currentUser.score || 0) + playerGain;
+    
+    const { error } = await supabaseClient.from('profiles')
+        .update({ inventory: newInventory, score: newScore })
+        .eq('id', currentUser.id);
+    
+    if (!error) {
+        window.showNotify(`SOLD: +${playerGain}$ (${Math.round((1-commissionRate)*100)}% FEE)`, "success");
+        window.renderProfile();
+    }
+};
+
+// ========== ВЫВОД ==========
+window.withdrawItem = async function(id) {
+    const nick = prompt("ENTER YOUR ROBLOX USERNAME:");
+    if (!nick || nick.trim() === "") {
+        return window.showNotify("WITHDRAWAL CANCELLED", "error");
+    }
+    
+    const newInventory = currentUser.inventory.map(item => 
+        item.id === id ? { ...item, status: 'processing' } : item
+    );
+    
+    const { error } = await supabaseClient.from('profiles')
+        .update({ inventory: newInventory })
+        .eq('id', currentUser.id);
+    
+    if (!error) {
+        window.showNotify(`WITHDRAWAL REQUEST SENT TO BOT (${nick})`, "success");
+        window.renderProfile();
+    }
+};
+
+// ========== НАВИГАЦИЯ ==========
+window.navTo = (id) => {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.getElementById('page-' + id).classList.add('active');
+    if (id === 'profile') window.renderProfile();
+    if (id === 'cases') window.renderAllCases();
+    if (id === 'market') window.renderMarket();
+};
+
+// ========== ПОДПИСКА НА ОБНОВЛЕНИЯ ==========
+function subscribeUpdates() {
+    supabaseClient.channel('any').on('postgres_changes', 
+        { event: 'UPDATE', schema: 'public', table: 'profiles' }, 
+        payload => {
+            if (currentUser && payload.new.id === currentUser.id) {
+                currentUser = payload.new;
+                document.getElementById('h-balance').innerText = currentUser.score || 0;
+                document.getElementById('h-cp').innerText = currentUser.cyberpunk_points || 0;
+                if (document.getElementById('page-profile').classList.contains('active')) {
+                    window.renderProfile();
+                }
+            }
+        }
+    ).subscribe();
+}
