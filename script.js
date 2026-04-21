@@ -409,6 +409,7 @@ function startSpin() {
     animateSpin();
 }
 
+// ========== ЗАМЕДЛЕНИЕ ДО ПОЛНОЙ ОСТАНОВКИ ==========
 function startSlowdown() {
     isSlowingDown = true;
     
@@ -418,19 +419,33 @@ function startSlowdown() {
             cancelAnimationFrame(spinAnimationId);
             spinAnimationId = null;
             
-            // ОПРЕДЕЛЯЕМ НА КАКОМ ПРЕДМЕТЕ ОСТАНОВИЛИСЬ
-            const centerIndex = Math.round(currentOffset / 150) % rouletteItemsArray.length;
-            const landedItem = rouletteItemsArray[centerIndex];
+            // ОПРЕДЕЛЯЕМ НА КАКОМ ПРЕДМЕТЕ ОСТАНОВИЛИСЬ (по реальному положению)
+            const track = document.getElementById('rouletteTrack');
+            const transform = track.style.transform;
+            const match = transform.match(/translateX\(-(\d+)px\)/);
+            const actualOffset = match ? parseInt(match[1]) : 0;
             
-            console.log("Остановились на индексе:", centerIndex);
-            console.log("Выпал предмет:", landedItem?.name);
+            // Вычисляем индекс предмета, который находится под указателем
+            const itemWidth = 150;
+            const pointerPosition = 300; // Примерное положение указателя (центр видимой области)
+            const visibleStart = actualOffset;
+            const visibleEnd = actualOffset + 900; // ширина окна рулетки
+            
+            // Какой предмет в центре?
+            const centerPosition = visibleStart + 450; // центр видимой области
+            const itemIndex = Math.floor(centerPosition / itemWidth) % rouletteItemsArray.length;
+            const landedItem = rouletteItemsArray[itemIndex];
+            
+            console.log("🎯 Фактический offset:", actualOffset);
+            console.log("🎯 Индекс предмета:", itemIndex);
+            console.log("🎯 Выпал предмет:", landedItem?.name);
             
             // Скрываем рулетку
             const overlay = document.getElementById('roulette-overlay');
             overlay.style.display = 'none';
             
             // ВЫДАЁМ ТОТ ПРЕДМЕТ, НА КОТОРОМ ОСТАНОВИЛИСЬ
-            showLootWin(landedItem);  // ← убрали await
+            showLootWin(landedItem);
         } else {
             requestAnimationFrame(checkAndStop);
         }
