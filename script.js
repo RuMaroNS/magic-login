@@ -202,11 +202,9 @@ window.openCase = async function(caseId) {
     };
 
     const newItem = {
-        id: Date.now(),
-        char: itemFull.image_url || selectedLoot.name,
-        name: selectedLoot.name,
-        sell_price: itemFull.price || 100  // ← цена из items_meta.price
-    };
+    id: Date.now(),
+    char: selectedLoot.name,  // ← БЕЗ .png
+	};
 
     const newInventory = [...(currentUser.inventory || []), newItem];
     const newScore = (currentUser.score || 0) - caseData.price;
@@ -304,38 +302,56 @@ window.renderProfile = function() {
     inventory.slice().reverse().forEach(item => {
         const clone = template.content.cloneNode(true);
         
-        // Получаем полную информацию о предмете из allItems
-        const itemFull = allItems[item.name] || { 
-            name: item.name, 
-            image_url: 'unknown.png',
-            price: 100
-        };
+        // ⚡ БЕРЁМ ТОЛЬКО CHAR ⚡
+        let itemChar = item.char;
         
-        // Используем image_url из базы данных
-        const imgUrl = `${GITHUB_BASE}${itemFull.image_url || 'unknown.png'}`;
-        clone.querySelector('.item-img').src = imgUrl;
-        clone.querySelector('.item-img').onerror = function() { 
-            this.src = 'https://placehold.co/150x150?text=NO_IMG'; 
-        };
+        // Если в char есть .png — убираем
+        if (itemChar && itemChar.endsWith('.png')) {
+            itemChar = itemChar.replace('.png', '');
+        }
         
-        // Показываем русское название (display_name) если есть, иначе английское
-        const displayName = itemFull.display_name || item.name;
-        clone.querySelector('.item-name').innerText = displayName;
+        // Если char нет, пробуем взять name (для старых предметов)
+        if (!itemChar && item.name) {
+            itemChar = item.name;
+        }
         
-        const sBtn = clone.querySelector('.sell-btn');
-        const wBtn = clone.querySelector('.with-btn');
-        const statusT = clone.querySelector('.item-status-text');
+        if (!itemChar) {
+            itemChar = "Unknown Item";
+        }
+        
+        // Ищем в allItems по char
+        const itemFull = allItems[itemChar];
+        
+        if (itemFull) {
+            const imgUrl = `${GITHUB_BASE}${itemFull.image_url || 'unknown.png'}`;
+            clone.querySelector('.item-img').src = imgUrl;
+            clone.querySelector('.item-img').onerror = function() { 
+                this.src = 'https://placehold.co/150x150?text=NO_IMG'; 
+            };
+            clone.querySelector('.item-name').innerText = itemFull.display_name;
+            
+            const sBtn = clone.querySelector('.sell-btn');
+            const wBtn = clone.querySelector('.with-btn');
+            const statusT = clone.querySelector('.item-status-text');
 
-        if (item.status === 'processing') {
-            sBtn.style.display = 'none';
-            wBtn.style.display = 'none';
-            statusT.style.display = 'block';
-            statusT.innerText = 'ON_REQUEST...';
+            if (item.status === 'processing') {
+                sBtn.style.display = 'none';
+                wBtn.style.display = 'none';
+                statusT.style.display = 'block';
+            } else {
+                const sellPrice = itemFull.price || 100;
+                // Передаём display_name для Telegram
+                sBtn.onclick = () => window.sellItem(item.id, sellPrice, itemFull.display_name);
+                wBtn.onclick = () => window.withdrawItem(item.id, itemFull.display_name);
+            }
         } else {
-            // Цена продажи из items_meta.price с комиссией 20%
-            const sellPrice = itemFull.price || 100;
-            sBtn.onclick = () => window.sellItem(item.id, sellPrice);
-            wBtn.onclick = () => window.withdrawItem(item.id);
+            // Если не нашли в items_meta
+            clone.querySelector('.item-img').src = 'https://placehold.co/150x150?text=UNKNOWN';
+            clone.querySelector('.item-name').innerText = itemChar;
+            const sBtn = clone.querySelector('.sell-btn');
+            const wBtn = clone.querySelector('.with-btn');
+            sBtn.onclick = () => window.showNotify("CANNOT SELL: ITEM NOT IN DATABASE", "error");
+            wBtn.onclick = () => window.showNotify("CANNOT WITHDRAW: ITEM NOT IN DATABASE", "error");
         }
         list.appendChild(clone);
     });
