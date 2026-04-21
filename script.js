@@ -9,6 +9,10 @@ let currentUser = null;
 let allCases = [];
 let allItems = {};
 let telegramInitialized = false;
+let currentSelectedLoot = null;
+let currentCaseData = null;
+let rouletteInterval = null;
+let rouletteItemsArray = [];
 
 // ========== УВЕДОМЛЕНИЯ ==========
 window.showNotify = function(text, type = "success") {
@@ -30,9 +34,10 @@ async function loadItemsMeta() {
         data.forEach(item => {
             allItems[item.name] = {
                 name: item.name,
-                display_name: item.display_name,
+                display_name: item.display_name || item.name,
                 image_url: item.image_url,
-                price: item.price || 100
+                price: item.price || 100,
+                rarity: item.rarity || 'common'  // ← ДОБАВИЛИ РЕДКОСТЬ
             };
         });
     }
@@ -102,6 +107,62 @@ function getRandomItemFromLoot(lootArray) {
     return lootArray[0];
 }
 
+// ========== ПОКАЗАТЬ ВЫИГРЫШ С ЭФФЕКТАМИ ==========
+async function showLootWin(selectedLoot) {
+    const itemFull = allItems[selectedLoot.name] || { 
+        name: selectedLoot.name, 
+        image_url: 'unknown.png',
+        price: 100,
+        display_name: selectedLoot.name,
+        rarity: 'common'
+    };
+    
+    // Редкость из базы данных
+    const rarity = itemFull.rarity || 'common';
+    
+    // Настройки для разных редкостей
+    const rarityConfig = {
+        common: { color: '#aaa', glow: '#aaa', text: 'COMMON', icon: '⬜' },
+        rare: { color: '#3399ff', glow: '#3399ff', text: 'RARE', icon: '🔵' },
+        epic: { color: '#aa33ff', glow: '#aa33ff', text: 'EPIC', icon: '🟣' },
+        legendary: { color: '#ffaa00', glow: '#ffaa00', text: 'LEGENDARY', icon: '🌟' }
+    };
+    
+    const config = rarityConfig[rarity] || rarityConfig.common;
+    
+    const lootOverlay = document.getElementById('loot-overlay');
+    const lootImage = document.getElementById('lootImage');
+    const lootTitle = document.getElementById('lootTitle');
+    const lootRarity = document.getElementById('lootRarity');
+    const lootRays = document.getElementById('lootRays');
+    
+    lootImage.src = `${GITHUB_BASE}${itemFull.image_url}`;
+    lootTitle.innerText = itemFull.display_name;
+    lootRarity.innerHTML = `${config.icon} ${config.text} ${config.icon}`;
+    lootRarity.style.color = config.color;
+    lootRarity.style.textShadow = `0 0 10px ${config.glow}`;
+    
+    // Меняем цвет рамки под редкость
+    const lootContent = document.querySelector('.loot-content');
+    if (lootContent) {
+        lootContent.style.borderColor = config.color;
+        lootContent.style.boxShadow = `0 0 50px ${config.glow}`;
+    }
+    
+    // Анимация лучей
+    lootRays.style.animation = 'none';
+    void lootRays.offsetHeight;
+    lootRays.style.animation = 'rays 2s ease-out';
+    
+    lootOverlay.style.display = 'block';
+    
+    // Сохраняем предмет во временную переменную
+    window.pendingLoot = {
+        id: Date.now(),
+        char: selectedLoot.name,
+    };
+}
+
 // ========== РЕНДЕР КЕЙСОВ ==========
 window.renderAllCases = async function() {
     const { data } = await supabaseClient.from('cases_meta').select('*');
@@ -116,6 +177,42 @@ window.renderAllCases = async function() {
             </div>
         `).join('');
     }
+};
+
+// ========== ЗАБРАТЬ ЛУТ ==========
+window.claimLoot = async function() {
+    if (!window.pendingLoot || !currentCaseData) return;
+    
+    const lootOverlay = document.getElementById('loot-overlay');
+    
+    lootOverlay.style.opacity = '0';
+    lootOverlay.style.transition = 'opacity 0.3s';
+    
+    setTimeout(async () => {
+        lootOverlay.style.display = 'none';
+        lootOverlay.style.opacity = '1';
+        
+        const newInventory = [...(currentUser.inventory || []), window.pendingLoot];
+        const newScore = (currentUser.score || 0) - currentCaseData.price;
+        
+        const { error } = await supabaseClient.from('profiles').update({
+            inventory: newInventory,
+            score: newScore
+        }).eq('id', currentUser.id);
+        
+        if (!error) {
+            const itemFull = allItems[window.pendingLoot.char];
+            window.showNotify(`🎁 YOU GOT: ${itemFull?.display_name || window.pendingLoot.char}`, 'success');
+            window.renderProfile();
+            window.renderAllCases();
+            document.getElementById('h-balance').innerText = newScore;
+        } else {
+            window.showNotify("ERROR SAVING ITEM", "error");
+        }
+        
+        window.pendingLoot = null;
+        currentCaseData = null;
+    }, 300);
 };
 
 // ========== СТРАНИЦА КЕЙСА С ТАБЛИЦЕЙ ЛУТА ИЗ loot JSONB ==========
@@ -222,10 +319,12 @@ window.openCase = async function(caseId) {
     }
 };
 
+// ========== ОТКРЫТИЕ КЕЙСА С БЕСКОНЕЧНОЙ РУЛЕТКОЙ ==========
 window.openCaseWithAnimation = async function(caseId) {
     if (!currentUser) return;
     const caseData = allCases.find(c => c.id == caseId);
     if (!caseData) return;
+    currentCaseData = caseData;
     
     if ((currentUser.score || 0) < caseData.price) {
         return window.showNotify("INSUFFICIENT FUNDS", "error");
@@ -244,31 +343,28 @@ window.openCaseWithAnimation = async function(caseId) {
         return window.showNotify("NO LOOT IN THIS CASE", "error");
     }
 
-    // Выбираем предмет, который выпадет
-    const selectedLoot = getRandomItemFromLoot(lootItems);
-    if (!selectedLoot) {
+    currentSelectedLoot = getRandomItemFromLoot(lootItems);
+    if (!currentSelectedLoot) {
         return window.showNotify("ERROR SELECTING ITEM", "error");
     }
 
-    // Создаём массив для рулетки (20 случайных + выигрышный в конце)
-    const rouletteItems = [];
-    for (let i = 0; i < 20; i++) {
+    const allLootItems = [];
+    for (let i = 0; i < 50; i++) {
         const randomItem = lootItems[Math.floor(Math.random() * lootItems.length)];
-        rouletteItems.push(randomItem);
+        allLootItems.push(randomItem);
     }
-    // В конце ставим выигрышный предмет несколько раз
     for (let i = 0; i < 5; i++) {
-        rouletteItems.push(selectedLoot);
+        allLootItems.push(currentSelectedLoot);
     }
+    
+    rouletteItemsArray = allLootItems;
 
-    // Показываем оверлей
     const overlay = document.getElementById('roulette-overlay');
     const track = document.getElementById('rouletteTrack');
     const resultDiv = document.getElementById('rouletteResult');
     const progressBar = document.getElementById('rouletteProgress');
     
-    // Заполняем трек предметами
-    track.innerHTML = rouletteItems.map(item => {
+    track.innerHTML = rouletteItemsArray.map(item => {
         const itemFull = allItems[item.name] || { image_url: 'unknown.png', display_name: item.name };
         return `
             <div class="roulette-item">
@@ -282,65 +378,16 @@ window.openCaseWithAnimation = async function(caseId) {
     resultDiv.innerHTML = '<span class="result-icon">🎲</span><span class="result-text">ROLLING...</span>';
     progressBar.style.width = '0%';
     
-    // Сброс позиции трека
-    track.style.transition = 'none';
-    track.style.transform = 'translateX(0px)';
+    startInfiniteSpin();
     
-    // Форсируем reflow
-    void track.offsetHeight;
-    
-    // Запускаем анимацию прогресс-бара
     setTimeout(() => {
-        progressBar.style.transition = 'width 3s linear';
+        progressBar.style.transition = 'width 5s linear';
         progressBar.style.width = '100%';
     }, 50);
     
-    // Запускаем прокрутку
     setTimeout(() => {
-        track.style.transition = 'transform 3s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
-        const itemWidth = 150;
-        const targetPosition = (track.children.length - 3) * itemWidth;
-        track.style.transform = `translateX(-${targetPosition}px)`;
-    }, 100);
-    
-    // Ждём окончания анимации
-    await new Promise(resolve => setTimeout(resolve, 3300));
-    
-    // Показываем результат
-    const itemFull = allItems[selectedLoot.name] || { 
-        name: selectedLoot.name, 
-        image_url: 'unknown.png',
-        price: 100,
-        display_name: selectedLoot.name
-    };
-    
-    resultDiv.innerHTML = `<span class="result-icon">✨</span><span class="result-text">YOU GOT: ${itemFull.display_name}!</span>`;
-    
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    overlay.style.display = 'none';
-    
-    // Сохраняем предмет в инвентарь (char = name БЕЗ .png)
-    const newItem = {
-        id: Date.now(),
-        char: selectedLoot.name,
-        status: 'ready'
-    };
-    
-    const newInventory = [...(currentUser.inventory || []), newItem];
-    const newScore = (currentUser.score || 0) - caseData.price;
-    
-    const { error } = await supabaseClient.from('profiles').update({
-        inventory: newInventory,
-        score: newScore
-    }).eq('id', currentUser.id);
-    
-    if (!error) {
-        window.showNotify(`🎁 YOU GOT: ${itemFull.display_name}`, 'success');
-        window.renderProfile();
-        window.renderAllCases(); // Обновляем баланс в кейсах
-    } else {
-        window.showNotify("OPENING ERROR", "error");
-    }
+        stopSpinAndWin();
+    }, 5000);
 };
 
 // ========== МАРКЕТ (ЛИМИТКИ) ==========
@@ -444,6 +491,14 @@ window.renderProfile = function() {
         const itemFull = allItems[itemChar];
         
         if (itemFull) {
+			const rarity = itemFull.rarity || 'common';
+			const rarityColors = {
+				common: '#aaa',
+				rare: '#3399ff',
+				epic: '#aa33ff',
+				legendary: '#ffaa00'
+				};
+				clone.querySelector('.item-name').style.color = rarityColors[rarity] || '#fff';
             const imgUrl = `${GITHUB_BASE}${itemFull.image_url || 'unknown.png'}`;
             clone.querySelector('.item-img').src = imgUrl;
             clone.querySelector('.item-img').onerror = function() { 
