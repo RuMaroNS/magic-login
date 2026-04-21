@@ -211,6 +211,135 @@ body { background: #020205; color: #fff; overflow-x: hidden; min-height: 100vh; 
     background: #00d4ff;
 }
 
+.loot-rarity {
+    font-family: 'Orbitron';
+    font-size: 16px;
+    margin-bottom: 25px;
+    letter-spacing: 2px;
+    font-weight: bold;
+}
+
+/* Цвета редкостей */
+.rarity-common { color: #aaa; text-shadow: 0 0 10px #aaa; }
+.rarity-rare { color: #3399ff; text-shadow: 0 0 10px #3399ff; }
+.rarity-epic { color: #aa33ff; text-shadow: 0 0 10px #aa33ff; }
+.rarity-legendary { color: #ffaa00; text-shadow: 0 0 10px #ffaa00; }
+
+/* Рамка контента под редкость */
+.loot-content {
+    background: linear-gradient(135deg, rgba(20,20,50,0.95), rgba(10,10,30,0.98));
+    border: 2px solid #00d4ff;
+    border-radius: 30px;
+    padding: 40px;
+    min-width: 350px;
+    transition: border-color 0.3s, box-shadow 0.3s;
+}
+
+/* ПОЛУЧЕНИЕ ЛУТА */
+.loot-container {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    z-index: 10002;
+}
+
+.loot-rays {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 400px;
+    height: 400px;
+    margin-left: -200px;
+    margin-top: -200px;
+    background: radial-gradient(circle, rgba(255,215,0,0.3) 0%, transparent 70%);
+    animation: rays 2s ease-out;
+    pointer-events: none;
+}
+
+@keyframes rays {
+    0% { transform: scale(0.5); opacity: 0; }
+    50% { transform: scale(1.2); opacity: 1; }
+    100% { transform: scale(1); opacity: 0; }
+}
+
+.loot-content {
+    background: linear-gradient(135deg, rgba(20,20,50,0.95), rgba(10,10,30,0.98));
+    border: 2px solid #00d4ff;
+    border-radius: 30px;
+    padding: 40px;
+    min-width: 350px;
+    transition: border-color 0.3s, box-shadow 0.3s;
+    animation: float 0.5s ease-out;
+}
+
+@keyframes float {
+    from { transform: scale(0.8); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+}
+
+.loot-glow {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 200px;
+    height: 200px;
+    margin-left: -100px;
+    margin-top: -100px;
+    background: radial-gradient(circle, #00d4ff 0%, transparent 70%);
+    filter: blur(20px);
+    opacity: 0.5;
+    pointer-events: none;
+}
+
+.loot-image {
+    width: 200px;
+    height: 200px;
+    object-fit: contain;
+    margin-bottom: 20px;
+    animation: bounce 0.6s ease-out;
+}
+
+@keyframes bounce {
+    0% { transform: scale(0); }
+    50% { transform: scale(1.2); }
+    100% { transform: scale(1); }
+}
+
+.loot-title {
+    font-family: 'Orbitron';
+    font-size: 28px;
+    color: #00ffcc;
+    margin-bottom: 10px;
+    text-shadow: 0 0 10px #00ffcc;
+}
+
+.loot-claim-btn {
+    background: linear-gradient(135deg, #00d4ff, #0099cc);
+    border: none;
+    padding: 15px 40px;
+    font-family: 'Orbitron';
+    font-size: 16px;
+    font-weight: bold;
+    color: #000;
+    border-radius: 40px;
+    cursor: pointer;
+    transition: 0.2s;
+    margin-top: 10px;
+}
+
+.loot-claim-btn:hover {
+    transform: scale(1.05);
+    box-shadow: 0 0 30px #00d4ff;
+}
+
+/* Glow для разных редкостей */
+.loot-content.common-glow { box-shadow: 0 0 50px rgba(170,170,170,0.3); }
+.loot-content.rare-glow { box-shadow: 0 0 50px rgba(51,153,255,0.4); }
+.loot-content.epic-glow { box-shadow: 0 0 50px rgba(170,51,255,0.4); }
+.loot-content.legendary-glow { box-shadow: 0 0 80px rgba(255,170,0,0.5); }
+
 /* АДАПТИВ */
 @media (max-width: 600px) {
     .main-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; padding: 12px; }
