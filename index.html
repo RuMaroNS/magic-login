@@ -31,8 +31,8 @@
         <div class="auth-card">
             <h1 class="logo-text">CYBER<span>CASES</span></h1>
             <input type="text" id="user_name" placeholder="LOGIN">
-            <input type="password" id="user_password" placeholder="PASS">
-            <button class="neon-btn" onclick="login()">ENTER SYSTEM</button>
+            <input type="password" id="user_password" placeholder="PASSWORD">
+            <button class="neon-btn" onclick="window.login()">ENTER SYSTEM</button>
         </div>
     </div>
 
@@ -44,10 +44,10 @@
         </div>
 
         <div id="page-case-info" class="page">
-            <button class="back-btn" onclick="navTo('cases')">← BACK</button>
             <div id="case-detail-content"></div>
-            <h3 class="section-heading">POSSIBLE LOOT</h3>
-            <div id="loot-chances-grid"></div>
+            <h3 class="section-heading">POSSIBLE LOOT & CHANCES</h3>
+            <div id="loot-chances-grid" class="loot-grid"></div>
+            <button class="neon-btn back-btn" onclick="window.navTo('cases')">← BACK TO LIST</button>
         </div>
         
         <div id="page-opening" class="page">
@@ -58,14 +58,14 @@
                 </div>
                 <div id="win-display" class="win-card" style="display:none;">
                     <h2 id="win-name-text"></h2>
-                    <button class="neon-btn" style="width:200px;" onclick="navTo('cases')">CONFIRM</button>
+                    <button class="neon-btn" style="max-width:200px;" onclick="window.navTo('cases')">COLLECT</button>
                 </div>
             </div>
         </div>
 
         <div id="page-market" class="page">
-            <h2 class="section-heading">LIMITED STOCK</h2>
-            <div id="limited-grid"></div>
+            <h2 class="section-heading">LIMITED TECH</h2>
+            <div id="limited-grid" class="items-grid"></div>
         </div>
 
         <div id="page-profile" class="page">
@@ -74,14 +74,14 @@
                 <h2 id="p-username" class="cyber-nick"></h2>
                 <div class="rank-badge">ELITE RUNNER</div>
             </div>
-            <h2 class="section-heading">INVENTORY</h2>
-            <div id="inventory-list"></div>
+            <h2 class="section-heading">MY INVENTORY</h2>
+            <div id="inventory-list" class="items-grid"></div>
         </div>
 
         <nav class="bottom-nav">
-            <button onclick="navTo('cases')"><span>CASES</span></button>
-            <button onclick="navTo('market')"><span>MARKET</span></button>
-            <button onclick="navTo('profile')"><span>PROFILE</span></button>
+            <button onclick="window.navTo('cases')"><span>CASES</span></button>
+            <button onclick="window.navTo('market')"><span>MARKET</span></button>
+            <button onclick="window.navTo('profile')"><span>PROFILE</span></button>
         </nav>
     </div>
 
