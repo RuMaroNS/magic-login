@@ -11,14 +11,13 @@
 <body>
     <div class="cyber-bg">
         <div class="grid-overlay"></div>
-        <div class="scanlines"></div>
     </div>
+
+    <div id="notification-container"></div>
 
     <div class="live-header">
         <div class="live-tag">LIVE</div>
-        <div class="live-container">
-            <div id="global-live-feed" class="live-track"></div>
-        </div>
+        <div id="global-live-feed" class="live-track"></div>
     </div>
 
     <div id="top-bar" class="currency-panel" style="display:none;">
@@ -28,33 +27,25 @@
 
     <div id="auth-screen" class="full-screen">
         <div class="auth-card">
-            <h1 class="glitch-text">SYSTEM_LOGIN</h1>
-            <div class="input-group">
-                <input type="text" id="user_name" autocomplete="username" placeholder="OPERATOR_ID">
-                <input type="password" id="user_password" autocomplete="current-password" placeholder="ACCESS_KEY">
-            </div>
-            <button class="neon-btn-main" onclick="window.login()">INITIALIZE CONNECTION</button>
+            <h1>SYSTEM_LOGIN</h1>
+            <input type="text" id="user_name" autocomplete="username" placeholder="OPERATOR_ID">
+            <input type="password" id="user_password" autocomplete="current-password" placeholder="ACCESS_KEY">
+            <button class="neon-btn-main" onclick="window.login()">INITIALIZE</button>
         </div>
     </div>
 
     <div id="game-interface" style="display:none;">
-        
         <div id="page-cases" class="page active">
-            <h2 class="section-title">ACTIVE_CAPSULES</h2>
             <div id="cases-grid" class="main-grid"></div>
         </div>
 
         <div id="page-case-info" class="page">
-            <div id="case-detail-hero"></div>
-            <div class="loot-preview">
-                <h3 class="section-title">PROBABILITY_MATRIX</h3>
-                <div id="loot-chances-grid" class="loot-grid"></div>
-            </div>
-            <button class="back-link" onclick="window.navTo('cases')">← TERMINATE_VIEW</button>
+            <div id="case-detail-content"></div>
+            <button class="back-btn" onclick="window.navTo('cases')">← BACK</button>
         </div>
 
         <div id="page-market" class="page">
-            <h2 class="section-title">LIMITED_HARDWARE</h2>
+            <h2 class="section-title">LIMITED_STOCK</h2>
             <div id="limited-grid" class="main-grid"></div>
         </div>
 
@@ -62,11 +53,10 @@
             <div class="profile-header">
                 <div class="p-avatar"></div>
                 <div class="p-info">
-                    <h1 id="p-username">USER_UNDEFINED</h1>
-                    <div class="p-rank">SECURITY_LEVEL: 07</div>
+                    <h2 id="p-username">USER</h2>
+                    <span class="p-rank">SECURITY_LEVEL: 7</span>
                 </div>
             </div>
-            <h2 class="section-title">SECURE_STORAGE</h2>
             <div id="inventory-list" class="main-grid"></div>
         </div>
 
