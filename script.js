@@ -13,6 +13,10 @@ let currentSelectedLoot = null;
 let currentCaseData = null;
 let rouletteInterval = null;
 let rouletteItemsArray = [];
+let spinVelocity = 0;
+let spinDecay = 0.98;
+let spinAnimationId = null;
+let isSlowingDown = false;
 
 // ========== УВЕДОМЛЕНИЯ ==========
 window.showNotify = function(text, type = "success") {
@@ -319,58 +323,89 @@ window.openCase = async function(caseId) {
     }
 };
 
-function startInfiniteSpin() {
-    if (rouletteInterval) clearInterval(rouletteInterval);
+// ========== ПЛАВНОЕ ВРАЩЕНИЕ С ЗАМЕДЛЕНИЕМ ==========
+function startSpin() {
+    if (spinAnimationId) cancelAnimationFrame(spinAnimationId);
     
     const track = document.getElementById('rouletteTrack');
-    if (!track) return;
-    
     const itemWidth = 150;
+    const maxOffset = rouletteItemsArray.length * itemWidth;
     let currentOffset = 0;
     
-    rouletteInterval = setInterval(() => {
-        currentOffset += 5;
-        if (currentOffset >= rouletteItemsArray.length * itemWidth) {
-            currentOffset = 0;
+    spinVelocity = 45;
+    isSlowingDown = false;
+    
+    function animateSpin() {
+        if (isSlowingDown) {
+            spinVelocity *= spinDecay;
         }
+        
+        currentOffset += spinVelocity;
+        
+        if (currentOffset >= maxOffset) {
+            currentOffset -= maxOffset;
+        }
+        
         track.style.transition = 'none';
         track.style.transform = `translateX(-${currentOffset}px)`;
-    }, 16);
-}
-
-async function stopSpinAndWin() {
-    if (rouletteInterval) {
-        clearInterval(rouletteInterval);
-        rouletteInterval = null;
+        
+        spinAnimationId = requestAnimationFrame(animateSpin);
     }
     
-    const track = document.getElementById('rouletteTrack');
-    if (!track) return;
+    animateSpin();
+}
+
+// ========== НАЧАЛО ЗАМЕДЛЕНИЯ ==========
+function startSlowdown() {
+    isSlowingDown = true;
+    spinDecay = 0.97;
     
+    function checkStop() {
+        if (spinVelocity <= 0.5) {
+            cancelAnimationFrame(spinAnimationId);
+            spinAnimationId = null;
+            finalizeWin();
+        } else {
+            requestAnimationFrame(checkStop);
+        }
+    }
+    
+    setTimeout(() => {
+        if (spinAnimationId) {
+            checkStop();
+        }
+    }, 100);
+}
+
+// ========== ФИНАЛЬНАЯ ОСТАНОВКА ==========
+async function finalizeWin() {
+    const track = document.getElementById('rouletteTrack');
     const itemWidth = 150;
     const targetIndex = rouletteItemsArray.length - 3;
     const targetPosition = targetIndex * itemWidth;
     
     const currentTransform = track.style.transform;
     const currentMatch = currentTransform.match(/translateX\(-(\d+)px\)/);
-    const currentOffset = currentMatch ? parseInt(currentMatch[1]) : 0;
+    let currentOffset = currentMatch ? parseInt(currentMatch[1]) : 0;
+    
+    const maxOffset = rouletteItemsArray.length * itemWidth;
+    currentOffset = currentOffset % maxOffset;
     
     let distanceToTarget = targetPosition - currentOffset;
-    const extraSpins = Math.floor(Math.random() * 3 + 2) * rouletteItemsArray.length * itemWidth;
-    const finalDistance = distanceToTarget + extraSpins;
+    if (distanceToTarget < 0) distanceToTarget += maxOffset;
     
-    track.style.transition = 'transform 3s cubic-bezier(0.25, 0.1, 0.15, 1)';
-    track.style.transform = `translateX(-${currentOffset + finalDistance}px)`;
+    track.style.transition = 'transform 0.8s cubic-bezier(0.2, 0.9, 0.4, 1.1)';
+    track.style.transform = `translateX(-${currentOffset + distanceToTarget}px)`;
     
-    await new Promise(resolve => setTimeout(resolve, 3200));
+    await new Promise(resolve => setTimeout(resolve, 900));
     
     const overlay = document.getElementById('roulette-overlay');
-    if (overlay) overlay.style.display = 'none';
+    overlay.style.display = 'none';
     
     await showLootWin(currentSelectedLoot);
 }
 
-// ========== ОТКРЫТИЕ КЕЙСА С БЕСКОНЕЧНОЙ РУЛЕТКОЙ ==========
+// ========== ОТКРЫТИЕ КЕЙСА С ПЛАВНОЙ РУЛЕТКОЙ ==========
 window.openCaseWithAnimation = async function(caseId) {
     if (!currentUser) return;
     const caseData = allCases.find(c => c.id == caseId);
@@ -426,19 +461,20 @@ window.openCaseWithAnimation = async function(caseId) {
     }).join('');
     
     overlay.style.display = 'block';
-    resultDiv.innerHTML = '<span class="result-icon">🎲</span><span class="result-text">ROLLING...</span>';
+    resultDiv.innerHTML = '<span class="result-icon">🎲</span><span class="result-text">SPINNING...</span>';
     progressBar.style.width = '0%';
     
-    startInfiniteSpin();
+    startSpin();
     
     setTimeout(() => {
-        progressBar.style.transition = 'width 5s linear';
+        progressBar.style.transition = 'width 4s linear';
         progressBar.style.width = '100%';
     }, 50);
     
     setTimeout(() => {
-        stopSpinAndWin();
-    }, 5000);
+        resultDiv.innerHTML = '<span class="result-icon">🎰</span><span class="result-text">SLOWING DOWN...</span>';
+        startSlowdown();
+    }, 4000);
 };
 
 // ========== МАРКЕТ (ЛИМИТКИ) ==========
