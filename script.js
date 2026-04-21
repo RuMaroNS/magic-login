@@ -6,105 +6,34 @@ const GITHUB_BASE = "https://raw.githubusercontent.com/RuMaroNs/magic-login/main
 let currentUser = null;
 let currentCase = null;
 
-window.onload = () => { autoLogin(); };
-
-// --- НАВИГАЦИЯ ---
-function navTo(pageId) {
+// ФУНКЦИИ ГЛОБАЛЬНО (чтобы HTML их видел)
+window.navTo = function(pageId) {
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-    document.getElementById('page-' + pageId).classList.add('active');
+    const target = document.getElementById('page-' + pageId);
+    if (target) target.classList.add('active');
+    
     if(pageId === 'profile') renderProfile();
     if(pageId === 'cases') renderCases();
     if(pageId === 'market') renderMarket();
     updateUI();
-}
-
-// --- КЕЙСЫ (НЮАНС 4) ---
-async function renderCases() {
-    const { data: cases } = await supabaseClient.from('cases_meta').select('*');
-    document.getElementById('cases-grid').innerHTML = cases.map(c => `
-        <div class="case-card" onclick="showCaseInfo(${c.id})">
-            <img src="${GITHUB_BASE}${c.image_url}">
-            <h3>${c.name}</h3>
-            <button class="neon-btn">OPEN</button>
-        </div>`).join('');
-}
-
-async function showCaseInfo(id) {
-    const { data: c } = await supabaseClient.from('cases_meta').select('*').eq('id', id).single();
-    currentCase = c;
-    navTo('case-info');
-    
-    document.getElementById('case-detail-content').innerHTML = `
-        <div class="detail-header">
-            <img src="${GITHUB_BASE}${c.image_url}" class="detail-img">
-            <h1>${c.name}</h1>
-            <button class="neon-btn open-btn-big" onclick="startOpening()">OPEN FOR $${c.price}</button>
-        </div>`;
-
-    document.getElementById('loot-chances-grid').innerHTML = c.loot.map(item => `
-        <div class="loot-card">
-            <img src="${GITHUB_BASE}${item.name}.png">
-            <div class="chance-tag">${item.chance}%</div>
-            <p>${item.name}</p>
-        </div>`).join('');
-}
-
-// --- ИНВЕНТАРЬ (НЮАНС 1) ---
-window.withdrawItem = async function(id) {
-    const item = currentUser.inventory.find(x => x.id === id);
-    if (item.status === 'processing') return;
-
-    const nick = prompt("ROBLOX NICK:");
-    if (!nick) return;
-
-    // Ставим статус в памяти и базе
-    currentUser.inventory = currentUser.inventory.map(i => {
-        if(i.id === id) i.status = 'processing';
-        return i;
-    });
-
-    await supabaseClient.from('profiles').update({ inventory: currentUser.inventory }).eq('id', currentUser.id);
-    renderProfile();
-    showNotify("REQUEST SENT");
 };
 
-function renderProfile() {
-    document.getElementById('p-username').innerText = currentUser.username;
-    const invList = document.getElementById('inventory-list');
-    
-    invList.innerHTML = (currentUser.inventory || []).slice().reverse().map(i => {
-        let statusClass = i.status || 'ready';
-        let statusText = '';
-        if(i.status === 'processing') statusText = 'В ОБРАБОТКЕ';
-        if(i.status === 'accept') statusText = 'УСПЕШНО';
-        if(i.status === 'decline') statusText = 'ОТКАЗАНО';
+window.onload = () => { autoLogin(); };
 
-        return `
-        <div class="inv-item state-${statusClass}">
-            ${i.status && i.status !== 'ready' ? `<div class="status-overlay">${statusText}</div>` : ''}
-            <img src="${GITHUB_BASE}${i.char}.png">
-            <p>${i.char}</p>
-            <div class="inv-btns" ${i.status && i.status !== 'ready' ? 'style="display:none"' : ''}>
-                <button class="w-btn" onclick="withdrawItem(${i.id})">ВЫВОД</button>
-                <button class="s-btn" onclick="sellItem(${i.id}, '${i.char}')">ПРОДАТЬ</button>
-            </div>
-        </div>`;
-    }).join('');
-}
-
-// --- ОСТАЛЬНОЕ ---
-async function login() {
+// --- АВТОРИЗАЦИЯ ---
+window.login = async function() {
     const u = document.getElementById('user_name').value;
     const p = document.getElementById('user_password').value;
     const { data } = await supabaseClient.from('profiles').select('*').eq('username', u).eq('password', p).single();
-    if(data) { currentUser = data; enterGame(); }
-}
+    if(data) { currentUser = data; localStorage.setItem('game_user_id', data.id); enterGame(); }
+    else { showNotify("ACCESS DENIED"); }
+};
 
 function enterGame() {
     document.getElementById('auth-screen').style.display = 'none';
     document.getElementById('game-interface').style.display = 'block';
     document.getElementById('top-bar').style.display = 'flex';
-    navTo('cases');
+    window.navTo('cases');
 }
 
 async function autoLogin() {
@@ -115,8 +44,119 @@ async function autoLogin() {
     }
 }
 
+// --- КЕЙСЫ (Нюанс 4) ---
+async function renderCases() {
+    const { data: cases } = await supabaseClient.from('cases_meta').select('*');
+    document.getElementById('cases-grid').innerHTML = cases.map(c => `
+        <div class="case-card" onclick="window.showCaseInfo(${c.id})">
+            <img src="${GITHUB_BASE}${c.image_url}">
+            <h3>${c.name}</h3>
+            <div class="case-price-tag">$${c.price}</div>
+            <button class="neon-btn">OPEN CAPSULE</button>
+        </div>`).join('');
+}
+
+window.showCaseInfo = async function(id) {
+    const { data: c } = await supabaseClient.from('cases_meta').select('*').eq('id', id).single();
+    currentCase = c;
+    window.navTo('case-info');
+    
+    document.getElementById('case-detail-content').innerHTML = `
+        <div class="case-info-header">
+            <img src="${GITHUB_BASE}${c.image_url}" class="preview-img">
+            <h1>${c.name}</h1>
+            <button class="neon-btn buy-big-btn" onclick="window.startOpening()">OPEN FOR $${c.price}</button>
+        </div>`;
+
+    document.getElementById('loot-chances-grid').innerHTML = c.loot.map(item => `
+        <div class="loot-card">
+            <div class="chance-badge">${item.chance}%</div>
+            <img src="${GITHUB_BASE}${item.name}.png">
+            <p>${item.name}</p>
+        </div>`).join('');
+};
+
+window.startOpening = async function() {
+    if (currentUser.score < currentCase.price) return showNotify("LOW BALANCE");
+    currentUser.score -= currentCase.price;
+    await supabaseClient.from('profiles').update({ score: currentUser.score }).eq('id', currentUser.id);
+    
+    window.navTo('opening');
+    const tape = document.getElementById('roulette-tape');
+    tape.style.transition = 'none'; tape.style.transform = 'translateX(0)';
+    
+    // Эмуляция открытия...
+    const win = currentCase.loot[Math.floor(Math.random() * currentCase.loot.length)];
+    const newInv = [...(currentUser.inventory || []), { char: win.name, id: Date.now(), status: 'ready' }];
+    await supabaseClient.from('profiles').update({ inventory: newInv }).eq('id', currentUser.id);
+    currentUser.inventory = newInv;
+    
+    setTimeout(() => {
+        document.getElementById('win-display').style.display = 'block';
+        document.getElementById('win-name-text').innerText = win.name;
+    }, 5000);
+};
+
+// --- МАРКЕТ (Нюанс 5) ---
+async function renderMarket() {
+    const { data: stock } = await supabaseClient.from('limited_stock').select('*');
+    document.getElementById('limited-grid').innerHTML = stock.map(i => `
+        <div class="case-card ${i.type === 'case' ? 'stock-case' : 'stock-item'}">
+            <div class="stock-count">STOCK: ${i.stock}</div>
+            <img src="${GITHUB_BASE}${i.image_url}.png">
+            <h3>${i.name}</h3>
+            <button class="neon-btn" onclick="window.buyLimited(${i.id}, ${i.price_cp})">${i.price_cp} CP</button>
+        </div>`).join('');
+}
+
+// --- ИНВЕНТАРЬ (Нюанс 1) ---
+function renderProfile() {
+    document.getElementById('p-username').innerText = currentUser.username;
+    const invList = document.getElementById('inventory-list');
+    
+    invList.innerHTML = (currentUser.inventory || []).slice().reverse().map(i => {
+        const s = i.status || 'ready';
+        let overlay = '';
+        if (s === 'processing') overlay = '<div class="inv-overlay proc">В ОБРАБОТКЕ</div>';
+        if (s === 'accept') overlay = '<div class="inv-overlay acc">УСПЕШНО</div>';
+        if (s === 'decline') overlay = '<div class="inv-overlay dec">ОТКАЗАНО</div>';
+
+        return `
+        <div class="inv-item state-${s}">
+            ${overlay}
+            <img src="${GITHUB_BASE}${i.char}.png">
+            <p>${i.char}</p>
+            <div class="inv-btns" ${s !== 'ready' ? 'style="display:none"' : ''}>
+                <button class="w-btn" onclick="window.withdrawItem(${i.id})">ВЫВОД</button>
+                <button class="s-btn" onclick="window.sellItem(${i.id}, '${i.char}')">ПРОДАТЬ</button>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+window.withdrawItem = async function(id) {
+    const item = currentUser.inventory.find(x => x.id === id);
+    if(item.status !== 'ready') return; // Защита от повторного клика
+
+    const nick = prompt("ROBLOX NICKNAME:");
+    if(!nick) return;
+
+    item.status = 'processing';
+    await supabaseClient.from('profiles').update({ inventory: currentUser.inventory }).eq('id', currentUser.id);
+    renderProfile();
+    showNotify("PROCESSING...");
+};
+
 function updateUI() {
     if(!currentUser) return;
     document.getElementById('h-balance').innerText = currentUser.score;
     document.getElementById('h-cp').innerText = currentUser.cyberpunk_points || 0;
+}
+
+function showNotify(t) {
+    const n = document.createElement('div');
+    n.className = 'notification'; n.innerText = t;
+    document.getElementById('notification-container').appendChild(n);
+    setTimeout(() => n.classList.add('show'), 10);
+    setTimeout(() => { n.classList.remove('show'); setTimeout(()=>n.remove(), 300); }, 2000);
 }
