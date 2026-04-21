@@ -18,6 +18,7 @@ let spinAnimationId = null;
 let isSlowingDown = false;
 let currentOffset = 0;
 let maxOffset = 0;
+let targetStopPosition = 0;
 
 // ========== УВЕДОМЛЕНИЯ ==========
 window.showNotify = function(text, type = "success") {
@@ -354,7 +355,6 @@ async function preloadRoulette(lootItems) {
     await new Promise(resolve => setTimeout(resolve, 50));
 }
 
-// ========== ПЛАВНОЕ ВРАЩЕНИЕ С ЗАМЕДЛЕНИЕМ ==========
 function startSpin() {
     if (spinAnimationId) cancelAnimationFrame(spinAnimationId);
     
@@ -388,15 +388,22 @@ function startSpin() {
     animateSpin();
 }
 
-// ========== ПЛАВНАЯ ОСТАНОВКА (БЕЗ УДАРА) ==========
+// ========== НАЧАЛО ЗАМЕДЛЕНИЯ С РАСЧЁТОМ ЦЕЛИ ==========
 function startSlowdown() {
     isSlowingDown = true;
     
+    // Вычисляем целевую позицию для выигрышного предмета
+    const targetIndex = rouletteItemsArray.length - 3;
+    targetStopPosition = targetIndex * 150;
+    
     function checkAndStop() {
-        if (spinVelocity <= 0.2) {
-            // Полная остановка
+        if (spinVelocity <= 0.8) {
+            // Полная остановка и доворот до цели
             cancelAnimationFrame(spinAnimationId);
             spinAnimationId = null;
+            
+            // Доворачиваем до выигрышного предмета
+            finalizeToTarget();
         } else {
             requestAnimationFrame(checkAndStop);
         }
@@ -409,26 +416,28 @@ function startSlowdown() {
     }, 100);
 }
 
-// ========== ПЛАВНАЯ ФИКСАЦИЯ НА ВЫИГРЫШНОМ ПРЕДМЕТЕ (БЕЗ ОТСКОКА) ==========
-async function smoothStopOnTarget() {
+// ========== ДОВОРОТ ДО ВЫИГРЫШНОГО ПРЕДМЕТА ==========
+async function finalizeToTarget() {
     const track = document.getElementById('rouletteTrack');
-    const itemWidth = 150;
-    const targetIndex = rouletteItemsArray.length - 3;
-    const targetPosition = targetIndex * itemWidth;
     
+    // Текущая позиция
     let currentPos = currentOffset % maxOffset;
     
-    let distanceToTarget = targetPosition - currentPos;
-    if (distanceToTarget < 0) distanceToTarget += maxOffset;
+    // Расстояние до цели
+    let distance = targetStopPosition - currentPos;
+    if (distance < 0) distance += maxOffset;
     
-   track.style.transition = 'transform 0.4s linear';
-    track.style.transform = `translateX(-${currentPos + distanceToTarget}px)`;
+    // Доворачиваем плавно
+    track.style.transition = 'transform 0.5s ease-out';
+    track.style.transform = `translateX(-${currentPos + distance}px)`;
     
-    await new Promise(resolve => setTimeout(resolve, 500));
+    await new Promise(resolve => setTimeout(resolve, 550));
     
+    // Скрываем рулетку
     const overlay = document.getElementById('roulette-overlay');
     overlay.style.display = 'none';
     
+    // ПОКАЗЫВАЕМ ТОТ ПРЕДМЕТ, КОТОРЫЙ БЫЛ ВЫБРАН РАНЬШЕ
     await showLootWin(currentSelectedLoot);
 }
 
@@ -456,12 +465,15 @@ window.openCaseWithAnimation = async function(caseId) {
         return window.showNotify("NO LOOT IN THIS CASE", "error");
     }
 
+    // ⚡ ВЫБИРАЕМ НАГРАДУ СРАЗУ (но не показываем игроку)
     currentSelectedLoot = getRandomItemFromLoot(lootItems);
     if (!currentSelectedLoot) {
         return window.showNotify("ERROR SELECTING ITEM", "error");
     }
+    
+    console.log("🎁 Выбран выигрыш:", currentSelectedLoot.name); // Для отладки
 
-    // Предзагрузка
+    // Предзагрузка рулетки
     await preloadRoulette(lootItems);
     
     const overlay = document.getElementById('roulette-overlay');
