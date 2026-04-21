@@ -422,7 +422,7 @@ async function smoothStopOnTarget() {
     let distanceToTarget = targetPosition - currentPos;
     if (distanceToTarget < 0) distanceToTarget += maxOffset;
     
-    track.style.transition = 'transform 0.4s ease-out';
+   track.style.transition = 'transform 0.4s linear';
     track.style.transform = `translateX(-${currentPos + distanceToTarget}px)`;
     
     await new Promise(resolve => setTimeout(resolve, 500));
