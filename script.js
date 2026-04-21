@@ -410,27 +410,23 @@ function startSlowdown() {
     }, 100);
 }
 
-// ========== ПЛАВНАЯ ФИКСАЦИЯ НА ВЫИГРЫШНОМ ПРЕДМЕТЕ (БЕЗ РЫВКОВ) ==========
+// ========== ПЛАВНАЯ ФИКСАЦИЯ НА ВЫИГРЫШНОМ ПРЕДМЕТЕ (БЕЗ ОТСКОКА) ==========
 async function smoothStopOnTarget() {
     const track = document.getElementById('rouletteTrack');
     const itemWidth = 150;
     const targetIndex = rouletteItemsArray.length - 3;
     const targetPosition = targetIndex * itemWidth;
     
-    // Нормализуем текущую позицию
     let currentPos = currentOffset % maxOffset;
     
-    // Рассчитываем ближайший доворот до цели
     let distanceToTarget = targetPosition - currentPos;
     if (distanceToTarget < 0) distanceToTarget += maxOffset;
     
-    // Плавный доворот (без рывка!)
-    track.style.transition = 'transform 0.6s cubic-bezier(0.2, 0.9, 0.4, 1)';
+    track.style.transition = 'transform 0.4s ease-out';
     track.style.transform = `translateX(-${currentPos + distanceToTarget}px)`;
     
-    await new Promise(resolve => setTimeout(resolve, 700));
+    await new Promise(resolve => setTimeout(resolve, 500));
     
-    // Скрываем рулетку
     const overlay = document.getElementById('roulette-overlay');
     overlay.style.display = 'none';
     
