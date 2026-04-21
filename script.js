@@ -6,29 +6,58 @@ const GITHUB_BASE = "https://raw.githubusercontent.com/RuMaroNs/magic-login/main
 let currentUser = null;
 let currentCase = null;
 
-// Глобальные функции
-window.navTo = function(pageId) {
+// СЛУШАЕМ ИЗМЕНЕНИЯ (Real-time)
+function subscribeToUpdates() {
+    supabaseClient
+        .channel('any')
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles' }, payload => {
+            if (currentUser && payload.new.id === currentUser.id) {
+                currentUser = payload.new;
+                updateUI();
+                if (document.getElementById('page-profile').classList.contains('active')) renderProfile();
+            }
+        })
+        .subscribe();
+}
+
+window.navTo = function(id) {
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-    const p = document.getElementById('page-' + pageId);
-    if(p) p.classList.add('active');
-    
-    if(pageId === 'profile') renderProfile();
-    if(pageId === 'cases') renderCases();
-    if(pageId === 'market') renderMarket();
-    updateUI();
+    document.getElementById('page-' + id).classList.add('active');
+    if(id === 'profile') renderProfile();
+    if(id === 'cases') renderCases();
+    if(id === 'market') renderMarket();
 };
 
-window.onload = () => { autoLogin(); };
+window.login = async function() {
+    const u = document.getElementById('user_name').value;
+    const p = document.getElementById('user_password').value;
+    const { data } = await supabaseClient.from('profiles').select('*').eq('username', u).eq('password', p).single();
+    if(data) { 
+        currentUser = data; 
+        localStorage.setItem('game_user_id', data.id); 
+        enterGame(); 
+    } else { showNotify("ACCESS DENIED"); }
+};
 
-// --- КЕЙСЫ ---
+function enterGame() {
+    document.getElementById('auth-screen').style.display = 'none';
+    document.getElementById('game-interface').style.display = 'block';
+    document.getElementById('top-bar').style.display = 'flex';
+    subscribeToUpdates();
+    window.navTo('cases');
+}
+
+// РЕНДЕР КЕЙСОВ
 async function renderCases() {
-    const { data: cases } = await supabaseClient.from('cases_meta').select('*');
-    document.getElementById('cases-grid').innerHTML = cases.map(c => `
-        <div class="case-card" onclick="window.showCaseInfo(${c.id})">
+    const { data } = await supabaseClient.from('cases_meta').select('*');
+    document.getElementById('cases-grid').innerHTML = data.map(c => `
+        <div class="mega-card case" onclick="window.showCaseInfo(${c.id})">
+            <div class="card-glow"></div>
             <img src="${GITHUB_BASE}${c.image_url}">
-            <h3>${c.name.toUpperCase()}</h3>
-            <div class="case-price">$${c.price}</div>
-            <button class="neon-btn">INFO</button>
+            <div class="card-info">
+                <h3>${c.name}</h3>
+                <div class="price-tag">$${c.price}</div>
+            </div>
         </div>`).join('');
 }
 
@@ -36,115 +65,69 @@ window.showCaseInfo = async function(id) {
     const { data: c } = await supabaseClient.from('cases_meta').select('*').eq('id', id).single();
     currentCase = c;
     window.navTo('case-info');
-    
-    document.getElementById('case-detail-content').innerHTML = `
-        <div class="detail-box">
-            <img src="${GITHUB_BASE}${c.image_url}" class="case-preview-img">
+    document.getElementById('case-detail-hero').innerHTML = `
+        <div class="hero-content">
+            <img src="${GITHUB_BASE}${c.image_url}" class="hero-img">
             <h1>${c.name}</h1>
-            <button class="neon-btn open-btn" onclick="window.startOpening()">OPEN FOR $${c.price}</button>
+            <button class="buy-btn" onclick="window.startOpening()">OPEN_DATA ($${c.price})</button>
         </div>`;
-
-    document.getElementById('loot-chances-grid').innerHTML = c.loot.map(item => `
-        <div class="loot-card">
-            <div class="chance-tag">${item.chance}%</div>
-            <img src="${GITHUB_BASE}${item.name}.png">
-            <p>${item.name}</p>
+    document.getElementById('loot-chances-grid').innerHTML = c.loot.map(l => `
+        <div class="loot-mini">
+            <span class="l-chance">${l.chance}%</span>
+            <img src="${GITHUB_BASE}${l.name}.png">
         </div>`).join('');
 };
 
-window.startOpening = async function() {
-    if (currentUser.score < currentCase.price) return window.showNotify("NOT ENOUGH CASH");
-    
-    currentUser.score -= currentCase.price;
-    await supabaseClient.from('profiles').update({ score: currentUser.score }).eq('id', currentUser.id);
-    
-    window.navTo('opening');
-    const tape = document.getElementById('roulette-tape');
-    tape.style.transition = 'none'; tape.style.transform = 'translateX(0)';
-    
-    const win = currentCase.loot[Math.floor(Math.random() * currentCase.loot.length)];
-    const newInv = [...(currentUser.inventory || []), { char: win.name, id: Date.now(), status: 'ready' }];
-    await supabaseClient.from('profiles').update({ inventory: newInv }).eq('id', currentUser.id);
-    currentUser.inventory = newInv;
-    
-    setTimeout(() => {
-        document.getElementById('win-display').style.display = 'block';
-        document.getElementById('win-name-text').innerText = win.name;
-    }, 5000);
-};
-
-// --- МАРКЕТ ---
+// МАРКЕТ (STOCK CARD)
 async function renderMarket() {
-    const { data: stock } = await supabaseClient.from('limited_stock').select('*');
-    document.getElementById('limited-grid').innerHTML = stock.map(i => `
-        <div class="case-card">
-            <div class="stock-badge">STOCK: ${i.stock}</div>
+    const { data } = await supabaseClient.from('limited_stock').select('*');
+    document.getElementById('limited-grid').innerHTML = data.map(i => `
+        <div class="mega-card stock">
+            <div class="stock-header">IN STOCK: ${i.stock}</div>
             <img src="${GITHUB_BASE}${i.image_url}.png">
             <h3>${i.name}</h3>
-            <button class="neon-btn" onclick="window.buyLimited(${i.id}, ${i.price_cp})">${i.price_cp} CP</button>
+            <button class="buy-btn cp" onclick="window.buyLimited(${i.id}, ${i.price_cp})">${i.price_cp} CP</button>
         </div>`).join('');
 }
 
-// --- ПРОФИЛЬ И ИНВЕНТАРЬ ---
 function renderProfile() {
     document.getElementById('p-username').innerText = currentUser.username;
-    const invList = document.getElementById('inventory-list');
-    
-    invList.innerHTML = (currentUser.inventory || []).slice().reverse().map(i => {
+    document.getElementById('inventory-list').innerHTML = (currentUser.inventory || []).slice().reverse().map(i => {
         const s = i.status || 'ready';
-        let overlay = '';
-        if (s === 'processing') overlay = '<div class="inv-overlay proc">В ОБРАБОТКЕ</div>';
-        if (s === 'accept') overlay = '<div class="inv-overlay acc">УСПЕШНО</div>';
-        if (s === 'decline') overlay = '<div class="inv-overlay dec">ОТКАЗАНО</div>';
-
         return `
-        <div class="inv-item st-${s}">
-            ${overlay}
+        <div class="mega-card inv st-${s}">
+            ${s !== 'ready' ? `<div class="status-overlay">${s.toUpperCase()}</div>` : ''}
             <img src="${GITHUB_BASE}${i.char}.png">
-            <p>${i.char}</p>
-            <div class="inv-btns" ${s !== 'ready' ? 'style="display:none"' : ''}>
-                <button class="w-btn" onclick="window.withdrawItem(${i.id})">ВЫВОД</button>
-                <button class="s-btn" onclick="window.sellItem(${i.id})">ПРОДАТЬ</button>
+            <div class="card-btns">
+                <button class="btn-w" onclick="window.withdrawItem(${i.id})" ${s!=='ready'?'disabled':''}>WITHDRAW</button>
+                <button class="btn-s" onclick="window.sellItem(${i.id})" ${s!=='ready'?'disabled':''}>SELL</button>
             </div>
         </div>`;
     }).join('');
 }
 
-window.sellItem = async function(id) {
-    const itemIdx = currentUser.inventory.findIndex(x => x.id === id);
-    if(itemIdx === -1) return;
-    currentUser.score += 50; // Цена продажи
-    currentUser.inventory.splice(itemIdx, 1);
-    await supabaseClient.from('profiles').update({ score: currentUser.score, inventory: currentUser.inventory }).eq('id', currentUser.id);
-    renderProfile();
-    window.showNotify("ITEM SOLD FOR $50");
-};
-
 window.withdrawItem = async function(id) {
     const item = currentUser.inventory.find(x => x.id === id);
     if(item.status !== 'ready') return;
-    const nick = prompt("ROBLOX NICK:");
+    const nick = prompt("ROBLOX USERNAME:");
     if(!nick) return;
     item.status = 'processing';
     await supabaseClient.from('profiles').update({ inventory: currentUser.inventory }).eq('id', currentUser.id);
-    renderProfile();
-    window.showNotify("WITHDRAWAL REQUESTED");
+    showNotify("REQUEST LOGGED");
 };
 
-// --- СИСТЕМА ---
-window.login = async function() {
-    const u = document.getElementById('user_name').value;
-    const p = document.getElementById('user_password').value;
-    const { data } = await supabaseClient.from('profiles').select('*').eq('username', u).eq('password', p).single();
-    if(data) { currentUser = data; localStorage.setItem('game_user_id', data.id); enterGame(); }
-};
-
-function enterGame() {
-    document.getElementById('auth-screen').style.display = 'none';
-    document.getElementById('game-interface').style.display = 'block';
-    document.getElementById('top-bar').style.display = 'flex';
-    window.navTo('cases');
+function updateUI() {
+    document.getElementById('h-balance').innerText = currentUser.score;
+    document.getElementById('h-cp').innerText = currentUser.cyberpunk_points || 0;
 }
+
+window.showNotify = function(t) {
+    const n = document.createElement('div');
+    n.className = 'notif'; n.innerText = t;
+    document.getElementById('notification-container').appendChild(n);
+    setTimeout(() => n.classList.add('show'), 10);
+    setTimeout(() => { n.classList.remove('show'); setTimeout(()=>n.remove(), 400); }, 3000);
+};
 
 async function autoLogin() {
     const id = localStorage.getItem('game_user_id');
@@ -153,18 +136,3 @@ async function autoLogin() {
         if(data) { currentUser = data; enterGame(); }
     }
 }
-
-function updateUI() {
-    if(!currentUser) return;
-    document.getElementById('h-balance').innerText = currentUser.score;
-    document.getElementById('h-cp').innerText = currentUser.cyberpunk_points || 0;
-}
-
-window.showNotify = function(t) {
-    const c = document.getElementById('notification-container');
-    const n = document.createElement('div');
-    n.className = 'notification'; n.innerText = t;
-    c.appendChild(n);
-    setTimeout(() => n.classList.add('show'), 10);
-    setTimeout(() => { n.classList.remove('show'); setTimeout(() => n.remove(), 300); }, 3000);
-};
