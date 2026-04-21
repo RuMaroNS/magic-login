@@ -154,7 +154,7 @@ window.showCaseInfo = async function(id) {
         <div class="case-hero">
             <img src="${GITHUB_BASE}${caseData.image_url}" onerror="this.src='https://placehold.co/300x300?text=NO_IMG'">
             <h1>${caseData.name}</h1>
-            <button class="neon-btn-main" onclick="window.openCase('${caseData.id}')">INITIALIZE OPENING ($${caseData.price})</button>
+            <button class="neon-btn-main" onclick="window.openCaseWithAnimation('${caseData.id}')">Open ($${caseData.price})</button>
             
             <div class="loot-table">
                 <h3>📦 POSSIBLE LOOT</h3>
@@ -217,6 +217,127 @@ window.openCase = async function(caseId) {
     if (!error) {
         window.showNotify(`🎁 YOU GOT: ${selectedLoot.name}`, 'success');
         window.navTo('profile');
+    } else {
+        window.showNotify("OPENING ERROR", "error");
+    }
+};
+
+window.openCaseWithAnimation = async function(caseId) {
+    if (!currentUser) return;
+    const caseData = allCases.find(c => c.id == caseId);
+    if (!caseData) return;
+    
+    if ((currentUser.score || 0) < caseData.price) {
+        return window.showNotify("INSUFFICIENT FUNDS", "error");
+    }
+
+    let lootItems = caseData.loot || [];
+    if (typeof lootItems === 'string') {
+        try {
+            lootItems = JSON.parse(lootItems);
+        } catch(e) {
+            lootItems = [];
+        }
+    }
+    
+    if (lootItems.length === 0) {
+        return window.showNotify("NO LOOT IN THIS CASE", "error");
+    }
+
+    // Выбираем предмет, который выпадет
+    const selectedLoot = getRandomItemFromLoot(lootItems);
+    if (!selectedLoot) {
+        return window.showNotify("ERROR SELECTING ITEM", "error");
+    }
+
+    // Создаём массив для рулетки (20 случайных + выигрышный в конце)
+    const rouletteItems = [];
+    for (let i = 0; i < 20; i++) {
+        const randomItem = lootItems[Math.floor(Math.random() * lootItems.length)];
+        rouletteItems.push(randomItem);
+    }
+    // В конце ставим выигрышный предмет несколько раз
+    for (let i = 0; i < 5; i++) {
+        rouletteItems.push(selectedLoot);
+    }
+
+    // Показываем оверлей
+    const overlay = document.getElementById('roulette-overlay');
+    const track = document.getElementById('rouletteTrack');
+    const resultDiv = document.getElementById('rouletteResult');
+    const progressBar = document.getElementById('rouletteProgress');
+    
+    // Заполняем трек предметами
+    track.innerHTML = rouletteItems.map(item => {
+        const itemFull = allItems[item.name] || { image_url: 'unknown.png', display_name: item.name };
+        return `
+            <div class="roulette-item">
+                <img src="${GITHUB_BASE}${itemFull.image_url}" onerror="this.src='https://placehold.co/80x80?text=NO_IMG'">
+                <span>${itemFull.display_name}</span>
+            </div>
+        `;
+    }).join('');
+    
+    overlay.style.display = 'block';
+    resultDiv.innerHTML = '<span class="result-icon">🎲</span><span class="result-text">ROLLING...</span>';
+    progressBar.style.width = '0%';
+    
+    // Сброс позиции трека
+    track.style.transition = 'none';
+    track.style.transform = 'translateX(0px)';
+    
+    // Форсируем reflow
+    void track.offsetHeight;
+    
+    // Запускаем анимацию прогресс-бара
+    setTimeout(() => {
+        progressBar.style.transition = 'width 3s linear';
+        progressBar.style.width = '100%';
+    }, 50);
+    
+    // Запускаем прокрутку
+    setTimeout(() => {
+        track.style.transition = 'transform 3s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+        const itemWidth = 150;
+        const targetPosition = (track.children.length - 3) * itemWidth;
+        track.style.transform = `translateX(-${targetPosition}px)`;
+    }, 100);
+    
+    // Ждём окончания анимации
+    await new Promise(resolve => setTimeout(resolve, 3300));
+    
+    // Показываем результат
+    const itemFull = allItems[selectedLoot.name] || { 
+        name: selectedLoot.name, 
+        image_url: 'unknown.png',
+        price: 100,
+        display_name: selectedLoot.name
+    };
+    
+    resultDiv.innerHTML = `<span class="result-icon">✨</span><span class="result-text">YOU GOT: ${itemFull.display_name}!</span>`;
+    
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    overlay.style.display = 'none';
+    
+    // Сохраняем предмет в инвентарь (char = name БЕЗ .png)
+    const newItem = {
+        id: Date.now(),
+        char: selectedLoot.name,
+        status: 'ready'
+    };
+    
+    const newInventory = [...(currentUser.inventory || []), newItem];
+    const newScore = (currentUser.score || 0) - caseData.price;
+    
+    const { error } = await supabaseClient.from('profiles').update({
+        inventory: newInventory,
+        score: newScore
+    }).eq('id', currentUser.id);
+    
+    if (!error) {
+        window.showNotify(`🎁 YOU GOT: ${itemFull.display_name}`, 'success');
+        window.renderProfile();
+        window.renderAllCases(); // Обновляем баланс в кейсах
     } else {
         window.showNotify("OPENING ERROR", "error");
     }
