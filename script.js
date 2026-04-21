@@ -21,12 +21,16 @@ window.showNotify = function(text, type = "success") {
     }, 3000);
 };
 
-// ========== ЗАГРУЗКА ПРЕДМЕТОВ ИЗ items_meta ==========
 async function loadItemsMeta() {
     const { data } = await supabaseClient.from('items_meta').select('*');
     if (data) {
         data.forEach(item => {
-            allItems[item.name] = item;
+            allItems[item.name] = {
+                name: item.name,
+                display_name: item.display_name,
+                image_url: item.image_url,
+                price: item.price || 100
+            };
         });
     }
     console.log("Items loaded:", Object.keys(allItems).length);
@@ -296,10 +300,24 @@ window.renderProfile = function() {
 
     inventory.slice().reverse().forEach(item => {
         const clone = template.content.cloneNode(true);
-        const imgUrl = `${GITHUB_BASE}${item.char || 'unknown.png'}`;
+        
+        // Получаем полную информацию о предмете из allItems
+        const itemFull = allItems[item.name] || { 
+            name: item.name, 
+            image_url: 'unknown.png',
+            price: 100
+        };
+        
+        // Используем image_url из базы данных
+        const imgUrl = `${GITHUB_BASE}${itemFull.image_url || 'unknown.png'}`;
         clone.querySelector('.item-img').src = imgUrl;
-        clone.querySelector('.item-img').onerror = function() { this.src = 'https://placehold.co/150x150?text=ITEM'; };
-        clone.querySelector('.item-name').innerText = item.name || 'Unknown Item';
+        clone.querySelector('.item-img').onerror = function() { 
+            this.src = 'https://placehold.co/150x150?text=NO_IMG'; 
+        };
+        
+        // Показываем русское название (display_name) если есть, иначе английское
+        const displayName = itemFull.display_name || item.name;
+        clone.querySelector('.item-name').innerText = displayName;
         
         const sBtn = clone.querySelector('.sell-btn');
         const wBtn = clone.querySelector('.with-btn');
@@ -309,14 +327,16 @@ window.renderProfile = function() {
             sBtn.style.display = 'none';
             wBtn.style.display = 'none';
             statusT.style.display = 'block';
+            statusT.innerText = 'ON_REQUEST...';
         } else {
-            sBtn.onclick = () => window.sellItem(item.id, item.sell_price || 150);
+            // Цена продажи из items_meta.price с комиссией 20%
+            const sellPrice = itemFull.price || 100;
+            sBtn.onclick = () => window.sellItem(item.id, sellPrice);
             wBtn.onclick = () => window.withdrawItem(item.id);
         }
         list.appendChild(clone);
     });
 };
-
 // ========== ПРОДАЖА (С КОМИССИЕЙ 20%) ==========
 window.sellItem = async function(id, sellPrice = 150) {
     const idx = currentUser.inventory.findIndex(x => x.id === id);
