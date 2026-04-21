@@ -113,7 +113,13 @@ function getRandomItemFromLoot(lootArray) {
 }
 
 // ========== ПОКАЗАТЬ ВЫИГРЫШ С ЭФФЕКТАМИ ==========
-async function showLootWin(selectedLoot) {
+// ========== ПОКАЗ ВЫИГРЫША ==========
+function showLootWin(selectedLoot) {  // ← убрали async
+    if (!selectedLoot) {
+        console.error("Нет предмета!");
+        return;
+    }
+    
     const itemFull = allItems[selectedLoot.name] || { 
         name: selectedLoot.name, 
         image_url: 'unknown.png',
@@ -122,18 +128,14 @@ async function showLootWin(selectedLoot) {
         rarity: 'common'
     };
     
-    // Редкость из базы данных
     const rarity = itemFull.rarity || 'common';
-    
-    // Настройки для разных редкостей
     const rarityConfig = {
-        common: { color: '#aaa', glow: '#aaa', text: 'COMMON', icon: '⬜' },
-        rare: { color: '#3399ff', glow: '#3399ff', text: 'RARE', icon: '🔵' },
-        epic: { color: '#aa33ff', glow: '#aa33ff', text: 'EPIC', icon: '🟣' },
-        legendary: { color: '#ffaa00', glow: '#ffaa00', text: 'LEGENDARY', icon: '🌟' }
+        common: { color: '#aaa', text: 'COMMON', icon: '⬜' },
+        rare: { color: '#3399ff', text: 'RARE', icon: '🔵' },
+        epic: { color: '#aa33ff', text: 'EPIC', icon: '🟣' },
+        legendary: { color: '#ffaa00', text: 'LEGENDARY', icon: '🌟' }
     };
-    
-    const config = rarityConfig[rarity] || rarityConfig.common;
+    const config = rarityConfig[rarity];
     
     const lootOverlay = document.getElementById('loot-overlay');
     const lootImage = document.getElementById('lootImage');
@@ -145,23 +147,19 @@ async function showLootWin(selectedLoot) {
     lootTitle.innerText = itemFull.display_name;
     lootRarity.innerHTML = `${config.icon} ${config.text} ${config.icon}`;
     lootRarity.style.color = config.color;
-    lootRarity.style.textShadow = `0 0 10px ${config.glow}`;
+    lootRarity.style.textShadow = `0 0 10px ${config.color}`;
     
-    // Меняем цвет рамки под редкость
     const lootContent = document.querySelector('.loot-content');
     if (lootContent) {
         lootContent.style.borderColor = config.color;
-        lootContent.style.boxShadow = `0 0 50px ${config.glow}`;
     }
     
-    // Анимация лучей
     lootRays.style.animation = 'none';
     void lootRays.offsetHeight;
     lootRays.style.animation = 'rays 2s ease-out';
     
     lootOverlay.style.display = 'block';
     
-    // Сохраняем предмет во временную переменную
     window.pendingLoot = {
         id: Date.now(),
         char: selectedLoot.name,
@@ -411,7 +409,6 @@ function startSpin() {
     animateSpin();
 }
 
-// ========== ЗАМЕДЛЕНИЕ ДО ПОЛНОЙ ОСТАНОВКИ ==========
 function startSlowdown() {
     isSlowingDown = true;
     
@@ -433,7 +430,7 @@ function startSlowdown() {
             overlay.style.display = 'none';
             
             // ВЫДАЁМ ТОТ ПРЕДМЕТ, НА КОТОРОМ ОСТАНОВИЛИСЬ
-            await showLootWin(landedItem);
+            showLootWin(landedItem);  // ← убрали await
         } else {
             requestAnimationFrame(checkAndStop);
         }
