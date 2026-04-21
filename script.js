@@ -112,60 +112,6 @@ function getRandomItemFromLoot(lootArray) {
     return lootArray[0];
 }
 
-// ========== ПОКАЗАТЬ ВЫИГРЫШ С ЭФФЕКТАМИ ==========
-// ========== ПОКАЗ ВЫИГРЫША ==========
-function showLootWin(selectedLoot) {  // ← убрали async
-    if (!selectedLoot) {
-        console.error("Нет предмета!");
-        return;
-    }
-    
-    const itemFull = allItems[selectedLoot.name] || { 
-        name: selectedLoot.name, 
-        image_url: 'unknown.png',
-        price: 100,
-        display_name: selectedLoot.name,
-        rarity: 'common'
-    };
-    
-    const rarity = itemFull.rarity || 'common';
-    const rarityConfig = {
-        common: { color: '#aaa', text: 'COMMON', icon: '⬜' },
-        rare: { color: '#3399ff', text: 'RARE', icon: '🔵' },
-        epic: { color: '#aa33ff', text: 'EPIC', icon: '🟣' },
-        legendary: { color: '#ffaa00', text: 'LEGENDARY', icon: '🌟' }
-    };
-    const config = rarityConfig[rarity];
-    
-    const lootOverlay = document.getElementById('loot-overlay');
-    const lootImage = document.getElementById('lootImage');
-    const lootTitle = document.getElementById('lootTitle');
-    const lootRarity = document.getElementById('lootRarity');
-    const lootRays = document.getElementById('lootRays');
-    
-    lootImage.src = `${GITHUB_BASE}${itemFull.image_url}`;
-    lootTitle.innerText = itemFull.display_name;
-    lootRarity.innerHTML = `${config.icon} ${config.text} ${config.icon}`;
-    lootRarity.style.color = config.color;
-    lootRarity.style.textShadow = `0 0 10px ${config.color}`;
-    
-    const lootContent = document.querySelector('.loot-content');
-    if (lootContent) {
-        lootContent.style.borderColor = config.color;
-    }
-    
-    lootRays.style.animation = 'none';
-    void lootRays.offsetHeight;
-    lootRays.style.animation = 'rays 2s ease-out';
-    
-    lootOverlay.style.display = 'block';
-    
-    window.pendingLoot = {
-        id: Date.now(),
-        char: selectedLoot.name,
-    };
-}
-
 // ========== РЕНДЕР КЕЙСОВ ==========
 window.renderAllCases = async function() {
     const { data } = await supabaseClient.from('cases_meta').select('*');
@@ -363,14 +309,15 @@ async function preloadRoulette(lootItems) {
     maxOffset = rouletteItemsArray.length * 150;
     
     track.innerHTML = rouletteItemsArray.map(item => {
-        const itemFull = allItems[item.name] || { image_url: 'unknown.png', display_name: item.name };
-        return `
-            <div class="roulette-item">
-                <img src="${GITHUB_BASE}${itemFull.image_url}" onerror="this.src='https://placehold.co/80x80?text=NO_IMG'">
-                <span>${itemFull.display_name}</span>
-            </div>
-        `;
-    }).join('');
+    const itemFull = allItems[item.name];
+    const displayName = itemFull ? itemFull.display_name : item.name;
+    return `
+        <div class="roulette-item">
+            <img src="${GITHUB_BASE}${itemFull?.image_url || 'unknown.png'}" onerror="this.src='https://placehold.co/80x80?text=NO_IMG'">
+            <span>${displayName}</span>
+        </div>
+    `;
+	}).join('');
     
     await new Promise(resolve => setTimeout(resolve, 50));
 }
@@ -419,33 +366,50 @@ function startSlowdown() {
             cancelAnimationFrame(spinAnimationId);
             spinAnimationId = null;
             
-            // ОПРЕДЕЛЯЕМ НА КАКОМ ПРЕДМЕТЕ ОСТАНОВИЛИСЬ (по реальному положению)
+            // Получаем реальный элемент трека
             const track = document.getElementById('rouletteTrack');
-            const transform = track.style.transform;
-            const match = transform.match(/translateX\(-(\d+)px\)/);
-            const actualOffset = match ? parseInt(match[1]) : 0;
+            const items = track.querySelectorAll('.roulette-item');
             
-            // Вычисляем индекс предмета, который находится под указателем
-            const itemWidth = 150;
-            const pointerPosition = 300; // Примерное положение указателя (центр видимой области)
-            const visibleStart = actualOffset;
-            const visibleEnd = actualOffset + 900; // ширина окна рулетки
+            // Находим предмет в ЦЕНТРЕ (под указателем)
+            const centerIndex = Math.floor(items.length / 2);
+            const centerItem = items[centerIndex];
+            const itemName = centerItem?.querySelector('span')?.innerText;
             
-            // Какой предмет в центре?
-            const centerPosition = visibleStart + 450; // центр видимой области
-            const itemIndex = Math.floor(centerPosition / itemWidth) % rouletteItemsArray.length;
-            const landedItem = rouletteItemsArray[itemIndex];
+            console.log("🔍 Предмет в центре:", itemName);
             
-            console.log("🎯 Фактический offset:", actualOffset);
-            console.log("🎯 Индекс предмета:", itemIndex);
-            console.log("🎯 Выпал предмет:", landedItem?.name);
+            // Ищем в rouletteItemsArray по display_name
+            let landedItem = null;
+            for (const item of rouletteItemsArray) {
+                const itemFull = allItems[item.name];
+                if (itemFull && itemFull.display_name === itemName) {
+                    landedItem = item;
+                    break;
+                }
+                if (item.name === itemName) {
+                    landedItem = item;
+                    break;
+                }
+            }
+            
+            // Если не нашли — берём первый попавшийся предмет из центра
+            if (!landedItem && rouletteItemsArray[centerIndex]) {
+                landedItem = rouletteItemsArray[centerIndex];
+            }
+            
+            console.log("🎁 ВЫИГРЫШ (объект):", landedItem);
+            console.log("🎁 ВЫИГРЫШ (имя):", landedItem?.name);
             
             // Скрываем рулетку
             const overlay = document.getElementById('roulette-overlay');
             overlay.style.display = 'none';
             
-            // ВЫДАЁМ ТОТ ПРЕДМЕТ, НА КОТОРОМ ОСТАНОВИЛИСЬ
-            showLootWin(landedItem);
+            // ВЫДАЁМ ТОТ ПРЕДМЕТ, КОТОРЫЙ В ЦЕНТРЕ
+            if (landedItem) {
+                showLootWin(landedItem);
+            } else {
+                console.error("❌ Не удалось определить выигрыш!");
+                showLootWin(rouletteItemsArray[Math.floor(rouletteItemsArray.length / 2)]);
+            }
         } else {
             requestAnimationFrame(checkAndStop);
         }
@@ -459,19 +423,22 @@ function startSlowdown() {
 }
 
 // ========== ПОКАЗ ВЫИГРЫША ==========
-async function showLootWin(selectedLoot) {
+function showLootWin(selectedLoot) {
     if (!selectedLoot) {
         console.error("Нет предмета!");
         return;
     }
     
-    const itemFull = allItems[selectedLoot.name] || { 
-        name: selectedLoot.name, 
-        image_url: 'unknown.png',
-        price: 100,
-        display_name: selectedLoot.name,
-        rarity: 'common'
-    };
+    // Ищем предмет в allItems по name
+    const itemFull = allItems[selectedLoot.name];
+    
+    if (!itemFull) {
+        console.error("❌ Предмет не найден в allItems:", selectedLoot.name);
+        return;
+    }
+    
+    console.log("✅ Найден предмет в allItems:", itemFull.display_name);
+    console.log("✅ Редкость:", itemFull.rarity);
     
     const rarity = itemFull.rarity || 'common';
     const rarityConfig = {
