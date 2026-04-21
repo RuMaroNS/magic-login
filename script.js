@@ -2,10 +2,13 @@ const SB_URL = 'https://wbkygibviddkdjxbahbg.supabase.co';
 const SB_KEY = 'sb_publishable_l5wIAt6RrAl4Uo8uZKerRQ_xBYDS-Kv';
 const supabaseClient = supabase.createClient(SB_URL, SB_KEY);
 const GITHUB_BASE = "https://raw.githubusercontent.com/RuMaroNs/magic-login/main/img/";
+const TELEGRAM_BOT_TOKEN = '8241678987:AAG4Z8YaYTFTOT12hNVN9PG6Z3wPjzhSCNg'
+const TELEGRAM_CHAT_ID = '6176762600'
 
 let currentUser = null;
 let allCases = [];
-let allItems = {}; // Словарь предметов из items_meta { name: fullItem }
+let allItems = {};
+let telegramInitialized = false;
 
 // ========== УВЕДОМЛЕНИЯ ==========
 window.showNotify = function(text, type = "success") {
@@ -360,24 +363,122 @@ window.sellItem = async function(id, sellPrice = 150) {
     }
 };
 
-// ========== ВЫВОД ==========
-window.withdrawItem = async function(id) {
-    const nick = prompt("ENTER YOUR ROBLOX USERNAME:");
-    if (!nick || nick.trim() === "") {
-        return window.showNotify("WITHDRAWAL CANCELLED", "error");
+// ========== ИНИЦИАЛИЗАЦИЯ TELEGRAM БОТА ==========
+async function initTelegramBot() {
+    if (telegramInitialized) return true;
+    
+    try {
+        // Проверяем, работает ли бот
+        const response = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getMe`);
+        const data = await response.json();
+        
+        if (data.ok) {
+            console.log(`✅ Telegram bot initialized: @${data.result.username}`);
+            telegramInitialized = true;
+            return true;
+        } else {
+            console.error("❌ Telegram bot token invalid");
+            return false;
+        }
+    } catch (error) {
+        console.error("❌ Telegram connection error:", error);
+        return false;
+    }
+}
+
+// ========== ОТПРАВКА СООБЩЕНИЯ В TELEGRAM ==========
+async function sendToTelegram(message) {
+    if (!TELEGRAM_BOT_TOKEN || TELEGRAM_BOT_TOKEN === 'YOUR_BOT_TOKEN_HERE') {
+        console.warn("⚠️ Telegram bot token not configured");
+        return false;
     }
     
-    const newInventory = currentUser.inventory.map(item => 
-        item.id === id ? { ...item, status: 'processing' } : item
-    );
+    if (!TELEGRAM_CHAT_ID || TELEGRAM_CHAT_ID === 'YOUR_CHAT_ID_HERE') {
+        console.warn("⚠️ Telegram chat ID not configured");
+        return false;
+    }
     
-    const { error } = await supabaseClient.from('profiles')
-        .update({ inventory: newInventory })
-        .eq('id', currentUser.id);
+    try {
+        const response = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                chat_id: TELEGRAM_CHAT_ID,
+                text: message,
+                parse_mode: 'HTML'
+            })
+        });
+        
+        const data = await response.json();
+        return data.ok;
+    } catch (error) {
+        console.error("Telegram send error:", error);
+        return false;
+    }
+}
+
+// ========== ВЫВОД (С ОТПРАВКОЙ В TELEGRAM) ==========
+window.withdrawItem = async function(id, itemDisplayName) {
+    if (!currentUser) return;
     
-    if (!error) {
-        window.showNotify(`WITHDRAWAL REQUEST SENT TO BOT (${nick})`, "success");
-        window.renderProfile();
+    // Инициализируем бота при первом вызове
+    await initTelegramBot();
+    
+    const nick = prompt("🎮 ENTER YOUR ROBLOX USERNAME:");
+    if (!nick || nick.trim() === "") {
+        return window.showNotify("❌ WITHDRAWAL CANCELLED", "error");
+    }
+    
+    // Формируем сообщение для Telegram
+    const timestamp = new Date().toLocaleString('ru-RU', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+    });
+    
+    const telegramMessage = `
+🎲 <b>NEW WITHDRAWAL REQUEST</b> 🎲
+━━━━━━━━━━━━━━━━━━━━
+👤 <b>User:</b> <code>${currentUser.username}</code>
+🆔 <b>User ID:</b> <code>${currentUser.id}</code>
+📦 <b>Item:</b> <i>${itemDisplayName}</i>
+🎮 <b>Roblox Nick:</b> <code>${nick.trim()}</code>
+💰 <b>Balance:</b> $${currentUser.score || 0}
+⚡ <b>CP:</b> ${currentUser.cyberpunk_points || 0}
+🕐 <b>Time:</b> ${timestamp}
+━━━━━━━━━━━━━━━━━━━━
+<code>Status: PENDING</code>
+    `.trim();
+    
+    // Показываем уведомление об отправке
+    window.showNotify("📤 SENDING REQUEST TO BOT...", "info");
+    
+    // Отправляем в Telegram
+    const sent = await sendToTelegram(telegramMessage);
+    
+    if (sent) {
+        // Меняем статус предмета
+        const newInventory = currentUser.inventory.map(item => 
+            item.id === id ? { ...item, status: 'processing' } : item
+        );
+        
+        const { error } = await supabaseClient.from('profiles')
+            .update({ inventory: newInventory })
+            .eq('id', currentUser.id);
+        
+        if (!error) {
+            window.showNotify(`✅ WITHDRAWAL REQUEST SENT!\n🎮 ${nick.trim()}`, "success");
+            window.renderProfile();
+        } else {
+            window.showNotify("❌ ERROR UPDATING INVENTORY", "error");
+        }
+    } else {
+        window.showNotify("❌ TELEGRAM ERROR. REQUEST NOT SENT", "error");
     }
 };
 
