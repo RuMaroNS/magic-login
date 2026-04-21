@@ -11,12 +11,13 @@ let allItems = {};
 let telegramInitialized = false;
 let currentSelectedLoot = null;
 let currentCaseData = null;
-let rouletteInterval = null;
 let rouletteItemsArray = [];
 let spinVelocity = 0;
 let spinDecay = 0.98;
 let spinAnimationId = null;
 let isSlowingDown = false;
+let currentOffset = 0;
+let maxOffset = 0;
 
 // ========== УВЕДОМЛЕНИЯ ==========
 window.showNotify = function(text, type = "success") {
@@ -323,17 +324,49 @@ window.openCase = async function(caseId) {
     }
 };
 
+// ========== ПРЕДЗАГРУЗКА РУЛЕТКИ ==========
+async function preloadRoulette(lootItems) {
+    const track = document.getElementById('rouletteTrack');
+    if (!track) return;
+    
+    const allLootItems = [];
+    for (let i = 0; i < 50; i++) {
+        const randomItem = lootItems[Math.floor(Math.random() * lootItems.length)];
+        allLootItems.push(randomItem);
+    }
+    for (let i = 0; i < 5; i++) {
+        allLootItems.push(currentSelectedLoot);
+    }
+    
+    rouletteItemsArray = allLootItems;
+    maxOffset = rouletteItemsArray.length * 150;
+    
+    track.innerHTML = rouletteItemsArray.map(item => {
+        const itemFull = allItems[item.name] || { image_url: 'unknown.png', display_name: item.name };
+        return `
+            <div class="roulette-item">
+                <img src="${GITHUB_BASE}${itemFull.image_url}" onerror="this.src='https://placehold.co/80x80?text=NO_IMG'">
+                <span>${itemFull.display_name}</span>
+            </div>
+        `;
+    }).join('');
+    
+    await new Promise(resolve => setTimeout(resolve, 50));
+}
+
 // ========== ПЛАВНОЕ ВРАЩЕНИЕ С ЗАМЕДЛЕНИЕМ ==========
 function startSpin() {
     if (spinAnimationId) cancelAnimationFrame(spinAnimationId);
     
     const track = document.getElementById('rouletteTrack');
-    const itemWidth = 150;
-    const maxOffset = rouletteItemsArray.length * itemWidth;
-    let currentOffset = 0;
+    if (!track) return;
     
+    currentOffset = 0;
     spinVelocity = 45;
     isSlowingDown = false;
+    
+    track.style.transition = 'none';
+    track.style.transform = `translateX(0px)`;
     
     function animateSpin() {
         if (isSlowingDown) {
@@ -355,57 +388,56 @@ function startSpin() {
     animateSpin();
 }
 
-// ========== НАЧАЛО ЗАМЕДЛЕНИЯ ==========
+// ========== ПЛАВНАЯ ОСТАНОВКА (БЕЗ УДАРА) ==========
 function startSlowdown() {
     isSlowingDown = true;
-    spinDecay = 0.97;
     
-    function checkStop() {
+    function checkAndStop() {
         if (spinVelocity <= 0.5) {
+            // Полная остановка
             cancelAnimationFrame(spinAnimationId);
             spinAnimationId = null;
-            finalizeWin();
+            smoothStopOnTarget();
         } else {
-            requestAnimationFrame(checkStop);
+            requestAnimationFrame(checkAndStop);
         }
     }
     
     setTimeout(() => {
         if (spinAnimationId) {
-            checkStop();
+            checkAndStop();
         }
     }, 100);
 }
 
-// ========== ФИНАЛЬНАЯ ОСТАНОВКА ==========
-async function finalizeWin() {
+// ========== ПЛАВНАЯ ФИКСАЦИЯ НА ВЫИГРЫШНОМ ПРЕДМЕТЕ (БЕЗ РЫВКОВ) ==========
+async function smoothStopOnTarget() {
     const track = document.getElementById('rouletteTrack');
     const itemWidth = 150;
     const targetIndex = rouletteItemsArray.length - 3;
     const targetPosition = targetIndex * itemWidth;
     
-    const currentTransform = track.style.transform;
-    const currentMatch = currentTransform.match(/translateX\(-(\d+)px\)/);
-    let currentOffset = currentMatch ? parseInt(currentMatch[1]) : 0;
+    // Нормализуем текущую позицию
+    let currentPos = currentOffset % maxOffset;
     
-    const maxOffset = rouletteItemsArray.length * itemWidth;
-    currentOffset = currentOffset % maxOffset;
-    
-    let distanceToTarget = targetPosition - currentOffset;
+    // Рассчитываем ближайший доворот до цели
+    let distanceToTarget = targetPosition - currentPos;
     if (distanceToTarget < 0) distanceToTarget += maxOffset;
     
-    track.style.transition = 'transform 0.8s cubic-bezier(0.2, 0.9, 0.4, 1.1)';
-    track.style.transform = `translateX(-${currentOffset + distanceToTarget}px)`;
+    // Плавный доворот (без рывка!)
+    track.style.transition = 'transform 0.6s cubic-bezier(0.2, 0.9, 0.4, 1)';
+    track.style.transform = `translateX(-${currentPos + distanceToTarget}px)`;
     
-    await new Promise(resolve => setTimeout(resolve, 900));
+    await new Promise(resolve => setTimeout(resolve, 700));
     
+    // Скрываем рулетку
     const overlay = document.getElementById('roulette-overlay');
     overlay.style.display = 'none';
     
     await showLootWin(currentSelectedLoot);
 }
 
-// ========== ОТКРЫТИЕ КЕЙСА С ПЛАВНОЙ РУЛЕТКОЙ ==========
+// ========== ОТКРЫТИЕ КЕЙСА ==========
 window.openCaseWithAnimation = async function(caseId) {
     if (!currentUser) return;
     const caseData = allCases.find(c => c.id == caseId);
@@ -434,31 +466,12 @@ window.openCaseWithAnimation = async function(caseId) {
         return window.showNotify("ERROR SELECTING ITEM", "error");
     }
 
-    const allLootItems = [];
-    for (let i = 0; i < 50; i++) {
-        const randomItem = lootItems[Math.floor(Math.random() * lootItems.length)];
-        allLootItems.push(randomItem);
-    }
-    for (let i = 0; i < 5; i++) {
-        allLootItems.push(currentSelectedLoot);
-    }
+    // Предзагрузка
+    await preloadRoulette(lootItems);
     
-    rouletteItemsArray = allLootItems;
-
     const overlay = document.getElementById('roulette-overlay');
-    const track = document.getElementById('rouletteTrack');
     const resultDiv = document.getElementById('rouletteResult');
     const progressBar = document.getElementById('rouletteProgress');
-    
-    track.innerHTML = rouletteItemsArray.map(item => {
-        const itemFull = allItems[item.name] || { image_url: 'unknown.png', display_name: item.name };
-        return `
-            <div class="roulette-item">
-                <img src="${GITHUB_BASE}${itemFull.image_url}" onerror="this.src='https://placehold.co/80x80?text=NO_IMG'">
-                <span>${itemFull.display_name}</span>
-            </div>
-        `;
-    }).join('');
     
     overlay.style.display = 'block';
     resultDiv.innerHTML = '<span class="result-icon">🎲</span><span class="result-text">SPINNING...</span>';
@@ -467,14 +480,14 @@ window.openCaseWithAnimation = async function(caseId) {
     startSpin();
     
     setTimeout(() => {
-        progressBar.style.transition = 'width 4s linear';
+        progressBar.style.transition = 'width 3.5s linear';
         progressBar.style.width = '100%';
     }, 50);
     
     setTimeout(() => {
         resultDiv.innerHTML = '<span class="result-icon">🎰</span><span class="result-text">SLOWING DOWN...</span>';
         startSlowdown();
-    }, 4000);
+    }, 3500);
 };
 
 // ========== МАРКЕТ (ЛИМИТКИ) ==========
