@@ -5,6 +5,7 @@ const GITHUB_BASE = "https://raw.githubusercontent.com/RuMaroNs/magic-login/main
 
 let currentUser = null;
 let allCases = [];
+let allItems = {}; // Словарь предметов из items_meta { name: fullItem }
 
 // ========== УВЕДОМЛЕНИЯ ==========
 window.showNotify = function(text, type = "success") {
@@ -20,8 +21,20 @@ window.showNotify = function(text, type = "success") {
     }, 3000);
 };
 
+// ========== ЗАГРУЗКА ПРЕДМЕТОВ ИЗ items_meta ==========
+async function loadItemsMeta() {
+    const { data } = await supabaseClient.from('items_meta').select('*');
+    if (data) {
+        data.forEach(item => {
+            allItems[item.name] = item;
+        });
+    }
+    console.log("Items loaded:", Object.keys(allItems).length);
+}
+
 // ========== АВТО-ЛОГИН ==========
 window.onload = async () => {
+    await loadItemsMeta();
     const savedU = localStorage.getItem('saved_login');
     const savedP = localStorage.getItem('saved_pass');
     if (savedU && savedP) {
@@ -58,6 +71,30 @@ window.login = async function() {
     }
 };
 
+// ========== ФУНКЦИЯ ВЫБОРА ПРЕДМЕТА ПО ШАНСАМ ==========
+function getRandomItemFromLoot(lootArray) {
+    if (!lootArray || lootArray.length === 0) return null;
+    
+    // Нормализуем шансы (суммируем)
+    let totalChance = 0;
+    for (const item of lootArray) {
+        totalChance += item.chance || 0;
+    }
+    
+    if (totalChance === 0) return lootArray[0];
+    
+    let random = Math.random() * totalChance;
+    let accumulated = 0;
+    
+    for (const item of lootArray) {
+        accumulated += item.chance || 0;
+        if (random <= accumulated) {
+            return item;
+        }
+    }
+    return lootArray[0];
+}
+
 // ========== РЕНДЕР КЕЙСОВ ==========
 window.renderAllCases = async function() {
     const { data } = await supabaseClient.from('cases_meta').select('*');
@@ -74,45 +111,36 @@ window.renderAllCases = async function() {
     }
 };
 
-// ========== СТРАНИЦА КЕЙСА С ТАБЛИЦЕЙ ЛУТА ==========
+// ========== СТРАНИЦА КЕЙСА С ТАБЛИЦЕЙ ЛУТА ИЗ loot JSONB ==========
 window.showCaseInfo = async function(id) {
     const caseData = allCases.find(c => c.id == id);
     if (!caseData) return;
 
-    // Получаем предметы для этого кейса (если есть таблица case_items, иначе заглушка)
-    let items = [];
-    try {
-        const { data: itemsData } = await supabaseClient.from('case_items').select('*').eq('case_id', id);
-        if (itemsData && itemsData.length > 0) {
-            items = itemsData;
-        } else {
-            // Заглушка — пример лута
-            items = [
-                { name: "AK-47 NEO", chance: 15, image: "ak47.png" },
-                { name: "M4A4 HOWL", chance: 5, image: "m4.png" },
-                { name: "AWP DRAGON", chance: 2, image: "awp.png" },
-                { name: "USP GUARDIAN", chance: 35, image: "usp.png" },
-                { name: "GLOCK WATER", chance: 43, image: "glock.png" }
-            ];
+    // Получаем loot из JSONB колонки
+    let lootItems = caseData.loot || [];
+    
+    // Если loot это строка JSON, парсим
+    if (typeof lootItems === 'string') {
+        try {
+            lootItems = JSON.parse(lootItems);
+        } catch(e) {
+            lootItems = [];
         }
-    } catch(e) {
-        items = [
-            { name: "LEGENDARY_ITEM", chance: 1, image: "legendary.png" },
-            { name: "EPIC_ITEM", chance: 9, image: "epic.png" },
-            { name: "RARE_ITEM", chance: 30, image: "rare.png" },
-            { name: "COMMON_ITEM", chance: 60, image: "common.png" }
-        ];
     }
 
-    const lootRows = items.map(item => `
-        <div class="loot-row">
-            <div class="loot-name">
-                <img src="${GITHUB_BASE}${item.image}" onerror="this.src='https://placehold.co/40x40?text=?'">
-                <span>${item.name}</span>
+    // Строим таблицу лута с картинками из items_meta
+    const lootRows = lootItems.map(item => {
+        const itemFull = allItems[item.name] || { name: item.name, image_url: 'unknown.png', sell_price: 0 };
+        return `
+            <div class="loot-row">
+                <div class="loot-name">
+                    <img src="${GITHUB_BASE}${itemFull.image_url || 'unknown.png'}" onerror="this.src='https://placehold.co/40x40?text=?'">
+                    <span>${item.name}</span>
+                </div>
+                <div class="loot-chance">${item.chance || 0}%</div>
             </div>
-            <div class="loot-chance">${item.chance}%</div>
-        </div>
-    `).join('');
+        `;
+    }).join('');
 
     const content = document.getElementById('case-detail-content');
     content.innerHTML = `
@@ -123,15 +151,15 @@ window.showCaseInfo = async function(id) {
             
             <div class="loot-table">
                 <h3>📦 POSSIBLE LOOT</h3>
-                ${lootRows}
-                <div style="margin-top: 15px; font-size: 10px; color: #555; text-align: center;">* SYSTEM_SHOWCASE — REAL CHANCE SYSTEM NOT IMPLEMENTED</div>
+                ${lootRows || '<div style="text-align:center; color:#555;">NO LOOT DATA</div>'}
+                <div style="margin-top: 15px; font-size: 10px; color: #555; text-align: center;">* SYSTEM_SHOWCASE — шансы из базы данных</div>
             </div>
         </div>
     `;
     window.navTo('case-info');
 };
 
-// ========== ОТКРЫТИЕ КЕЙСА ==========
+// ========== ОТКРЫТИЕ КЕЙСА (С УЧЁТОМ ШАНСОВ ИЗ loot) ==========
 window.openCase = async function(caseId) {
     if (!currentUser) return;
     const caseData = allCases.find(c => c.id == caseId);
@@ -141,26 +169,38 @@ window.openCase = async function(caseId) {
         return window.showNotify("INSUFFICIENT FUNDS", "error");
     }
 
-    // Просто даём случайный предмет (без системы шансов, рандомный из списка)
-    let items = [];
-    try {
-        const { data: itemsData } = await supabaseClient.from('case_items').select('*').eq('case_id', caseId);
-        if (itemsData && itemsData.length > 0) items = itemsData;
-        else items = [
-            { name: "LEGENDARY_ITEM", image: "legendary.png" },
-            { name: "EPIC_ITEM", image: "epic.png" },
-            { name: "RARE_ITEM", image: "rare.png" },
-            { name: "COMMON_ITEM", image: "common.png" }
-        ];
-    } catch(e) {
-        items = [{ name: "MYSTERY_ITEM", image: "mystery.png" }];
+    // Получаем loot из JSONB колонки
+    let lootItems = caseData.loot || [];
+    if (typeof lootItems === 'string') {
+        try {
+            lootItems = JSON.parse(lootItems);
+        } catch(e) {
+            lootItems = [];
+        }
+    }
+    
+    if (lootItems.length === 0) {
+        return window.showNotify("NO LOOT IN THIS CASE", "error");
     }
 
-    const randomItem = items[Math.floor(Math.random() * items.length)];
+    // Выбираем предмет по шансам
+    const selectedLoot = getRandomItemFromLoot(lootItems);
+    if (!selectedLoot) {
+        return window.showNotify("ERROR SELECTING ITEM", "error");
+    }
+
+    // Получаем полную информацию о предмете из items_meta
+    const itemFull = allItems[selectedLoot.name] || { 
+        name: selectedLoot.name, 
+        image_url: 'unknown.png',
+        sell_price: 100
+    };
+
     const newItem = {
         id: Date.now(),
-        char: randomItem.image || randomItem.name,
-        status: 'ready'
+        char: itemFull.image_url || selectedLoot.name,
+        name: selectedLoot.name,
+        sell_price: itemFull.sell_price || 100
     };
 
     const newInventory = [...(currentUser.inventory || []), newItem];
@@ -172,7 +212,7 @@ window.openCase = async function(caseId) {
     }).eq('id', currentUser.id);
 
     if (!error) {
-        window.showNotify(`YOU GOT: ${randomItem.name}`, 'success');
+        window.showNotify(`🎁 YOU GOT: ${selectedLoot.name}`, 'success');
         window.navTo('profile');
     } else {
         window.showNotify("OPENING ERROR", "error");
@@ -215,10 +255,13 @@ window.buyLimited = async function(id, price) {
     
     const newStock = item.stock - 1;
     const newCP = (currentUser.cyberpunk_points || 0) - price;
+    
+    // Добавляем предмет в инвентарь
     const newInventory = [...(currentUser.inventory || []), {
         id: Date.now(),
         char: item.image_url,
-        status: 'ready'
+        name: item.name,
+        sell_price: item.price_cp || 0
     }];
     
     await supabaseClient.from('cases_meta').update({ stock: newStock }).eq('id', id);
@@ -230,6 +273,7 @@ window.buyLimited = async function(id, price) {
     if (!error) {
         window.showNotify(`PURCHASED: ${item.name}`, 'success');
         window.renderMarket();
+        window.renderProfile();
     }
 };
 
@@ -252,8 +296,10 @@ window.renderProfile = function() {
 
     inventory.slice().reverse().forEach(item => {
         const clone = template.content.cloneNode(true);
-        clone.querySelector('.item-img').src = `${GITHUB_BASE}${item.char}.png`;
+        const imgUrl = `${GITHUB_BASE}${item.char || 'unknown.png'}`;
+        clone.querySelector('.item-img').src = imgUrl;
         clone.querySelector('.item-img').onerror = function() { this.src = 'https://placehold.co/150x150?text=ITEM'; };
+        clone.querySelector('.item-name').innerText = item.name || 'Unknown Item';
         
         const sBtn = clone.querySelector('.sell-btn');
         const wBtn = clone.querySelector('.with-btn');
@@ -264,7 +310,7 @@ window.renderProfile = function() {
             wBtn.style.display = 'none';
             statusT.style.display = 'block';
         } else {
-            sBtn.onclick = () => window.sellItem(item.id);
+            sBtn.onclick = () => window.sellItem(item.id, item.sell_price || 150);
             wBtn.onclick = () => window.withdrawItem(item.id);
         }
         list.appendChild(clone);
@@ -272,65 +318,6 @@ window.renderProfile = function() {
 };
 
 // ========== ПРОДАЖА ==========
-window.sellItem = async function(id) {
+window.sellItem = async function(id, sellPrice = 150) {
     const idx = currentUser.inventory.findIndex(x => x.id === id);
-    if (idx === -1) return;
-    
-    const newInventory = [...currentUser.inventory];
-    newInventory.splice(idx, 1);
-    const newScore = (currentUser.score || 0) + 150;
-    
-    const { error } = await supabaseClient.from('profiles')
-        .update({ inventory: newInventory, score: newScore })
-        .eq('id', currentUser.id);
-    
-    if (!error) {
-        window.showNotify("SOLD: +150$", "success");
-    }
-};
-
-// ========== ВЫВОД (С ЗАПРОСОМ ROBLOX НИКА) ==========
-window.withdrawItem = async function(id) {
-    const nick = prompt("ENTER YOUR ROBLOX USERNAME:");
-    if (!nick || nick.trim() === "") {
-        return window.showNotify("WITHDRAWAL CANCELLED", "error");
-    }
-    
-    const newInventory = currentUser.inventory.map(item => 
-        item.id === id ? { ...item, status: 'processing' } : item
-    );
-    
-    const { error } = await supabaseClient.from('profiles')
-        .update({ inventory: newInventory })
-        .eq('id', currentUser.id);
-    
-    if (!error) {
-        window.showNotify(`WITHDRAWAL REQUEST SENT TO BOT (${nick})`, "success");
-    }
-};
-
-// ========== НАВИГАЦИЯ ==========
-window.navTo = (id) => {
-    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-    document.getElementById('page-' + id).classList.add('active');
-    if (id === 'profile') window.renderProfile();
-    if (id === 'cases') window.renderAllCases();
-    if (id === 'market') window.renderMarket();
-};
-
-// ========== ПОДПИСКА НА ОБНОВЛЕНИЯ ==========
-function subscribeUpdates() {
-    supabaseClient.channel('any').on('postgres_changes', 
-        { event: 'UPDATE', schema: 'public', table: 'profiles' }, 
-        payload => {
-            if (currentUser && payload.new.id === currentUser.id) {
-                currentUser = payload.new;
-                document.getElementById('h-balance').innerText = currentUser.score || 0;
-                document.getElementById('h-cp').innerText = currentUser.cyberpunk_points || 0;
-                if (document.getElementById('page-profile').classList.contains('active')) {
-                    window.renderProfile();
-                }
-            }
-        }
-    ).subscribe();
-}
+    if (idx === -1) return
