@@ -112,6 +112,19 @@
             </div>
         </div>
     </div>
+	
+	<div id="loot-overlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.95); z-index:10001; backdrop-filter:blur(10px);">
+    <div class="loot-container">
+        <div class="loot-rays" id="lootRays"></div>
+        <div class="loot-content">
+            <div class="loot-glow"></div>
+            <img class="loot-image" id="lootImage" src="">
+            <h2 class="loot-title" id="lootTitle"></h2>
+            <div class="loot-rarity" id="lootRarity">COMMON</div>
+            <button class="loot-claim-btn" onclick="window.claimLoot()">💾 ЗАБРАТЬ</button>
+        </div>
+    </div>
+</div>
 
     <template id="inv-item-template">
         <div class="mega-card inv-item">
