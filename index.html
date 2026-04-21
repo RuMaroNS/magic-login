@@ -3,18 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Cyber-Realtime Cases</title>
+    <title>Cyber Magic Cases | Ultimate</title>
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-    <div class="cyber-bg"><div class="grid-overlay"></div></div>
+    <div class="cyber-bg">
+        <div class="grid-overlay"></div>
+        <div class="scanlines"></div>
+    </div>
 
-    <div class="live-wrapper">
+    <div class="live-header">
         <div class="live-tag">LIVE DROP</div>
-        <div class="live-scroll-container">
-            <div id="global-live-feed" class="live-scroll-content"></div>
+        <div class="live-container">
+            <div id="global-live-feed" class="live-track"></div>
         </div>
     </div>
 
@@ -25,38 +28,53 @@
 
     <div id="auth-screen" class="full-screen">
         <div class="auth-card">
-            <h1 class="glitch-text">SYSTEM<span>ACCESS</span></h1>
-            <input type="text" id="user_name" placeholder="LOGIN">
-            <input type="password" id="user_password" placeholder="PASSWORD">
-            <button class="neon-btn-main" onclick="window.login()">INITIALIZE</button>
+            <h1 class="glitch-text">SYSTEM<span>LOGIN</span></h1>
+            <input type="text" id="user_name" placeholder="OPERATOR_ID">
+            <input type="password" id="user_password" placeholder="ACCESS_KEY">
+            <button class="neon-btn-main" onclick="window.login()">CONNECT</button>
         </div>
     </div>
 
     <div id="game-interface" style="display:none;">
+        
         <div id="page-cases" class="page active">
+            <h2 class="section-title">AVAILABLE_CAPSULES</h2>
             <div id="cases-grid" class="main-grid"></div>
         </div>
 
         <div id="page-case-info" class="page">
             <div id="case-detail-hero"></div>
-            <div class="loot-preview-container">
-                <h3 class="sub-title">CONTENT_DATA:</h3>
+            <div class="loot-box-info">
+                <h3 class="section-title">POSSIBLE_DATA</h3>
                 <div id="loot-chances-grid" class="loot-grid"></div>
             </div>
-            <button class="back-link" onclick="window.navTo('cases')">← TERMINAL_RETURN</button>
+            <button class="back-link" onclick="window.navTo('cases')">← RETURN_TO_MENU</button>
+        </div>
+
+        <div id="page-opening" class="page">
+            <div class="roulette-section">
+                <div class="roulette-window">
+                    <div class="pointer"></div>
+                    <div class="tape" id="roulette-tape"></div>
+                </div>
+                <div id="win-display" class="win-announcement" style="display:none;">
+                    <h2 id="win-name-text">ITEM_NAME</h2>
+                    <button class="neon-btn" onclick="window.navTo('profile')">VIEW_INVENTORY</button>
+                </div>
+            </div>
         </div>
 
         <div id="page-market" class="page">
-            <h2 class="section-title">LIMITED_STOCK</h2>
+            <h2 class="section-title">LIMITED_HARDWARE</h2>
             <div id="limited-grid" class="main-grid"></div>
         </div>
 
         <div id="page-profile" class="page">
-            <div class="profile-mega-card">
-                <div class="p-avatar-large"></div>
-                <div class="p-details">
+            <div class="profile-mega-header">
+                <div class="avatar-frame"></div>
+                <div class="user-meta">
                     <h1 id="p-username">USER_NAME</h1>
-                    <div class="p-rank">SECURITY_LEVEL: 07</div>
+                    <div class="rank-label">ELITE_RUNNER</div>
                 </div>
             </div>
             <h2 class="section-title">SECURE_STORAGE</h2>
