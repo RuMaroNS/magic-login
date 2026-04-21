@@ -3,23 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Cyber Magic Cases</title>
+    <title>Cyber-Realtime Cases</title>
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-    <div class="cyber-bg">
-        <div class="grid-overlay"></div>
-        <div class="scanlines"></div>
-    </div>
+    <div class="cyber-bg"><div class="grid-overlay"></div></div>
 
-    <div class="live-header">
-        <div class="live-status">
-            <div class="live-title">LIVE</div>
-            <div class="live-indicator"><div class="dot"></div></div>
+    <div class="live-wrapper">
+        <div class="live-tag">LIVE DROP</div>
+        <div class="live-scroll-container">
+            <div id="global-live-feed" class="live-scroll-content"></div>
         </div>
-        <div class="drop-tape" id="global-live-feed"></div>
     </div>
 
     <div id="top-bar" class="currency-panel" style="display:none;">
@@ -29,65 +25,48 @@
 
     <div id="auth-screen" class="full-screen">
         <div class="auth-card">
-            <h1 class="logo-text">CYBER<span>CASES</span></h1>
-            <div class="auth-form">
-                <input type="text" id="user_name" placeholder="NICKNAME">
-                <input type="password" id="user_password" placeholder="PASSWORD">
-                <button class="neon-btn" onclick="window.login()">CONNECT</button>
-            </div>
+            <h1 class="glitch-text">SYSTEM<span>ACCESS</span></h1>
+            <input type="text" id="user_name" placeholder="LOGIN">
+            <input type="password" id="user_password" placeholder="PASSWORD">
+            <button class="neon-btn-main" onclick="window.login()">INITIALIZE</button>
         </div>
     </div>
 
     <div id="game-interface" style="display:none;">
-        
         <div id="page-cases" class="page active">
-            <h2 class="section-heading">AVAILABLE CAPSULES</h2>
-            <div id="cases-grid" class="items-grid"></div>
+            <div id="cases-grid" class="main-grid"></div>
         </div>
 
         <div id="page-case-info" class="page">
-            <div id="case-detail-content"></div>
-            <h3 class="section-heading">LOOT TABLE & CHANCES</h3>
-            <div id="loot-chances-grid" class="loot-grid"></div>
-            <button class="neon-btn back-btn" onclick="window.navTo('cases')">GO BACK</button>
-        </div>
-        
-        <div id="page-opening" class="page">
-            <div class="roulette-container">
-                <div class="roulette-wrapper">
-                    <div class="selector-line"></div>
-                    <div class="tape" id="roulette-tape"></div>
-                </div>
-                <div id="win-display" class="win-card" style="display:none;">
-                    <h2 id="win-name-text"></h2>
-                    <button class="neon-btn" style="max-width:200px;" onclick="window.navTo('cases')">COLLECT</button>
-                </div>
+            <div id="case-detail-hero"></div>
+            <div class="loot-preview-container">
+                <h3 class="sub-title">CONTENT_DATA:</h3>
+                <div id="loot-chances-grid" class="loot-grid"></div>
             </div>
+            <button class="back-link" onclick="window.navTo('cases')">← TERMINAL_RETURN</button>
         </div>
 
         <div id="page-market" class="page">
-            <h2 class="section-heading">LIMITED STOCK</h2>
-            <div id="limited-grid" class="items-grid"></div>
+            <h2 class="section-title">LIMITED_STOCK</h2>
+            <div id="limited-grid" class="main-grid"></div>
         </div>
 
         <div id="page-profile" class="page">
-            <div class="profile-header-card">
-                <div class="profile-avatar-frame">
-                    <div class="profile-avatar"></div>
-                </div>
-                <div class="profile-info">
-                    <h2 id="p-username" class="cyber-nick">UNKNOWN</h2>
-                    <div class="rank-badge">RANK: ELITE RUNNER</div>
+            <div class="profile-mega-card">
+                <div class="p-avatar-large"></div>
+                <div class="p-details">
+                    <h1 id="p-username">USER_NAME</h1>
+                    <div class="p-rank">SECURITY_LEVEL: 07</div>
                 </div>
             </div>
-            <h2 class="section-heading">MY INVENTORY</h2>
-            <div id="inventory-list" class="items-grid"></div>
+            <h2 class="section-title">SECURE_STORAGE</h2>
+            <div id="inventory-list" class="main-grid"></div>
         </div>
 
-        <nav class="bottom-nav">
-            <button onclick="window.navTo('cases')"><span>CASES</span></button>
-            <button onclick="window.navTo('market')"><span>MARKET</span></button>
-            <button onclick="window.navTo('profile')"><span>PROFILE</span></button>
+        <nav class="cyber-nav">
+            <button onclick="window.navTo('cases')">CASES</button>
+            <button onclick="window.navTo('market')">MARKET</button>
+            <button onclick="window.navTo('profile')">PROFILE</button>
         </nav>
     </div>
 
