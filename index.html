@@ -19,7 +19,7 @@
             <div class="live-title">LIVE</div>
             <div class="live-indicator"><div class="dot"></div></div>
         </div>
-        <div id="global-live-feed" class="drop-tape"></div>
+        <div class="drop-tape" id="global-live-feed"></div>
     </div>
 
     <div id="top-bar" class="currency-panel" style="display:none;">
@@ -33,7 +33,7 @@
             <div class="auth-form">
                 <input type="text" id="user_name" placeholder="NICKNAME">
                 <input type="password" id="user_password" placeholder="PASSWORD">
-                <button class="neon-btn" onclick="window.login()">ACCESS SYSTEM</button>
+                <button class="neon-btn" onclick="window.login()">CONNECT</button>
             </div>
         </div>
     </div>
@@ -41,22 +41,22 @@
     <div id="game-interface" style="display:none;">
         
         <div id="page-cases" class="page active">
-            <h2 class="section-heading">DATA CAPSULES</h2>
+            <h2 class="section-heading">AVAILABLE CAPSULES</h2>
             <div id="cases-grid" class="items-grid"></div>
         </div>
 
         <div id="page-case-info" class="page">
             <div id="case-detail-content"></div>
-            <h3 class="section-heading">POSSIBLE LOOT & CHANCES</h3>
+            <h3 class="section-heading">LOOT TABLE & CHANCES</h3>
             <div id="loot-chances-grid" class="loot-grid"></div>
-            <button class="neon-btn back-btn" onclick="window.navTo('cases')">RETURN</button>
+            <button class="neon-btn back-btn" onclick="window.navTo('cases')">GO BACK</button>
         </div>
-
+        
         <div id="page-opening" class="page">
             <div class="roulette-container">
                 <div class="roulette-wrapper">
                     <div class="selector-line"></div>
-                    <div id="roulette-tape" class="tape"></div>
+                    <div class="tape" id="roulette-tape"></div>
                 </div>
                 <div id="win-display" class="win-card" style="display:none;">
                     <h2 id="win-name-text"></h2>
@@ -71,12 +71,16 @@
         </div>
 
         <div id="page-profile" class="page">
-            <div class="profile-card">
-                <div class="profile-avatar"></div>
-                <h2 id="p-username" class="cyber-nick">RUNNER</h2>
-                <div class="rank-badge">NETWATCH ELITE</div>
+            <div class="profile-header-card">
+                <div class="profile-avatar-frame">
+                    <div class="profile-avatar"></div>
+                </div>
+                <div class="profile-info">
+                    <h2 id="p-username" class="cyber-nick">UNKNOWN</h2>
+                    <div class="rank-badge">RANK: ELITE RUNNER</div>
+                </div>
             </div>
-            <h2 class="section-heading">INVENTORY</h2>
+            <h2 class="section-heading">MY INVENTORY</h2>
             <div id="inventory-list" class="items-grid"></div>
         </div>
 
