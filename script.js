@@ -5,7 +5,7 @@ const GITHUB_BASE = "https://raw.githubusercontent.com/RuMaroNs/magic-login/main
 
 let currentUser = null;
 
-// --- СИСТЕМА УВЕДОМЛЕНИЙ ---
+// --- УВЕДОМЛЕНИЯ ВМЕСТО АЛЕРТОВ ---
 window.showNotify = (text, type = 'info') => {
     const container = document.getElementById('notification-container');
     const note = document.createElement('div');
@@ -19,7 +19,7 @@ window.showNotify = (text, type = 'info') => {
     }, 4000);
 };
 
-// --- ВХОД И АВТО-ЛОГИН ---
+// --- ЛОГИКА ВХОДА ---
 window.login = async function() {
     const u = document.getElementById('user_name').value;
     const p = document.getElementById('user_password').value;
@@ -51,7 +51,7 @@ window.onload = () => {
     }, 600);
 };
 
-// --- КЕЙСЫ И МАРКЕТ ---
+// --- КЕЙСЫ И СТОК ---
 window.showCaseInfo = async function(id) {
     const { data: caseData } = await supabaseClient.from('cases_meta').select('*').eq('id', id).single();
     if (!caseData) return;
@@ -59,7 +59,8 @@ window.showCaseInfo = async function(id) {
         <div class="case-hero">
             <img src="${GITHUB_BASE}${caseData.image_url}">
             <h2>${caseData.name}</h2>
-            <button class="buy-btn large" onclick="window.openCase(${caseData.id})">OPEN FOR $${caseData.price}</button>
+            <div class="price-tag large">$${caseData.price}</div>
+            <button class="buy-btn large" onclick="window.showNotify('OPENING...', 'info')">INITIALIZE OPENING</button>
         </div>`;
     window.navTo('case-info');
 };
@@ -68,6 +69,7 @@ window.renderAllCases = async function() {
     const { data } = await supabaseClient.from('cases_meta').select('*');
     if (!data) return;
 
+    // Cases
     document.getElementById('cases-grid').innerHTML = data.filter(c => c.type !== 'limited').map(c => `
         <div class="mega-card" onclick="window.showCaseInfo(${c.id})">
             <img src="${GITHUB_BASE}${c.image_url}">
@@ -75,6 +77,7 @@ window.renderAllCases = async function() {
             <div class="price-tag">$${c.price}</div>
         </div>`).join('');
 
+    // Market (Stock)
     document.getElementById('limited-grid').innerHTML = data.filter(c => c.type === 'limited').map(c => {
         const stock = c.stock ?? 0;
         const out = stock <= 0;
@@ -94,21 +97,18 @@ window.buyLimited = async function(id, price) {
     if ((currentUser.cyberpunk_points || 0) < price) {
         return window.showNotify("INSUFFICIENT CP FUNDS", "error");
     }
-
     const { data: item } = await supabaseClient.from('cases_meta').select('*').eq('id', id).single();
     if (!item || item.stock <= 0) return window.showNotify("ITEM OUT OF STOCK", "error");
 
     const newStock = item.stock - 1;
     const newCP = currentUser.cyberpunk_points - price;
-
     await supabaseClient.from('cases_meta').update({ stock: newStock }).eq('id', id);
     currentUser.inventory.push({ id: Date.now(), char: item.name, status: 'ready' });
-    
     await supabaseClient.from('profiles').update({ inventory: currentUser.inventory, cyberpunk_points: newCP }).eq('id', currentUser.id);
     window.showNotify("PURCHASE SUCCESSFUL", "success");
 };
 
-// --- ИНВЕНТАРЬ ---
+// --- ПРОФИЛЬ ---
 window.renderProfile = function() {
     if (!currentUser) return;
     document.getElementById('p-username').innerText = currentUser.username;
@@ -126,7 +126,7 @@ window.withdrawItem = async function(id) {
     item.status = 'processing';
     await supabaseClient.from('profiles').update({ inventory: currentUser.inventory }).eq('id', currentUser.id);
     window.renderProfile();
-    window.showNotify("WITHDRAWAL REQUESTED", "info");
+    window.showNotify("REQUEST SENT TO BOT", "info");
 };
 
 window.navTo = (id) => {
