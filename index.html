@@ -18,7 +18,7 @@
 
     <div class="live-header">
         <div class="live-tag">LIVE</div>
-        <div id="global-live-feed" class="live-track"></div>
+        <div id="global-live-feed" class="live-track">> SYSTEM_ACTIVE > NEW_CASES_ARRIVED > MARKET_UPDATED</div>
     </div>
 
     <div id="top-bar" class="currency-panel" style="display:none;">
@@ -54,14 +54,35 @@
         </div>
 
         <div id="page-profile" class="page">
-            <div class="profile-header">
-                <div class="p-avatar"></div>
-                <div class="p-info">
-                    <h2 id="p-username">USER</h2>
-                    <span class="p-rank">SECURITY_LEVEL: 07</span>
+            <div class="profile-container">
+                <div class="user-card">
+                    <div class="card-header">
+                        <div class="user-avatar"><div class="avatar-glow"></div></div>
+                        <div class="user-main-info">
+                            <h2 id="p-username">LOADING...</h2>
+                            <div class="status-badge"><span class="pulse-dot"></span> SYSTEM_ONLINE</div>
+                        </div>
+                    </div>
+                    <div class="card-stats">
+                        <div class="stat-box">
+                            <span class="label">CREDITS</span>
+                            <span class="value">$<span id="p-worth">0</span></span>
+                        </div>
+                        <div class="stat-box">
+                            <span class="label">CYBER_POINTS</span>
+                            <span class="value">⚡<span id="p-cp-val">0</span></span>
+                        </div>
+                    </div>
+                </div>
+                <div class="inventory-section">
+                    <div class="inventory-header">
+                        <span class="line"></span>
+                        <h3>SECURE_STORAGE</h3>
+                        <span class="line"></span>
+                    </div>
+                    <div id="inventory-list" class="main-grid"></div>
                 </div>
             </div>
-            <div id="inventory-list" class="main-grid"></div>
         </div>
 
         <nav class="cyber-nav">
@@ -70,6 +91,17 @@
             <button onclick="window.navTo('profile')">PROFILE</button>
         </nav>
     </div>
+
+    <template id="inv-item-template">
+        <div class="mega-card inv-item">
+            <img class="item-img" src="">
+            <div class="inv-btns">
+                <button class="sell-btn">SELL</button>
+                <button class="with-btn">WITHDRAW</button>
+            </div>
+            <div class="item-status-text" style="display:none; font-size: 10px; color: #ffaa00; margin-top: 5px;">ON_REQUEST...</div>
+        </div>
+    </template>
 
     <script src="script.js"></script>
 </body>
