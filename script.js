@@ -355,6 +355,7 @@ async function preloadRoulette(lootItems) {
     await new Promise(resolve => setTimeout(resolve, 50));
 }
 
+// ========== ПЛАВНОЕ ВРАЩЕНИЕ С ЗАМЕДЛЕНИЕМ ==========
 function startSpin() {
     if (spinAnimationId) cancelAnimationFrame(spinAnimationId);
     
@@ -364,12 +365,13 @@ function startSpin() {
     currentOffset = 0;
     spinVelocity = 45;
     isSlowingDown = false;
+    targetReached = false;
     
     track.style.transition = 'none';
     track.style.transform = `translateX(0px)`;
     
     function animateSpin() {
-        if (isSlowingDown) {
+        if (isSlowingDown && !targetReached) {
             spinVelocity *= spinDecay;
         }
         
@@ -382,62 +384,60 @@ function startSpin() {
         track.style.transition = 'none';
         track.style.transform = `translateX(-${currentOffset}px)`;
         
+        // Проверяем, достигли ли целевой позиции (с допуском)
+        if (isSlowingDown && !targetReached && spinVelocity <= 1.5) {
+            const currentPos = currentOffset % maxOffset;
+            const distanceToTarget = Math.abs(currentPos - targetStopPosition);
+            
+            // Если близко к цели или скорость очень маленькая - останавливаем
+            if (distanceToTarget < 30 || spinVelocity <= 0.3) {
+                targetReached = true;
+                cancelAnimationFrame(spinAnimationId);
+                spinAnimationId = null;
+                
+                // Финальная фиксация на цели (без рывка)
+                finalFixOnTarget();
+                return;
+            }
+        }
+        
         spinAnimationId = requestAnimationFrame(animateSpin);
     }
     
     animateSpin();
 }
 
-// ========== НАЧАЛО ЗАМЕДЛЕНИЯ С РАСЧЁТОМ ЦЕЛИ ==========
+// ========== НАЧАЛО ЗАМЕДЛЕНИЯ ==========
 function startSlowdown() {
-    isSlowingDown = true;
-    
     // Вычисляем целевую позицию для выигрышного предмета
     const targetIndex = rouletteItemsArray.length - 3;
     targetStopPosition = targetIndex * 150;
     
-    function checkAndStop() {
-        if (spinVelocity <= 0.8) {
-            // Полная остановка и доворот до цели
-            cancelAnimationFrame(spinAnimationId);
-            spinAnimationId = null;
-            
-            // Доворачиваем до выигрышного предмета
-            finalizeToTarget();
-        } else {
-            requestAnimationFrame(checkAndStop);
-        }
-    }
-    
-    setTimeout(() => {
-        if (spinAnimationId) {
-            checkAndStop();
-        }
-    }, 100);
+    isSlowingDown = true;
 }
 
-// ========== ДОВОРОТ ДО ВЫИГРЫШНОГО ПРЕДМЕТА ==========
-async function finalizeToTarget() {
+// ========== ФИНАЛЬНАЯ ФИКСАЦИЯ (БЕЗ ДОВОРОТА) ==========
+async function finalFixOnTarget() {
     const track = document.getElementById('rouletteTrack');
     
     // Текущая позиция
     let currentPos = currentOffset % maxOffset;
     
-    // Расстояние до цели
+    // Если есть небольшое расхождение - мягко доворачиваем
     let distance = targetStopPosition - currentPos;
-    if (distance < 0) distance += maxOffset;
+    if (Math.abs(distance) > 5) {
+        if (distance < 0) distance += maxOffset;
+        if (distance > maxOffset / 2) distance -= maxOffset;
+        
+        track.style.transition = 'transform 0.2s ease-out';
+        track.style.transform = `translateX(-${currentPos + distance}px)`;
+        await new Promise(resolve => setTimeout(resolve, 250));
+    }
     
-    // Доворачиваем плавно
-    track.style.transition = 'transform 0.5s ease-out';
-    track.style.transform = `translateX(-${currentPos + distance}px)`;
-    
-    await new Promise(resolve => setTimeout(resolve, 550));
-    
-    // Скрываем рулетку
+    // Скрываем рулетку и показываем выигрыш
     const overlay = document.getElementById('roulette-overlay');
     overlay.style.display = 'none';
     
-    // ПОКАЗЫВАЕМ ТОТ ПРЕДМЕТ, КОТОРЫЙ БЫЛ ВЫБРАН РАНЬШЕ
     await showLootWin(currentSelectedLoot);
 }
 
@@ -465,13 +465,11 @@ window.openCaseWithAnimation = async function(caseId) {
         return window.showNotify("NO LOOT IN THIS CASE", "error");
     }
 
-    // ⚡ ВЫБИРАЕМ НАГРАДУ СРАЗУ (но не показываем игроку)
+    // ВЫБИРАЕМ НАГРАДУ СРАЗУ
     currentSelectedLoot = getRandomItemFromLoot(lootItems);
     if (!currentSelectedLoot) {
         return window.showNotify("ERROR SELECTING ITEM", "error");
     }
-    
-    console.log("🎁 Выбран выигрыш:", currentSelectedLoot.name); // Для отладки
 
     // Предзагрузка рулетки
     await preloadRoulette(lootItems);
