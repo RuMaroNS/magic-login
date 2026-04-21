@@ -1,56 +1,77 @@
-@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@900&family=Rajdhani:wght@600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Rajdhani:wght@600;700&display=swap');
+
+:root {
+    --neon-blue: #00d4ff;
+    --neon-pink: #ff0055;
+    --neon-green: #00ffcc;
+    --bg-dark: #020205;
+}
 
 * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Rajdhani', sans-serif; }
-body { background: #020205; color: #fff; overflow-x: hidden; }
+body { background: var(--bg-dark); color: #fff; overflow-x: hidden; }
 
-/* LIVE BOARD FIX */
-.live-wrapper {
-    position: fixed; top: 0; width: 100%; height: 60px;
-    background: rgba(0,0,0,0.9); border-bottom: 2px solid #00d4ff;
-    display: flex; align-items: center; z-index: 2000;
+/* ФОНОВЫЕ ЭФФЕКТЫ */
+.cyber-bg { position: fixed; inset: 0; z-index: -1; }
+.grid-overlay {
+    position: absolute; width: 200%; height: 200%; top: -50%; left: -50%;
+    background-image: linear-gradient(rgba(0, 212, 255, 0.05) 1px, transparent 1px),
+                      linear-gradient(90deg, rgba(0, 212, 255, 0.05) 1px, transparent 1px);
+    background-size: 50px 50px; transform: perspective(1000px) rotateX(60deg);
+    animation: gridMove 20s linear infinite;
 }
-.live-tag { background: #ff0055; padding: 0 15px; height: 100%; display: flex; align-items: center; font-family: 'Orbitron'; font-size: 14px; }
-.live-scroll-container { flex: 1; overflow: hidden; position: relative; }
-.live-scroll-content { display: flex; gap: 20px; animation: scrollDrop 20s linear infinite; }
-@keyframes scrollDrop { from { transform: translateX(100%); } to { transform: translateX(-100%); } }
+@keyframes gridMove { from { transform: perspective(1000px) rotateX(60deg) translateY(0); } to { transform: perspective(1000px) rotateX(60deg) translateY(50px); } }
 
-/* MEGA CARDS */
-.main-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 30px; padding: 20px; }
-.mega-card {
-    background: rgba(20, 20, 40, 0.8); border: 2px solid #1a1a3a;
-    border-radius: 20px; padding: 25px; transition: 0.4s; position: relative;
+/* LIVE HEADER */
+.live-header { position: fixed; top: 0; width: 100%; height: 60px; background: rgba(0,0,0,0.9); border-bottom: 2px solid var(--neon-blue); z-index: 1000; display: flex; }
+.live-tag { background: var(--neon-pink); font-family: 'Orbitron'; font-size: 14px; display: flex; align-items: center; padding: 0 20px; font-weight: 900; }
+.live-container { flex: 1; overflow: hidden; display: flex; align-items: center; }
+.live-track { display: flex; gap: 30px; animation: scrollText 30s linear infinite; white-space: nowrap; }
+@keyframes scrollText { from { transform: translateX(100%); } to { transform: translateX(-100%); } }
+
+/* КАРТОЧКИ (GRID) */
+.main-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 30px; padding: 20px; }
+.mega-card, .card {
+    background: rgba(15, 15, 35, 0.85); border: 2px solid #1a1a3a; border-radius: 20px;
+    padding: 30px; text-align: center; position: relative; transition: 0.4s;
     box-shadow: 0 10px 30px rgba(0,0,0,0.5);
 }
-.mega-card:hover { transform: scale(1.05) translateY(-10px); border-color: #00d4ff; box-shadow: 0 0 40px rgba(0, 212, 255, 0.2); }
-.mega-card img { width: 100%; filter: drop-shadow(0 0 15px rgba(0,212,255,0.4)); margin-bottom: 20px; }
+.mega-card:hover { border-color: var(--neon-blue); transform: translateY(-10px) scale(1.02); box-shadow: 0 0 40px rgba(0, 212, 255, 0.2); }
+.mega-card img { width: 100%; margin-bottom: 20px; filter: drop-shadow(0 0 15px rgba(0,212,255,0.4)); }
 
-/* STOCK CARD SPECIFIC */
-.stock-header { background: #ffaa00; color: #000; font-weight: 900; border-radius: 5px; margin-bottom: 10px; padding: 2px 10px; font-size: 12px; }
-
-/* ПРОФИЛЬ (MAX SIZE) */
-.profile-mega-card {
+/* ПРОФИЛЬ */
+.profile-mega-header {
     background: linear-gradient(135deg, rgba(0, 212, 255, 0.1), rgba(0,0,0,0.9));
-    border: 3px solid #00d4ff; border-radius: 30px; padding: 50px;
-    display: flex; align-items: center; gap: 40px; margin-bottom: 50px;
+    border: 3px solid var(--neon-blue); border-radius: 30px; padding: 50px;
+    display: flex; align-items: center; gap: 40px; margin: 20px;
 }
-.p-avatar-large { width: 160px; height: 160px; border: 5px solid #00d4ff; border-radius: 50%; box-shadow: 0 0 30px #00d4ff; }
-.p-details h1 { font-family: 'Orbitron'; font-size: 48px; text-shadow: 0 0 20px #00d4ff; }
+.avatar-frame { width: 150px; height: 150px; border: 5px solid var(--neon-blue); border-radius: 50%; box-shadow: 0 0 30px var(--neon-blue); background: #111; }
+.user-meta h1 { font-family: 'Orbitron'; font-size: 45px; text-shadow: 0 0 20px var(--neon-blue); }
 
-/* КНОПКИ */
-.buy-btn { width: 100%; background: #00ffcc; border: none; padding: 15px; font-family: 'Orbitron'; font-weight: 900; clip-path: polygon(10% 0, 100% 0, 90% 100%, 0 100%); transition: 0.3s; }
-.buy-btn:hover { background: #fff; transform: skewX(-5deg); }
-
-/* STATUS OVERLAYS */
-.status-overlay {
-    position: absolute; inset: 0; background: rgba(0,0,0,0.8);
-    display: flex; align-items: center; justify-content: center;
-    font-family: 'Orbitron'; font-size: 18px; border-radius: 20px; color: #ff0055;
+/* РУЛЕТКА */
+.roulette-section { padding-top: 100px; text-align: center; }
+.roulette-window {
+    width: 90%; max-width: 800px; height: 200px; margin: 0 auto;
+    background: #0a0a15; border: 4px solid var(--neon-blue);
+    position: relative; overflow: hidden; border-radius: 20px;
 }
+.pointer { position: absolute; left: 50%; top: 0; width: 4px; height: 100%; background: var(--neon-pink); z-index: 10; box-shadow: 0 0 15px var(--neon-pink); transform: translateX(-50%); }
+.tape { display: flex; align-items: center; height: 100%; transition: transform 5s cubic-bezier(0.15, 0, 0.15, 1); }
+.tape-item { min-width: 150px; text-align: center; padding: 10px; }
+.tape-item img { width: 100px; }
 
-/* NAVBAR */
-.cyber-nav { position: fixed; bottom: 0; width: 100%; height: 90px; background: #000; display: flex; justify-content: center; gap: 40px; border-top: 2px solid #00d4ff; z-index: 2000; }
-.cyber-nav button { background: none; border: none; color: #00d4ff; font-family: 'Orbitron'; font-size: 18px; cursor: pointer; transition: 0.3s; }
-.cyber-nav button:hover { text-shadow: 0 0 15px #00d4ff; transform: translateY(-5px); }
+/* MARKET STOCK */
+.stock-badge { position: absolute; top: 15px; right: 15px; background: #ffaa00; color: #000; padding: 5px 12px; border-radius: 8px; font-weight: 900; font-size: 14px; }
 
-.page { display: none; padding: 120px 20px 150px; min-height: 100vh; }
+/* ИНВЕНТАРЬ И СТАТУСЫ */
+.status-layer { position: absolute; inset: 0; background: rgba(0,0,0,0.9); display: flex; align-items: center; justify-content: center; font-family: 'Orbitron'; font-size: 18px; color: var(--neon-pink); z-index: 5; }
+.inv-btns { display: flex; gap: 10px; margin-top: 20px; }
+.btn-w { flex: 1; background: var(--neon-green); color: #000; padding: 10px; border: none; font-weight: bold; cursor: pointer; }
+.btn-s { flex: 1; background: var(--neon-pink); color: #fff; padding: 10px; border: none; font-weight: bold; cursor: pointer; }
+
+/* НАВИГАЦИЯ */
+.cyber-nav { position: fixed; bottom: 0; width: 100%; height: 90px; background: #000; border-top: 2px solid var(--neon-blue); display: flex; justify-content: center; gap: 50px; z-index: 1000; }
+.cyber-nav button { background: none; border: none; color: var(--neon-blue); font-family: 'Orbitron'; font-size: 18px; font-weight: 900; cursor: pointer; transition: 0.3s; }
+.cyber-nav button:hover { text-shadow: 0 0 15px var(--neon-blue); transform: translateY(-5px); }
+
+.page { display: none; padding: 120px 20px 120px; min-height: 100vh; }
 .page.active { display: block; }
