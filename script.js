@@ -155,6 +155,29 @@ window.register = async function() {
     }
 };
 
+// ========== ПЕРЕКЛЮЧЕНИЕ ВКЛАДОК ==========
+document.addEventListener('DOMContentLoaded', function() {
+    const loginBtn = document.getElementById('login-tab-btn');
+    const registerBtn = document.getElementById('register-tab-btn');
+    const loginPanel = document.getElementById('login-panel');
+    const registerPanel = document.getElementById('register-panel');
+    
+    if (loginBtn && registerBtn) {
+        loginBtn.onclick = () => {
+            loginBtn.classList.add('active');
+            registerBtn.classList.remove('active');
+            loginPanel.style.display = 'block';
+            registerPanel.style.display = 'none';
+        };
+        registerBtn.onclick = () => {
+            registerBtn.classList.add('active');
+            loginBtn.classList.remove('active');
+            loginPanel.style.display = 'none';
+            registerPanel.style.display = 'block';
+        };
+    }
+});
+
 // ========== ФУНКЦИЯ ВЫБОРА ПРЕДМЕТА ПО ШАНСАМ ==========
 function getRandomItemFromLoot(lootArray) {
     if (!lootArray || lootArray.length === 0) return null;
