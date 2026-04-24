@@ -112,7 +112,7 @@ window.login = async function() {
 window.register = async function() {
     const username = document.getElementById('reg_username').value.trim();
     const password = document.getElementById('reg_password').value.trim();
-    const telegramUser = document.getElementById('reg_telegram').value.trim() || null;
+    const TelegramUSER = document.getElementById('reg_telegram').value.trim() || null;
     
     if (!username || !password) {
         return window.showNotify("⚠️ USERNAME AND PASSWORD REQUIRED", "error");
