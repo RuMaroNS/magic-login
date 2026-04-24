@@ -28,31 +28,31 @@
 
     <div id="auth-screen" class="full-screen">
         <div class="auth-card">
-            <div class="tabs">
-                <h3 class="login-tab"><a class="active" href="#login-tab-content">LOGIN</a></h3>
-                <h3 class="signup-tab"><a href="#signup-tab-content">REGISTER</a></h3>
+    <div class="tabs">
+        <h3 class="login-tab"><a class="active" href="#login-tab-content">LOGIN</a></h3>
+        <h3 class="signup-tab"><a href="#signup-tab-content">REGISTER</a></h3>
+    </div>
+    <div class="tabs-content">
+        <div id="login-tab-content" class="active">
+            <div class="input-group">
+                <input type="text" id="login_username" placeholder="USERNAME">
+                <input type="password" id="login_password" placeholder="PASSWORD">
             </div>
-            <div class="tabs-content">
-                <div id="login-tab-content" class="active">
-                    <div class="input-group">
-                        <input type="text" id="login_username" placeholder="USERNAME">
-                        <input type="password" id="login_password" placeholder="PASSWORD">
-                    </div>
-                    <button class="neon-btn-main" onclick="window.login()">INITIALIZE</button>
-                    <div class="help-text">
-                        <p>Play via Telegram bot: <a href="https://t.me/StealABekonCasesBot" target="_blank">@StealABekonCasesBot</a></p>
-                    </div>
-                </div>
-                <div id="signup-tab-content">
-                    <div class="input-group">
-                        <input type="text" id="reg_username" placeholder="USERNAME">
-                        <input type="password" id="reg_password" placeholder="PASSWORD">
-                        <input type="text" id="reg_telegram" placeholder="TELEGRAM USERNAME (optional)">
-                    </div>
-                    <button class="neon-btn-main" onclick="window.register()">CREATE ACCOUNT</button>
-                </div>
+            <button class="neon-btn-main" onclick="window.login()">INITIALIZE</button>
+            <div class="help-text">
+                <p>Play via Telegram bot: <a href="https://t.me/StealABekonCasesBot" target="_blank">@StealABekonCasesBot</a></p>
             </div>
         </div>
+        <div id="signup-tab-content">
+            <div class="input-group">
+                <input type="text" id="reg_username" placeholder="USERNAME">
+                <input type="password" id="reg_password" placeholder="PASSWORD">
+                <input type="text" id="reg_telegram" placeholder="TELEGRAM USERNAME (optional)">
+            </div>
+            <button class="neon-btn-main" onclick="window.register()">CREATE ACCOUNT</button>
+        </div>
+    </div>
+</div>
     </div>
 
     <div id="game-interface" style="display:none;">
