@@ -729,7 +729,7 @@ window.renderAdminPanel = async function() {
             invCell.innerText = 'Empty';
         }
         row.insertCell(4).innerText = user.last_login ? new Date(user.last_login).toLocaleString() : 'Never';
-        row.insertCell(5).innerText = user.telegram_user || 'Not set';
+        row.insertCell(5).innerText = user.TelegramUSER || 'Not set';
         const actionsCell = row.insertCell(6);
         const editBtn = document.createElement('button');
         editBtn.innerText = 'EDIT';
@@ -759,7 +759,7 @@ function openAdminEditModal(user) {
         <label>Cyberpunk Points (CP)</label>
         <input type="number" id="edit-cp" value="${user.cyberpunk_points || 0}">
         <label>Telegram Username</label>
-        <input type="text" id="edit-telegram" value="${user.telegram_user || ''}">
+        <input type="text" id="edit-telegram" value="${user.TelegramUSER || ''}">
         <label>Is Admin?</label>
         <input type="checkbox" id="edit-admin" ${user.is_admin ? 'checked' : ''}>
         <div style="display:flex; gap:10px; margin-top:20px;">
@@ -778,7 +778,7 @@ window.saveAdminEdit = async function(userId) {
     const telegram = document.getElementById('edit-telegram').value || null;
     const isAdmin = document.getElementById('edit-admin').checked;
     const { error } = await supabaseClient.from('profiles')
-        .update({ score: balance, cyberpunk_points: cp, telegram_user: telegram, is_admin: isAdmin })
+        .update({ score: balance, cyberpunk_points: cp, TelegramUSER: telegram, is_admin: isAdmin })
         .eq('id', userId);
     if (error) {
         window.showNotify("❌ UPDATE ERROR", "error");
@@ -790,7 +790,7 @@ window.saveAdminEdit = async function(userId) {
         if (currentUser.id === userId) {
             currentUser.score = balance;
             currentUser.cyberpunk_points = cp;
-            currentUser.telegram_user = telegram;
+            currentUser.TelegramUSER = telegram;
             currentUser.is_admin = isAdmin;
             window.renderProfile();
         }
