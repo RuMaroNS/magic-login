@@ -449,6 +449,15 @@ body { background: #020205; color: #fff; overflow-x: hidden; min-height: 100vh; 
     border-radius: 8px;
 }
 
+/* ПЕРЕКЛЮЧЕНИЕ ВКЛАДОК */
+#login-tab-btn, #register-tab-btn {
+    transition: 0.2s;
+}
+#login-tab-btn.active, #register-tab-btn.active {
+    color: #00d4ff;
+    border-bottom: 2px solid #00d4ff;
+}
+
 /* АДАПТИВ */
 @media (max-width: 600px) {
     .main-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; padding: 12px; }
