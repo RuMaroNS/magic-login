@@ -27,23 +27,24 @@
     </div>
 
     <div id="auth-screen" class="full-screen">
-        <div class="auth-card">
-    <div class="tabs">
-        <h3 class="login-tab"><a class="active" href="#login-tab-content">LOGIN</a></h3>
-        <h3 class="signup-tab"><a href="#signup-tab-content">REGISTER</a></h3>
-    </div>
-    <div class="tabs-content">
-        <div id="login-tab-content" class="active">
+    <div class="auth-card">
+        <div style="display: flex; margin-bottom: 20px; border-bottom: 1px solid #00d4ff;">
+            <button id="login-tab-btn" style="flex:1; background:none; border:none; color:#00d4ff; font-family:'Orbitron'; padding:10px; cursor:pointer; border-bottom:2px solid #00d4ff;">LOGIN</button>
+            <button id="register-tab-btn" style="flex:1; background:none; border:none; color:#555; font-family:'Orbitron'; padding:10px; cursor:pointer;">REGISTER</button>
+        </div>
+        
+        <div id="login-panel">
             <div class="input-group">
                 <input type="text" id="login_username" placeholder="USERNAME">
                 <input type="password" id="login_password" placeholder="PASSWORD">
             </div>
             <button class="neon-btn-main" onclick="window.login()">INITIALIZE</button>
-            <div class="help-text">
-                <p>Play via Telegram bot: <a href="https://t.me/StealABekonCasesBot" target="_blank">@StealABekonCasesBot</a></p>
+            <div class="help-text" style="margin-top:15px; font-size:11px;">
+                <p>Play via Telegram: <a href="https://t.me/StealABekonCasesBot" target="_blank">@StealABekonCasesBot</a></p>
             </div>
         </div>
-        <div id="signup-tab-content">
+        
+        <div id="register-panel" style="display:none;">
             <div class="input-group">
                 <input type="text" id="reg_username" placeholder="USERNAME">
                 <input type="password" id="reg_password" placeholder="PASSWORD">
@@ -53,7 +54,6 @@
         </div>
     </div>
 </div>
-    </div>
 
     <div id="game-interface" style="display:none;">
         <div id="page-cases" class="page active">
