@@ -88,12 +88,12 @@ window.login = async function() {
         if (adminBtn) adminBtn.style.display = currentUser.is_admin ? 'block' : 'none';
         
         // Запрос Telegram если пусто
-        if (!currentUser.telegram_user) {
+        if (!currentUser.TelegramUSER) {
             setTimeout(() => {
                 const tg = prompt("🔗 LINK YOUR TELEGRAM USERNAME:\n(You can skip)");
                 if (tg && tg.trim()) {
-                    supabaseClient.from('profiles').update({ telegram_user: tg.trim() }).eq('id', currentUser.id);
-                    currentUser.telegram_user = tg.trim();
+                    supabaseClient.from('profiles').update({ TelegramUSER: tg.trim() }).eq('id', currentUser.id);
+                    currentUser.TelegramUSER = tg.trim();
                 }
             }, 1000);
         }
@@ -133,10 +133,10 @@ window.register = async function() {
         username: username,
         password: password,
         score: 0,
-        cyberpunk_points: 0,
+        CP_Point: 0,
         inventory: [],
-        telegram_user: telegramUser,
-        is_admin: false,
+        TelegramUSER: TelegramUSER,
+        isAdmin: false,
         last_login: new Date().toISOString()
     };
     
