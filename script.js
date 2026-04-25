@@ -1099,6 +1099,28 @@ window.navTo = (id) => {
     }
 };
 
+window.switchTab = function(tab) {
+    const loginPanel = document.getElementById('login-panel');
+    const registerPanel = document.getElementById('register-panel');
+    const btns = document.querySelectorAll('.tab-btn');
+    
+    btns.forEach(btn => btn.classList.remove('active'));
+    
+    if (tab === 'login') {
+        loginPanel.style.display = 'block';
+        registerPanel.style.display = 'none';
+        btns[0].classList.add('active');
+    } else {
+        loginPanel.style.display = 'none';
+        registerPanel.style.display = 'block';
+        btns[1].classList.add('active');
+    }
+};
+
+window.closeModal = function(modalId) {
+    document.getElementById(modalId).style.display = 'none';
+};
+
 // ========== ПОДПИСКА ==========
 function subscribeUpdates() {
     supabaseClient.channel('any').on('postgres_changes', 
