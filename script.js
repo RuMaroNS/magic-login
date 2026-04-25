@@ -1066,16 +1066,20 @@ window.showCreateChallengeModal = function() {
 };
 
 window.createPromoCode = async function() {
-    const code = document.getElementById('promo-code').value.trim().toUpperCase();
-    const reward_type = document.getElementById('promo-type').value;
-    const reward_value = document.getElementById('promo-value').value.trim();
-    const max_uses = parseInt(document.getElementById('promo-max-uses').value) || 0;
-    const per_user_limit = parseInt(document.getElementById('promo-per-user').value) || 1;
-    const only_new_players = document.getElementById('promo-new-only').checked ? 'true' : 'false';
+    console.log("Creating promocode...");
     
-    if (!code || !reward_value) {
-        window.showNotify("❌ Fill all fields", "error");
-        return;
+    const code = document.getElementById('promo-code')?.value.trim().toUpperCase();
+    const reward_type = document.getElementById('promo-type')?.value;
+    const reward_value = document.getElementById('promo-value')?.value.trim();
+    const max_uses = parseInt(document.getElementById('promo-max-uses')?.value) || 0;
+    const per_user_limit = parseInt(document.getElementById('promo-per-user')?.value) || 1;
+    const only_new_players = document.getElementById('promo-new-only')?.checked ? 'true' : 'false';
+    
+    if (!code) {
+        return window.showNotify("❌ Enter PROMO CODE", "error");
+    }
+    if (!reward_value) {
+        return window.showNotify("❌ Enter VALUE", "error");
     }
     
     const { error } = await supabaseClient.from('promocodes').insert({
@@ -1084,24 +1088,32 @@ window.createPromoCode = async function() {
     });
     
     if (error) {
-        window.showNotify("❌ Error: " + error.message, "error");
-    } else {
-        window.showNotify("✅ Promocode created!", "success");
-        closeAllModals();
-        loadAdminPromocodes();
+        console.error(error);
+        return window.showNotify("❌ Error: " + error.message, "error");
     }
+    
+    window.showNotify("✅ Promocode created!", "success");
+    closeAllModals();
+    loadAdminPromocodes();
 };
 
 window.createChallenge = async function() {
-    const name = document.getElementById('challenge-name').value.trim();
-    const description = document.getElementById('challenge-desc').value.trim();
-    const challenge_type = document.getElementById('challenge-type').value;
-    const required_amount = parseInt(document.getElementById('challenge-amount').value);
-    const reward_cp = parseInt(document.getElementById('challenge-reward').value);
+    console.log("Creating challenge...");
+    
+    const name = document.getElementById('challenge-name')?.value.trim();
+    const description = document.getElementById('challenge-desc')?.value.trim();
+    const challenge_type = document.getElementById('challenge-type')?.value;
+    const required_amount = parseInt(document.getElementById('challenge-amount')?.value);
+    const reward_cp = parseInt(document.getElementById('challenge-reward')?.value);
     
     if (!name) {
-        window.showNotify("❌ Fill challenge name", "error");
-        return;
+        return window.showNotify("❌ Enter CHALLENGE NAME", "error");
+    }
+    if (!required_amount || required_amount <= 0) {
+        return window.showNotify("❌ Enter valid REQUIRED AMOUNT", "error");
+    }
+    if (!reward_cp || reward_cp <= 0) {
+        return window.showNotify("❌ Enter valid REWARD CP", "error");
     }
     
     const { error } = await supabaseClient.from('challenges').insert({
@@ -1109,12 +1121,13 @@ window.createChallenge = async function() {
     });
     
     if (error) {
-        window.showNotify("❌ Error: " + error.message, "error");
-    } else {
-        window.showNotify("✅ Challenge created!", "success");
-        closeAllModals();
-        loadAdminChallenges();
+        console.error(error);
+        return window.showNotify("❌ Error: " + error.message, "error");
     }
+    
+    window.showNotify("✅ Challenge created!", "success");
+    closeAllModals();
+    loadAdminChallenges();
 };
 
 window.deletePromoCode = async function(id) {
