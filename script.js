@@ -721,7 +721,7 @@ window.withdrawItem = async function(id, itemDisplayName) {
 
 // ========== АДМИН ПАНЕЛЬ ==========
 window.renderAdminPanel = async function() {
-    if (!currentUser || !currentUser.is_admin) return;
+    if (!currentUser || !currentUser.IsAdmin) return;
     const { data: allUsers } = await supabaseClient.from('profiles').select('*');
     if (!allUsers) return;
     document.getElementById('total-users').innerText = allUsers.length;
@@ -813,7 +813,7 @@ window.saveAdminEdit = async function(userId) {
         window.showNotify("✅ USER UPDATED", "success");
         document.querySelector('.modal-overlay')?.remove();
         document.querySelector('.admin-edit-modal')?.remove();
-        if (currentUser.is_admin) window.renderAdminPanel();
+        if (currentUser.IsAdmin) window.renderAdminPanel();
         if (currentUser.id === userId) {
             currentUser.score = balance;
             currentUser.CP_Point = cp;
@@ -831,7 +831,7 @@ async function deleteUserAccount(userId, username) {
         window.showNotify("❌ DELETE ERROR", "error");
     } else {
         window.showNotify(`✅ USER "${username}" DELETED`, "success");
-        if (currentUser.is_admin) window.renderAdminPanel();
+        if (currentUser.IsAdmin) window.renderAdminPanel();
     }
 }
 
@@ -853,7 +853,7 @@ window.navTo = (id) => {
     if (id === 'cases') window.renderAllCases();
     if (id === 'market') window.renderMarket();
     if (id === 'admin') {
-        if (currentUser && currentUser.IsAdmin === true)
+        if (currentUser && currentUser.IsAdmin === true) {
             window.renderAdminPanel();
         } else {
             window.navTo('profile');
