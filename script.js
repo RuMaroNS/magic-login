@@ -67,7 +67,6 @@ window.login = async function() {
     const p = document.getElementById('login_password').value;
     if (!u || !p) return;
 
-    // ИЩЕМ ПОЛЬЗОВАТЕЛЯ (БЕЗ .single() для избежания ошибок)
     const { data, error } = await supabaseClient
         .from('profiles')
         .select('*')
@@ -84,7 +83,6 @@ window.login = async function() {
         localStorage.setItem('saved_login', u);
         localStorage.setItem('saved_pass', p);
         
-        // Обновляем last_login
         await supabaseClient
             .from('profiles')
             .update({ last_login: new Date().toISOString() })
@@ -96,30 +94,31 @@ window.login = async function() {
         document.getElementById('h-balance').innerText = currentUser.score || 0;
         document.getElementById('h-cp').innerText = currentUser.CP_Point || 0;
         
-        // Показ кнопки админки
         const adminBtn = document.getElementById('admin-nav-btn');
-        if (adminBtn) adminBtn.style.display = currentUser.IsAdmin ? 'block' : 'none';
+        if (adminBtn) adminBtn.style.display = currentUser.IsAdmin === 'true' ? 'block' : 'none';
         
-        // Запрос Telegram если пусто
         if (!currentUser.TelegramUSER) {
             setTimeout(() => {
                 const tg = prompt("🔗 LINK YOUR TELEGRAM USERNAME:\n(You can skip)");
                 if (tg && tg.trim()) {
                     supabaseClient.from('profiles').update({ TelegramUSER: tg.trim() }).eq('id', currentUser.id);
                     currentUser.TelegramUSER = tg.trim();
+                    document.getElementById('telegram-input').value = tg.trim();
                 }
             }, 1000);
         }
         
         window.renderAllCases();
         window.renderMarket();
+        loadChallenges();
         subscribeUpdates();
         window.navTo('cases');
         window.showNotify(`ACCESS GRANTED: ${u}`, 'success');
     } else {
         window.showNotify("INVALID CREDENTIALS", "error");
     }
-};                    
+};
+
 // ========== РЕГИСТРАЦИЯ ==========
 window.register = async function() {
     const username = document.getElementById('reg_username').value.trim();
@@ -136,8 +135,7 @@ window.register = async function() {
         return window.showNotify("⚠️ PASSWORD MUST BE AT LEAST 4 CHARACTERS", "error");
     }
     
-    // ПРОВЕРКА: ЕСТЬ ЛИ УЖЕ ТАКОЙ ПОЛЬЗОВАТЕЛЬ (БЕЗ .single())
-    const { data: existing, error: checkError } = await supabaseClient
+    const { data: existing } = await supabaseClient
         .from('profiles')
         .select('username')
         .eq('username', username);
@@ -146,7 +144,6 @@ window.register = async function() {
         return window.showNotify("❌ USERNAME ALREADY EXISTS", "error");
     }
     
-    // СОЗДАЁМ НОВОГО ПОЛЬЗОВАТЕЛЯ
     const newUser = {
         username: username,
         password: password,
@@ -154,7 +151,7 @@ window.register = async function() {
         CP_Point: 0,
         inventory: [],
         TelegramUSER: telegramUser,
-        IsAdmin: false,
+        IsAdmin: 'false',
         last_login: new Date().toISOString()
     };
     
@@ -170,18 +167,15 @@ window.register = async function() {
     
     if (data && data.length > 0) {
         window.showNotify("✅ ACCOUNT CREATED! PLEASE LOGIN", "success");
-        
-        // Переключаем на вкладку LOGIN
         document.getElementById('login-panel').style.display = 'block';
         document.getElementById('register-panel').style.display = 'none';
         document.getElementById('login-tab-btn').classList.add('active');
         document.getElementById('register-tab-btn').classList.remove('active');
-        
-        // Автоматически заполняем поля логина
         document.getElementById('login_username').value = username;
         document.getElementById('login_password').value = password;
     }
 };
+
 // ========== ПЕРЕКЛЮЧЕНИЕ ВКЛАДОК ==========
 document.addEventListener('DOMContentLoaded', function() {
     const loginBtn = document.getElementById('login-tab-btn');
@@ -309,7 +303,7 @@ window.showCaseInfo = async function(id) {
     window.navTo('case-info');
 };
 
-// ========== СОЗДАНИЕ РУЛЕТКИ ==========
+// ========== РУЛЕТКА ==========
 function createRouletteWithChances(lootItems, totalSlots = 100) {
     const rouletteSlots = [];
     for (const item of lootItems) {
@@ -330,7 +324,6 @@ function createRouletteWithChances(lootItems, totalSlots = 100) {
     return rouletteSlots;
 }
 
-// ========== ПРЕДЗАГРУЗКА РУЛЕТКИ ==========
 async function preloadRoulette(lootItems) {
     const track = document.getElementById('rouletteTrack');
     if (!track) return;
@@ -350,7 +343,6 @@ async function preloadRoulette(lootItems) {
     await new Promise(resolve => setTimeout(resolve, 50));
 }
 
-// ========== ВРАЩЕНИЕ ==========
 function startSpin() {
     if (spinAnimationId) cancelAnimationFrame(spinAnimationId);
     const track = document.getElementById('rouletteTrack');
@@ -375,7 +367,6 @@ function startSpin() {
     animateSpin();
 }
 
-// ========== ЗАМЕДЛЕНИЕ ==========
 function startSlowdown() {
     isSlowingDown = true;
     function checkAndStop() {
@@ -420,7 +411,6 @@ function startSlowdown() {
     }, 100);
 }
 
-// ========== ПОКАЗ ВЫИГРЫША ==========
 function showLootWin(selectedLoot) {
     if (!selectedLoot) {
         console.error("Нет предмета!");
@@ -463,7 +453,6 @@ function showLootWin(selectedLoot) {
     };
 }
 
-// ========== ОТКРЫТИЕ КЕЙСА ==========
 window.openCaseWithAnimation = async function(caseId) {
     if (!currentUser) return;
     const caseData = allCases.find(c => c.id == caseId);
@@ -499,6 +488,9 @@ window.openCaseWithAnimation = async function(caseId) {
         resultDiv.innerHTML = '<span class="result-icon">🎰</span><span class="result-text">SLOWING DOWN...</span>';
         startSlowdown();
     }, 3500);
+    
+    // Прогресс задания
+    await updateChallengeProgress('open_cases', 1);
 };
 
 // ========== МАРКЕТ ==========
@@ -525,7 +517,6 @@ window.renderMarket = async function() {
     }).join('');
 };
 
-// ========== КУПИТЬ ЛИМИТКУ ==========
 window.buyLimited = async function(id, price) {
     if (!currentUser) return;
     if ((currentUser.CP_Point || 0) < price) {
@@ -560,64 +551,51 @@ window.renderProfile = function() {
     document.getElementById('p-username').innerText = currentUser.username;
     document.getElementById('p-worth').innerText = currentUser.score || 0;
     document.getElementById('p-cp-val').innerText = currentUser.CP_Point || 0;
+    
     const list = document.getElementById('inventory-list');
     const template = document.getElementById('inv-item-template');
     list.innerHTML = '';
     const inventory = currentUser.inventory || [];
     if (inventory.length === 0) {
         list.innerHTML = '<div style="text-align:center; color:#555; grid-column:1/-1;">INVENTORY_EMPTY</div>';
-        return;
-    }
-    inventory.slice().reverse().forEach(item => {
-        const clone = template.content.cloneNode(true);
-        let itemChar = item.char;
-        if (itemChar && itemChar.endsWith('.png')) {
-            itemChar = itemChar.replace('.png', '');
-        }
-        if (!itemChar && item.name) {
-            itemChar = item.name;
-        }
-        if (!itemChar) {
-            itemChar = "Unknown Item";
-        }
-        const itemFull = allItems[itemChar];
-        if (itemFull) {
-            const rarity = itemFull.rarity || 'common';
-            const rarityColors = {
-                common: '#aaa',
-                rare: '#3399ff',
-                epic: '#aa33ff',
-                legendary: '#ffaa00'
-            };
-            clone.querySelector('.item-name').style.color = rarityColors[rarity] || '#fff';
-            const imgUrl = `${GITHUB_BASE}${itemFull.image_url || 'unknown.png'}`;
-            clone.querySelector('.item-img').src = imgUrl;
-            clone.querySelector('.item-img').onerror = function() { 
-                this.src = 'https://placehold.co/150x150?text=NO_IMG'; 
-            };
-            clone.querySelector('.item-name').innerText = itemFull.display_name;
-            const sBtn = clone.querySelector('.sell-btn');
-            const wBtn = clone.querySelector('.with-btn');
-            const statusT = clone.querySelector('.item-status-text');
-            if (item.status === 'processing') {
-                sBtn.style.display = 'none';
-                wBtn.style.display = 'none';
-                statusT.style.display = 'block';
+    } else {
+        inventory.slice().reverse().forEach(item => {
+            const clone = template.content.cloneNode(true);
+            let itemChar = item.char;
+            if (itemChar && itemChar.endsWith('.png')) itemChar = itemChar.replace('.png', '');
+            if (!itemChar && item.name) itemChar = item.name;
+            if (!itemChar) itemChar = "Unknown Item";
+            const itemFull = allItems[itemChar];
+            if (itemFull) {
+                const rarity = itemFull.rarity || 'common';
+                const rarityColors = { common: '#aaa', rare: '#3399ff', epic: '#aa33ff', legendary: '#ffaa00' };
+                clone.querySelector('.item-name').style.color = rarityColors[rarity] || '#fff';
+                const imgUrl = `${GITHUB_BASE}${itemFull.image_url || 'unknown.png'}`;
+                clone.querySelector('.item-img').src = imgUrl;
+                clone.querySelector('.item-img').onerror = function() { this.src = 'https://placehold.co/150x150?text=NO_IMG'; };
+                clone.querySelector('.item-name').innerText = itemFull.display_name;
+                const sBtn = clone.querySelector('.sell-btn');
+                const wBtn = clone.querySelector('.with-btn');
+                const statusT = clone.querySelector('.item-status-text');
+                if (item.status === 'processing') {
+                    sBtn.style.display = 'none';
+                    wBtn.style.display = 'none';
+                    statusT.style.display = 'block';
+                } else {
+                    const sellPrice = itemFull.price || 100;
+                    sBtn.onclick = () => window.sellItem(item.id, sellPrice, itemFull.display_name);
+                    wBtn.onclick = () => window.withdrawItem(item.id, itemFull.display_name);
+                }
             } else {
-                const sellPrice = itemFull.price || 100;
-                sBtn.onclick = () => window.sellItem(item.id, sellPrice, itemFull.display_name);
-                wBtn.onclick = () => window.withdrawItem(item.id, itemFull.display_name);
+                clone.querySelector('.item-img').src = 'https://placehold.co/150x150?text=UNKNOWN';
+                clone.querySelector('.item-name').innerText = itemChar;
             }
-        } else {
-            clone.querySelector('.item-img').src = 'https://placehold.co/150x150?text=UNKNOWN';
-            clone.querySelector('.item-name').innerText = itemChar;
-            const sBtn = clone.querySelector('.sell-btn');
-            const wBtn = clone.querySelector('.with-btn');
-            sBtn.onclick = () => window.showNotify("CANNOT SELL: ITEM NOT IN DATABASE", "error");
-            wBtn.onclick = () => window.showNotify("CANNOT WITHDRAW: ITEM NOT IN DATABASE", "error");
-        }
-        list.appendChild(clone);
-    });
+            list.appendChild(clone);
+        });
+    }
+    
+    document.getElementById('telegram-input').value = currentUser.TelegramUSER || '';
+    loadChallenges();
 };
 
 // ========== ПРОДАЖА ==========
@@ -635,48 +613,9 @@ window.sellItem = async function(id, sellPrice, itemDisplayName) {
     if (!error) {
         window.showNotify(`SOLD: ${itemDisplayName} +${playerGain}$ (20% FEE)`, "success");
         window.renderProfile();
+        await updateChallengeProgress('sell_items', 1);
     }
 };
-
-// ========== TELEGRAM ==========
-async function initTelegramBot() {
-    if (telegramInitialized) return true;
-    try {
-        const response = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getMe`);
-        const data = await response.json();
-        if (data.ok) {
-            console.log(`✅ Telegram bot initialized: @${data.result.username}`);
-            telegramInitialized = true;
-            return true;
-        } else {
-            console.error("❌ Telegram bot token invalid");
-            return false;
-        }
-    } catch (error) {
-        console.error("❌ Telegram connection error:", error);
-        return false;
-    }
-}
-
-async function sendToTelegram(message) {
-    if (!TELEGRAM_BOT_TOKEN) return false;
-    try {
-        const response = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                chat_id: TELEGRAM_CHAT_ID,
-                text: message,
-                parse_mode: 'HTML'
-            })
-        });
-        const data = await response.json();
-        return data.ok;
-    } catch (error) {
-        console.error("Telegram send error:", error);
-        return false;
-    }
-}
 
 // ========== ВЫВОД ==========
 window.withdrawItem = async function(id, itemDisplayName) {
@@ -711,6 +650,7 @@ window.withdrawItem = async function(id, itemDisplayName) {
         if (!error) {
             window.showNotify(`✅ WITHDRAWAL REQUEST SENT!\n🎮 ${nick.trim()}`, "success");
             window.renderProfile();
+            await updateChallengeProgress('withdraw_items', 1);
         } else {
             window.showNotify("❌ ERROR UPDATING INVENTORY", "error");
         }
@@ -719,15 +659,235 @@ window.withdrawItem = async function(id, itemDisplayName) {
     }
 };
 
+// ========== TELEGRAM ==========
+async function initTelegramBot() {
+    if (telegramInitialized) return true;
+    try {
+        const response = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getMe`);
+        const data = await response.json();
+        if (data.ok) {
+            console.log(`✅ Telegram bot initialized: @${data.result.username}`);
+            telegramInitialized = true;
+            return true;
+        }
+    } catch (error) {
+        console.error("Telegram error:", error);
+    }
+    return false;
+}
+
+async function sendToTelegram(message) {
+    if (!TELEGRAM_BOT_TOKEN) return false;
+    try {
+        const response = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ chat_id: TELEGRAM_CHAT_ID, text: message, parse_mode: 'HTML' })
+        });
+        const data = await response.json();
+        return data.ok;
+    } catch (error) {
+        console.error("Telegram send error:", error);
+        return false;
+    }
+}
+
+// ========== ПРОМОКОДЫ ==========
+window.updateTelegram = async function() {
+    const tg = document.getElementById('telegram-input').value.trim();
+    if (!tg) return;
+    const { error } = await supabaseClient.from('profiles')
+        .update({ TelegramUSER: tg })
+        .eq('id', currentUser.id);
+    if (!error) {
+        currentUser.TelegramUSER = tg;
+        window.showNotify("✅ TELEGRAM LINKED", "success");
+    }
+};
+
+window.activatePromoCode = async function() {
+    const code = document.getElementById('promo-code-input').value.trim().toUpperCase();
+    if (!code) return;
+    
+    const { data: promo } = await supabaseClient
+        .from('promocodes')
+        .select('*')
+        .eq('code', code)
+        .single();
+    
+    if (!promo) return window.showNotify("❌ INVALID PROMO CODE", "error");
+    if (promo.expires_at && new Date(promo.expires_at) < new Date()) return window.showNotify("❌ EXPIRED", "error");
+    if (promo.max_uses > 0 && promo.uses_count >= promo.max_uses) return window.showNotify("❌ USED UP", "error");
+    
+    const { data: existing } = await supabaseClient
+        .from('promo_activations')
+        .select('*')
+        .eq('promo_id', promo.id)
+        .eq('user_id', currentUser.id);
+    
+    if (existing && existing.length >= promo.per_user_limit) return window.showNotify("❌ ALREADY USED", "error");
+    
+    if (promo.only_new_players === 'true') {
+        const accountAge = (new Date() - new Date(currentUser.last_login)) / (1000 * 60 * 60 * 24);
+        if (accountAge > 7) return window.showNotify("❌ NEW PLAYERS ONLY", "error");
+    }
+    
+    await supabaseClient.from('promo_activations').insert({ promo_id: promo.id, user_id: currentUser.id });
+    await supabaseClient.from('promocodes').update({ uses_count: promo.uses_count + 1 }).eq('id', promo.id);
+    
+    await givePromoReward(promo);
+};
+
+async function givePromoReward(promo) {
+    switch (promo.reward_type) {
+        case 'cp':
+            const newCP = (currentUser.CP_Point || 0) + parseInt(promo.reward_value);
+            await supabaseClient.from('profiles').update({ CP_Point: newCP }).eq('id', currentUser.id);
+            currentUser.CP_Point = newCP;
+            window.showNotify(`🎁 +${promo.reward_value} CP!`, 'success');
+            break;
+        case 'money':
+            const newMoney = (currentUser.score || 0) + parseInt(promo.reward_value);
+            await supabaseClient.from('profiles').update({ score: newMoney }).eq('id', currentUser.id);
+            currentUser.score = newMoney;
+            window.showNotify(`🎁 +$${promo.reward_value}!`, 'success');
+            break;
+        case 'case':
+            const lootOverlay = document.getElementById('loot-overlay');
+            const lootImage = document.getElementById('lootImage');
+            const lootTitle = document.getElementById('lootTitle');
+            const lootRarity = document.getElementById('lootRarity');
+            const lootClaimBtn = document.getElementById('loot-claim-btn');
+            lootImage.src = `${GITHUB_BASE}case_reward.png`;
+            lootTitle.innerText = 'FREE CASE!';
+            lootRarity.innerText = 'PROMO CODE';
+            lootClaimBtn.innerText = '🔓 OPEN CASE';
+            const tempOpen = window.openCaseWithAnimation;
+            const tempCallback = () => {
+                window.openCaseWithAnimation = tempOpen;
+                lootClaimBtn.innerText = '💾 ЗАБРАТЬ';
+                lootClaimBtn.onclick = () => window.claimLoot();
+            };
+            window.openCaseWithAnimation = () => {
+                window.openCaseWithAnimation(parseInt(promo.reward_value));
+                tempCallback();
+            };
+            lootClaimBtn.onclick = () => {
+                window.openCaseWithAnimation(parseInt(promo.reward_value));
+                lootOverlay.style.display = 'none';
+            };
+            lootOverlay.style.display = 'block';
+            return;
+        case 'item':
+            const newItem = { id: Date.now(), char: promo.reward_value, status: 'ready' };
+            const newInventory = [...(currentUser.inventory || []), newItem];
+            await supabaseClient.from('profiles').update({ inventory: newInventory }).eq('id', currentUser.id);
+            currentUser.inventory = newInventory;
+            window.showNotify(`🎁 +${promo.reward_value}!`, 'success');
+            break;
+    }
+    window.renderProfile();
+}
+
+// ========== ЗАДАНИЯ ==========
+async function loadChallenges() {
+    try {
+        const { data: challenges } = await supabaseClient.from('challenges').select('*').eq('is_active', true);
+        const { data: progress } = await supabaseClient
+            .from('user_challenge_progress')
+            .select('*')
+            .eq('user_id', currentUser.id);
+        
+        const progressMap = {};
+        progress?.forEach(p => { progressMap[p.challenge_id] = p; });
+        
+        const container = document.getElementById('challenges-list');
+        if (!container || !challenges) return;
+        
+        container.innerHTML = challenges.map(ch => {
+            const prog = progressMap[ch.id];
+            const completed = prog?.is_completed;
+            return `
+                <div class="challenge-card ${completed ? 'completed' : ''}">
+                    <div class="challenge-info">
+                        <h4>${ch.name}</h4>
+                        <p>${ch.description}</p>
+                    </div>
+                    <div class="challenge-progress">
+                        ${!completed ? `
+                            <span>${prog?.current_progress || 0}/${ch.required_amount}</span>
+                            <div class="challenge-reward">🏆 +${ch.reward_cp} CP</div>
+                        ` : `
+                            <span>✅ COMPLETED</span>
+                        `}
+                    </div>
+                </div>
+            `;
+        }).join('');
+    } catch(e) { console.error(e); }
+}
+
+async function updateChallengeProgress(type, amount = 1) {
+    try {
+        const { data: challenges } = await supabaseClient
+            .from('challenges')
+            .select('*')
+            .eq('challenge_type', type)
+            .eq('is_active', true);
+        
+        for (const ch of challenges || []) {
+            const { data: prog } = await supabaseClient
+                .from('user_challenge_progress')
+                .select('*')
+                .eq('user_id', currentUser.id)
+                .eq('challenge_id', ch.id)
+                .maybeSingle();
+            
+            if (prog?.is_completed) continue;
+            
+            const newProgress = (prog?.current_progress || 0) + amount;
+            
+            if (newProgress >= ch.required_amount) {
+                await supabaseClient.from('user_challenge_progress').upsert({
+                    user_id: currentUser.id,
+                    challenge_id: ch.id,
+                    current_progress: ch.required_amount,
+                    is_completed: true,
+                    completed_at: new Date()
+                });
+                const newCP = (currentUser.CP_Point || 0) + ch.reward_cp;
+                await supabaseClient.from('profiles').update({ CP_Point: newCP }).eq('id', currentUser.id);
+                currentUser.CP_Point = newCP;
+                window.showNotify(`🏆 CHALLENGE COMPLETED! +${ch.reward_cp} CP`, 'success');
+            } else {
+                await supabaseClient.from('user_challenge_progress').upsert({
+                    user_id: currentUser.id,
+                    challenge_id: ch.id,
+                    current_progress: newProgress,
+                    is_completed: false
+                });
+            }
+        }
+        loadChallenges();
+    } catch(e) { console.error(e); }
+}
+
 // ========== АДМИН ПАНЕЛЬ ==========
 window.renderAdminPanel = async function() {
-    if (!currentUser || !currentUser.IsAdmin) return;
+    if (!currentUser || currentUser.IsAdmin !== 'true') return;
+    await loadAdminUsers();
+    await loadAdminPromocodes();
+    await loadAdminChallenges();
+};
+
+async function loadAdminUsers() {
     const { data: allUsers } = await supabaseClient.from('profiles').select('*');
     if (!allUsers) return;
     document.getElementById('total-users').innerText = allUsers.length;
     let totalItems = 0;
     allUsers.forEach(u => { if (u.inventory) totalItems += u.inventory.length; });
     document.getElementById('total-items').innerText = totalItems;
+    
     const tbody = document.getElementById('users-table-body');
     tbody.innerHTML = '';
     for (const user of allUsers) {
@@ -771,6 +931,93 @@ window.renderAdminPanel = async function() {
             actionsCell.appendChild(deleteBtn);
         }
     }
+}
+
+async function loadAdminPromocodes() {
+    const { data: promos } = await supabaseClient.from('promocodes').select('*');
+    const container = document.getElementById('promocodes-list');
+    if (!container) return;
+    container.innerHTML = (promos || []).map(p => `
+        <div class="promo-card">
+            <div><b>${p.code}</b> | ${p.reward_type}: ${p.reward_value} | Uses: ${p.uses_count}/${p.max_uses || '∞'}</div>
+            <button class="delete-promo" onclick="deletePromoCode(${p.id})">DELETE</button>
+        </div>
+    `).join('');
+}
+
+async function loadAdminChallenges() {
+    const { data: challenges } = await supabaseClient.from('challenges').select('*');
+    const container = document.getElementById('challenges-admin-list');
+    if (!container) return;
+    container.innerHTML = (challenges || []).map(ch => `
+        <div class="promo-card">
+            <div><b>${ch.name}</b> | ${ch.challenge_type} | ${ch.required_amount} times | Reward: ${ch.reward_cp} CP</div>
+            <button class="delete-promo" onclick="deleteChallenge(${ch.id})">DELETE</button>
+        </div>
+    `).join('');
+}
+
+function toggleAdminSection(sectionId) {
+    const content = document.getElementById(sectionId);
+    const arrow = content.previousElementSibling.querySelector('.arrow');
+    if (content.style.display === 'none') {
+        content.style.display = 'block';
+        arrow.classList.remove('collapsed');
+    } else {
+        content.style.display = 'none';
+        arrow.classList.add('collapsed');
+    }
+}
+
+function showCreatePromoModal() { document.getElementById('promo-modal').style.display = 'block'; }
+function showCreateChallengeModal() { document.getElementById('challenge-modal').style.display = 'block'; }
+
+window.createPromoCode = async function() {
+    const code = document.getElementById('promo-code').value.trim().toUpperCase();
+    const reward_type = document.getElementById('promo-type').value;
+    const reward_value = document.getElementById('promo-value').value.trim();
+    const max_uses = parseInt(document.getElementById('promo-max-uses').value) || 0;
+    const per_user_limit = parseInt(document.getElementById('promo-per-user').value) || 1;
+    const only_new_players = document.getElementById('promo-new-only').checked ? 'true' : 'false';
+    
+    if (!code || !reward_value) return window.showNotify("Fill all fields", "error");
+    
+    const { error } = await supabaseClient.from('promocodes').insert({
+        code, reward_type, reward_value, max_uses, per_user_limit, only_new_players,
+        uses_count: 0, created_at: new Date()
+    });
+    if (error) return window.showNotify("Error: " + error.message, "error");
+    window.showNotify("Promocode created!", "success");
+    document.getElementById('promo-modal').style.display = 'none';
+    loadAdminPromocodes();
+};
+
+window.createChallenge = async function() {
+    const name = document.getElementById('challenge-name').value.trim();
+    const description = document.getElementById('challenge-desc').value.trim();
+    const challenge_type = document.getElementById('challenge-type').value;
+    const required_amount = parseInt(document.getElementById('challenge-amount').value);
+    const reward_cp = parseInt(document.getElementById('challenge-reward').value);
+    
+    if (!name) return window.showNotify("Fill name", "error");
+    
+    const { error } = await supabaseClient.from('challenges').insert({
+        name, description, challenge_type, required_amount, reward_cp, is_active: true
+    });
+    if (error) return window.showNotify("Error: " + error.message, "error");
+    window.showNotify("Challenge created!", "success");
+    document.getElementById('challenge-modal').style.display = 'none';
+    loadAdminChallenges();
+};
+
+window.deletePromoCode = async function(id) {
+    await supabaseClient.from('promocodes').delete().eq('id', id);
+    loadAdminPromocodes();
+};
+
+window.deleteChallenge = async function(id) {
+    await supabaseClient.from('challenges').delete().eq('id', id);
+    loadAdminChallenges();
 };
 
 function openAdminEditModal(user) {
@@ -780,59 +1027,49 @@ function openAdminEditModal(user) {
     const modal = document.createElement('div');
     modal.className = 'admin-edit-modal';
     modal.innerHTML = `
-        <h3 style="color:#00d4ff; margin-bottom:15px;">EDIT USER: ${user.username}</h3>
-        <label>Balance ($)</label>
-        <input type="number" id="edit-balance" value="${user.score || 0}">
-        <label>Cyberpunk Points (CP)</label>
-        <input type="number" id="edit-cp" value="${user.CP_Point || 0}">
-        <label>Telegram Username</label>
-        <input type="text" id="edit-telegram" value="${user.TelegramUSER || ''}">
-        <label>Is Admin?</label>
-        <input type="checkbox" id="edit-admin" ${user.is_admin ? 'checked' : ''}>
+        <h3 style="color:#00d4ff;">EDIT USER: ${user.username}</h3>
+        <label>Balance ($)</label><input type="number" id="edit-balance" value="${user.score || 0}">
+        <label>Cyberpunk Points (CP)</label><input type="number" id="edit-cp" value="${user.CP_Point || 0}">
+        <label>Telegram</label><input type="text" id="edit-telegram" value="${user.TelegramUSER || ''}">
+        <label>Is Admin?</label><input type="checkbox" id="edit-admin" ${user.IsAdmin === 'true' ? 'checked' : ''}>
         <div style="display:flex; gap:10px; margin-top:20px;">
-            <button class="neon-btn-main" style="flex:1;" onclick="saveAdminEdit('${user.id}')">SAVE</button>
-            <button class="back-btn" style="margin:0; flex:1;" onclick="this.closest('.admin-edit-modal').remove(); document.querySelector('.modal-overlay').remove();">CANCEL</button>
+            <button class="neon-btn-small" onclick="saveAdminEdit('${user.id}')">SAVE</button>
+            <button class="back-btn" onclick="document.querySelector('.modal-overlay').remove(); this.closest('.admin-edit-modal').remove();">CANCEL</button>
         </div>
     `;
     document.body.appendChild(overlay);
     document.body.appendChild(modal);
-    window.currentEditUserId = user.id;
 }
 
 window.saveAdminEdit = async function(userId) {
     const balance = parseInt(document.getElementById('edit-balance').value) || 0;
     const cp = parseInt(document.getElementById('edit-cp').value) || 0;
     const telegram = document.getElementById('edit-telegram').value || null;
-    const isAdmin = document.getElementById('edit-admin').checked;
+    const isAdmin = document.getElementById('edit-admin').checked ? 'true' : 'false';
     const { error } = await supabaseClient.from('profiles')
-        .update({ score: balance, CP_Point: cp, TelegramUSER: telegram, is_admin: isAdmin })
+        .update({ score: balance, CP_Point: cp, TelegramUSER: telegram, IsAdmin: isAdmin })
         .eq('id', userId);
-    if (error) {
-        window.showNotify("❌ UPDATE ERROR", "error");
-    } else {
-        window.showNotify("✅ USER UPDATED", "success");
-        document.querySelector('.modal-overlay')?.remove();
-        document.querySelector('.admin-edit-modal')?.remove();
-        if (currentUser.IsAdmin) window.renderAdminPanel();
-        if (currentUser.id === userId) {
-            currentUser.score = balance;
-            currentUser.CP_Point = cp;
-            currentUser.TelegramUSER = telegram;
-            currentUser.is_admin = isAdmin;
-            window.renderProfile();
-        }
+    if (error) return window.showNotify("UPDATE ERROR", "error");
+    window.showNotify("USER UPDATED", "success");
+    document.querySelector('.modal-overlay')?.remove();
+    document.querySelector('.admin-edit-modal')?.remove();
+    if (currentUser.IsAdmin === 'true') loadAdminUsers();
+    if (currentUser.id === userId) {
+        currentUser.score = balance;
+        currentUser.CP_Point = cp;
+        currentUser.TelegramUSER = telegram;
+        currentUser.IsAdmin = isAdmin;
+        window.renderProfile();
+        const adminBtn = document.getElementById('admin-nav-btn');
+        if (adminBtn) adminBtn.style.display = isAdmin === 'true' ? 'block' : 'none';
     }
 };
 
 async function deleteUserAccount(userId, username) {
-    if (!confirm(`Delete user "${username}" permanently?`)) return;
-    const { error } = await supabaseClient.from('profiles').delete().eq('id', userId);
-    if (error) {
-        window.showNotify("❌ DELETE ERROR", "error");
-    } else {
-        window.showNotify(`✅ USER "${username}" DELETED`, "success");
-        if (currentUser.IsAdmin) window.renderAdminPanel();
-    }
+    if (!confirm(`Delete "${username}"?`)) return;
+    await supabaseClient.from('profiles').delete().eq('id', userId);
+    window.showNotify(`✅ USER "${username}" DELETED`, "success");
+    if (currentUser.IsAdmin === 'true') loadAdminUsers();
 }
 
 window.filterUsers = function() {
@@ -853,7 +1090,7 @@ window.navTo = (id) => {
     if (id === 'cases') window.renderAllCases();
     if (id === 'market') window.renderMarket();
     if (id === 'admin') {
-        if (currentUser && currentUser.IsAdmin === true) {
+        if (currentUser && currentUser.IsAdmin === 'true') {
             window.renderAdminPanel();
         } else {
             window.navTo('profile');
