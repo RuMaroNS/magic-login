@@ -617,6 +617,13 @@ window.sellItem = async function(id, sellPrice, itemDisplayName) {
     }
 };
 
+window.closeAllModals = function() {
+    const overlays = document.querySelectorAll('.modal-overlay');
+    const modals = document.querySelectorAll('.admin-edit-modal');
+    overlays.forEach(el => el.remove());
+    modals.forEach(el => el.remove());
+};
+
 // ========== ВЫВОД ==========
 window.withdrawItem = async function(id, itemDisplayName) {
     if (!currentUser) return;
@@ -969,8 +976,94 @@ function toggleAdminSection(sectionId) {
     }
 }
 
-function showCreatePromoModal() { document.getElementById('promo-modal').style.display = 'block'; }
-function showCreateChallengeModal() { document.getElementById('challenge-modal').style.display = 'block'; }
+window.showCreatePromoModal = function() {
+    // Закрываем все открытые модалки
+    closeAllModals();
+    
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.onclick = () => closeAllModals();
+    
+    const modal = document.createElement('div');
+    modal.className = 'admin-edit-modal';
+    modal.innerHTML = `
+        <h3 style="color:#00d4ff; margin-bottom:20px;">🎫 CREATE PROMOCODE</h3>
+        
+        <label>CODE</label>
+        <input type="text" id="promo-code" placeholder="EXAMPLE123">
+        
+        <label>REWARD TYPE</label>
+        <select id="promo-type" style="width:100%; padding:10px; margin:10px 0; background:#050510; border:1px solid #1a1a3a; color:#fff; border-radius:8px;">
+            <option value="cp">⚡ CP (Cyber Points)</option>
+            <option value="money">💰 MONEY</option>
+            <option value="case">📦 CASE (opens instantly)</option>
+            <option value="item">🎁 ITEM (adds to inventory)</option>
+        </select>
+        
+        <label>VALUE</label>
+        <input type="text" id="promo-value" placeholder="Amount or Case/Item ID">
+        
+        <label>MAX USES (0 = unlimited)</label>
+        <input type="number" id="promo-max-uses" placeholder="Max uses" value="1">
+        
+        <label>PER USER LIMIT</label>
+        <input type="number" id="promo-per-user" placeholder="Per user" value="1">
+        
+        <label style="display:flex; align-items:center; gap:10px; margin:15px 0;">
+            <input type="checkbox" id="promo-new-only" style="width:20px; height:20px; cursor:pointer; accent-color:#00d4ff;">
+            <span style="font-family:'Orbitron'; font-size:12px; color:#00d4ff;">🔰 NEW PLAYERS ONLY (account < 7 days)</span>
+        </label>
+        
+        <div style="display:flex; gap:10px; margin-top:20px;">
+            <button class="neon-btn-small" style="flex:1;" onclick="createPromoCode()">CREATE</button>
+            <button class="back-btn" style="margin:0; flex:1;" onclick="closeAllModals()">CANCEL</button>
+        </div>
+    `;
+    
+    document.body.appendChild(overlay);
+    document.body.appendChild(modal);
+};
+window.showCreateChallengeModal = function() {
+    // Закрываем все открытые модалки
+    closeAllModals();
+    
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.onclick = () => closeAllModals();
+    
+    const modal = document.createElement('div');
+    modal.className = 'admin-edit-modal';
+    modal.innerHTML = `
+        <h3 style="color:#00d4ff; margin-bottom:20px;">🏆 CREATE CHALLENGE</h3>
+        
+        <label>CHALLENGE NAME</label>
+        <input type="text" id="challenge-name" placeholder="e.g., Case Opener">
+        
+        <label>DESCRIPTION</label>
+        <input type="text" id="challenge-desc" placeholder="e.g., Open 10 cases">
+        
+        <label>CHALLENGE TYPE</label>
+        <select id="challenge-type" style="width:100%; padding:10px; margin:10px 0; background:#050510; border:1px solid #1a1a3a; color:#fff; border-radius:8px;">
+            <option value="open_cases">📦 OPEN CASES</option>
+            <option value="sell_items">💰 SELL ITEMS</option>
+            <option value="withdraw_items">📤 WITHDRAW ITEMS</option>
+        </select>
+        
+        <label>REQUIRED AMOUNT</label>
+        <input type="number" id="challenge-amount" placeholder="Required amount" value="10">
+        
+        <label>REWARD CP</label>
+        <input type="number" id="challenge-reward" placeholder="Reward CP" value="50">
+        
+        <div style="display:flex; gap:10px; margin-top:20px;">
+            <button class="neon-btn-small" style="flex:1;" onclick="createChallenge()">CREATE</button>
+            <button class="back-btn" style="margin:0; flex:1;" onclick="closeAllModals()">CANCEL</button>
+        </div>
+    `;
+    
+    document.body.appendChild(overlay);
+    document.body.appendChild(modal);
+};
 
 window.createPromoCode = async function() {
     const code = document.getElementById('promo-code').value.trim().toUpperCase();
@@ -980,16 +1073,23 @@ window.createPromoCode = async function() {
     const per_user_limit = parseInt(document.getElementById('promo-per-user').value) || 1;
     const only_new_players = document.getElementById('promo-new-only').checked ? 'true' : 'false';
     
-    if (!code || !reward_value) return window.showNotify("Fill all fields", "error");
+    if (!code || !reward_value) {
+        window.showNotify("❌ Fill all fields", "error");
+        return;
+    }
     
     const { error } = await supabaseClient.from('promocodes').insert({
         code, reward_type, reward_value, max_uses, per_user_limit, only_new_players,
         uses_count: 0, created_at: new Date()
     });
-    if (error) return window.showNotify("Error: " + error.message, "error");
-    window.showNotify("Promocode created!", "success");
-    document.getElementById('promo-modal').style.display = 'none';
-    loadAdminPromocodes();
+    
+    if (error) {
+        window.showNotify("❌ Error: " + error.message, "error");
+    } else {
+        window.showNotify("✅ Promocode created!", "success");
+        closeAllModals();
+        loadAdminPromocodes();
+    }
 };
 
 window.createChallenge = async function() {
@@ -999,15 +1099,22 @@ window.createChallenge = async function() {
     const required_amount = parseInt(document.getElementById('challenge-amount').value);
     const reward_cp = parseInt(document.getElementById('challenge-reward').value);
     
-    if (!name) return window.showNotify("Fill name", "error");
+    if (!name) {
+        window.showNotify("❌ Fill challenge name", "error");
+        return;
+    }
     
     const { error } = await supabaseClient.from('challenges').insert({
         name, description, challenge_type, required_amount, reward_cp, is_active: true
     });
-    if (error) return window.showNotify("Error: " + error.message, "error");
-    window.showNotify("Challenge created!", "success");
-    document.getElementById('challenge-modal').style.display = 'none';
-    loadAdminChallenges();
+    
+    if (error) {
+        window.showNotify("❌ Error: " + error.message, "error");
+    } else {
+        window.showNotify("✅ Challenge created!", "success");
+        closeAllModals();
+        loadAdminChallenges();
+    }
 };
 
 window.deletePromoCode = async function(id) {
