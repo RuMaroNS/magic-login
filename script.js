@@ -2,7 +2,7 @@ const SB_URL = 'https://wbkygibviddkdjxbahbg.supabase.co';
 const SB_KEY = 'sb_publishable_l5wIAt6RrAl4Uo8uZKerRQ_xBYDS-Kv';
 const supabaseClient = supabase.createClient(SB_URL, SB_KEY);
 const GITHUB_BASE = "https://raw.githubusercontent.com/RuMaroNs/magic-login/main/img/";
-const TELEGRAM_BOT_TOKEN = '8241678987:AAG4Z8YaYTFTOT12hNVN9PG6Z3wPjzhSCNg'
+const TELEGRAM_BOT_TOKEN = '8630026221:AAGfuIfKQPdxSkyhU3IVCnRtRkKrlzKD0nk'
 const TELEGRAM_CHAT_ID = '6176762600'
 
 let currentUser = null;
