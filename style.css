@@ -657,7 +657,7 @@ body {
     margin-top: 5px;
 }
 
-/* ========== РУЛЕТКА (ПОЛНОСТЬЮ ИСПРАВЛЕНА) ========== */
+/* ========== РУЛЕТКА (С ЦЕНТРИРОВАНИЕМ) ========== */
 #roulette-overlay {
     position: fixed;
     top: 0;
@@ -672,6 +672,7 @@ body {
 }
 
 .roulette-container {
+    position: relative;
     width: 90%;
     max-width: 900px;
     background: #1a1a1a;
@@ -679,6 +680,7 @@ body {
     border-radius: 16px;
     padding: 25px;
     box-shadow: 0 0 50px rgba(229,57,53,0.3);
+    margin: 0 auto;
 }
 
 .roulette-header {
