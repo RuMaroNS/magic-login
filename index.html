@@ -232,42 +232,7 @@
         </div>
     </div>
 
-    <!-- MODALS -->
-    <div id="promo-modal" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:linear-gradient(135deg,#0a0a1a,#050510); border:2px solid #00d4ff; border-radius:20px; padding:30px; z-index:20000; min-width:350px;">
-        <h3 style="color:#00d4ff;">CREATE PROMOCODE</h3>
-        <input type="text" id="promo-code" placeholder="CODE">
-        <select id="promo-type">
-            <option value="cp">CP</option>
-            <option value="money">MONEY</option>
-            <option value="case">CASE</option>
-            <option value="item">ITEM</option>
-        </select>
-        <input type="text" id="promo-value" placeholder="VALUE">
-        <input type="number" id="promo-max-uses" placeholder="MAX USES (0 = unlimited)" value="1">
-        <input type="number" id="promo-per-user" placeholder="PER USER LIMIT" value="1">
-        <label><input type="checkbox" id="promo-new-only"> NEW PLAYERS ONLY</label>
-        <div style="display:flex; gap:10px; margin-top:20px;">
-            <button class="neon-btn-small" onclick="createPromoCode()">CREATE</button>
-            <button class="back-btn" onclick="document.getElementById('promo-modal').style.display='none'">CANCEL</button>
-        </div>
-    </div>
-
-    <div id="challenge-modal" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:linear-gradient(135deg,#0a0a1a,#050510); border:2px solid #00d4ff; border-radius:20px; padding:30px; z-index:20000; min-width:350px;">
-        <h3 style="color:#00d4ff;">CREATE CHALLENGE</h3>
-        <input type="text" id="challenge-name" placeholder="NAME">
-        <input type="text" id="challenge-desc" placeholder="DESCRIPTION">
-        <select id="challenge-type">
-            <option value="open_cases">OPEN CASES</option>
-            <option value="sell_items">SELL ITEMS</option>
-            <option value="withdraw_items">WITHDRAW ITEMS</option>
-        </select>
-        <input type="number" id="challenge-amount" placeholder="REQUIRED AMOUNT" value="10">
-        <input type="number" id="challenge-reward" placeholder="REWARD CP" value="50">
-        <div style="display:flex; gap:10px; margin-top:20px;">
-            <button class="neon-btn-small" onclick="createChallenge()">CREATE</button>
-            <button class="back-btn" onclick="document.getElementById('challenge-modal').style.display='none'">CANCEL</button>
-        </div>
-    </div>
+    
 
     <template id="inv-item-template">
         <div class="mega-card inv-item">
