@@ -67,25 +67,38 @@ window.login = async function() {
     const p = document.getElementById('login_password').value;
     if (!u || !p) return;
 
-    const { data } = await supabaseClient.from('profiles').select('*').eq('username', u).eq('password', p).single();
+    // ИЩЕМ ПОЛЬЗОВАТЕЛЯ (БЕЗ .single() для избежания ошибок)
+    const { data, error } = await supabaseClient
+        .from('profiles')
+        .select('*')
+        .eq('username', u)
+        .eq('password', p);
     
-    if (data) {
-        currentUser = data;
+    if (error) {
+        console.error("Login error:", error);
+        return window.showNotify("LOGIN ERROR", "error");
+    }
+    
+    if (data && data.length > 0) {
+        currentUser = data[0];
         localStorage.setItem('saved_login', u);
         localStorage.setItem('saved_pass', p);
         
         // Обновляем last_login
-        await supabaseClient.from('profiles').update({ last_login: new Date().toISOString() }).eq('id', currentUser.id);
+        await supabaseClient
+            .from('profiles')
+            .update({ last_login: new Date().toISOString() })
+            .eq('id', currentUser.id);
         
         document.getElementById('auth-screen').style.display = 'none';
         document.getElementById('game-interface').style.display = 'block';
         document.getElementById('top-bar').style.display = 'flex';
         document.getElementById('h-balance').innerText = currentUser.score || 0;
-        document.getElementById('h-cp').innerText = currentUser.cyberpunk_points || 0;
+        document.getElementById('h-cp').innerText = currentUser.CP_Point || 0;
         
         // Показ кнопки админки
         const adminBtn = document.getElementById('admin-nav-btn');
-        if (adminBtn) adminBtn.style.display = currentUser.is_admin ? 'block' : 'none';
+        if (adminBtn) adminBtn.style.display = currentUser.IsAdmin ? 'block' : 'none';
         
         // Запрос Telegram если пусто
         if (!currentUser.TelegramUSER) {
@@ -106,13 +119,12 @@ window.login = async function() {
     } else {
         window.showNotify("INVALID CREDENTIALS", "error");
     }
-};
-
+};                    
 // ========== РЕГИСТРАЦИЯ ==========
 window.register = async function() {
     const username = document.getElementById('reg_username').value.trim();
     const password = document.getElementById('reg_password').value.trim();
-    const TelegramUSER = document.getElementById('reg_telegram').value.trim() || null;
+    const telegramUser = document.getElementById('reg_telegram').value.trim() || null;
     
     if (!username || !password) {
         return window.showNotify("⚠️ USERNAME AND PASSWORD REQUIRED", "error");
@@ -124,37 +136,52 @@ window.register = async function() {
         return window.showNotify("⚠️ PASSWORD MUST BE AT LEAST 4 CHARACTERS", "error");
     }
     
-    const { data: existing } = await supabaseClient.from('profiles').select('username').eq('username', username).single();
-    if (existing) {
+    // ПРОВЕРКА: ЕСТЬ ЛИ УЖЕ ТАКОЙ ПОЛЬЗОВАТЕЛЬ (БЕЗ .single())
+    const { data: existing, error: checkError } = await supabaseClient
+        .from('profiles')
+        .select('username')
+        .eq('username', username);
+    
+    if (existing && existing.length > 0) {
         return window.showNotify("❌ USERNAME ALREADY EXISTS", "error");
     }
     
+    // СОЗДАЁМ НОВОГО ПОЛЬЗОВАТЕЛЯ
     const newUser = {
         username: username,
         password: password,
         score: 0,
         CP_Point: 0,
         inventory: [],
-        TelegramUSER: TelegramUSER,
-        isAdmin: false,
+        TelegramUSER: telegramUser,
+        IsAdmin: false,
         last_login: new Date().toISOString()
     };
     
-    const { data, error } = await supabaseClient.from('profiles').insert([newUser]).select().single();
+    const { data, error } = await supabaseClient
+        .from('profiles')
+        .insert([newUser])
+        .select();
+    
     if (error) {
-        return window.showNotify("❌ REGISTRATION ERROR", "error");
+        console.error("Registration error:", error);
+        return window.showNotify("❌ REGISTRATION ERROR: " + error.message, "error");
     }
-    if (data) {
+    
+    if (data && data.length > 0) {
         window.showNotify("✅ ACCOUNT CREATED! PLEASE LOGIN", "success");
-        document.querySelector('#login-tab-content').classList.add('active');
-        document.querySelector('#signup-tab-content').classList.remove('active');
-        document.querySelector('.login-tab a').classList.add('active');
-        document.querySelector('.signup-tab a').classList.remove('active');
+        
+        // Переключаем на вкладку LOGIN
+        document.getElementById('login-panel').style.display = 'block';
+        document.getElementById('register-panel').style.display = 'none';
+        document.getElementById('login-tab-btn').classList.add('active');
+        document.getElementById('register-tab-btn').classList.remove('active');
+        
+        // Автоматически заполняем поля логина
         document.getElementById('login_username').value = username;
         document.getElementById('login_password').value = password;
     }
 };
-
 // ========== ПЕРЕКЛЮЧЕНИЕ ВКЛАДОК ==========
 document.addEventListener('DOMContentLoaded', function() {
     const loginBtn = document.getElementById('login-tab-btn');
