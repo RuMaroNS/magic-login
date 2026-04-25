@@ -61,7 +61,7 @@ window.onload = async () => {
     }
 };
 
-// ========== ЛОГИН ==========
+// ========== ЛОГИН (БЕЗ PROMPT ТЕЛЕГРАМ) ==========
 window.login = async function() {
     const u = document.getElementById('login_username').value;
     const p = document.getElementById('login_password').value;
@@ -97,16 +97,7 @@ window.login = async function() {
         const adminBtn = document.getElementById('admin-nav-btn');
         if (adminBtn) adminBtn.style.display = currentUser.IsAdmin === 'true' ? 'block' : 'none';
         
-        if (!currentUser.TelegramUSER) {
-            setTimeout(() => {
-                const tg = prompt("🔗 LINK YOUR TELEGRAM USERNAME:\n(You can skip)");
-                if (tg && tg.trim()) {
-                    supabaseClient.from('profiles').update({ TelegramUSER: tg.trim() }).eq('id', currentUser.id);
-                    currentUser.TelegramUSER = tg.trim();
-                    document.getElementById('telegram-input').value = tg.trim();
-                }
-            }, 1000);
-        }
+        // УБРАЛ PROMPT ПРО TELEGRAM
         
         window.renderAllCases();
         window.renderMarket();
@@ -517,6 +508,7 @@ window.renderMarket = async function() {
     }).join('');
 };
 
+// ========== ПОКУПКА ЛИМИТКИ (ДАЁТ КЕЙС, УМЕНЬШАЕТ СТОК) ==========
 window.buyLimited = async function(id, price) {
     if (!currentUser) return;
     if ((currentUser.CP_Point || 0) < price) {
@@ -524,25 +516,44 @@ window.buyLimited = async function(id, price) {
     }
     const { data: item } = await supabaseClient.from('cases_meta').select('*').eq('id', id).single();
     if (!item || item.stock <= 0) return window.showNotify("SOLD OUT", "error");
+    
+    // Уменьшаем сток
     const newStock = item.stock - 1;
     const newCP = (currentUser.CP_Point || 0) - price;
-    const itemFull = allItems[item.name] || { price: 100 };
-    const newInventory = [...(currentUser.inventory || []), {
-        id: Date.now(),
-        char: item.name,
-        name: item.name,
-        sell_price: itemFull.price || 100
-    }];
+    
     await supabaseClient.from('cases_meta').update({ stock: newStock }).eq('id', id);
-    const { error } = await supabaseClient.from('profiles').update({
-        inventory: newInventory,
-        CP_Point: newCP
-    }).eq('id', currentUser.id);
-    if (!error) {
-        window.showNotify(`PURCHASED: ${item.name}`, 'success');
-        window.renderMarket();
-        window.renderProfile();
-    }
+    await supabaseClient.from('profiles').update({ CP_Point: newCP }).eq('id', currentUser.id);
+    currentUser.CP_Point = newCP;
+    
+    // Даём КЕЙС (не предмет) — показываем карточку получения
+    const lootOverlay = document.getElementById('loot-overlay');
+    const lootImage = document.getElementById('lootImage');
+    const lootTitle = document.getElementById('lootTitle');
+    const lootRarity = document.getElementById('lootRarity');
+    const lootClaimBtn = document.getElementById('loot-claim-btn');
+    
+    lootImage.src = `${GITHUB_BASE}${item.image_url}`;
+    lootTitle.innerText = item.name;
+    lootRarity.innerText = 'CASE';
+    lootRarity.style.color = '#ffaa00';
+    
+    // Временно меняем кнопку на "ОТКРЫТЬ"
+    const originalOnclick = lootClaimBtn.onclick;
+    lootClaimBtn.innerText = '🔓 OPEN CASE';
+    lootClaimBtn.onclick = () => {
+        lootOverlay.style.display = 'none';
+        window.openCaseWithAnimation(item.id);
+        setTimeout(() => {
+            lootClaimBtn.innerText = '💾 CLAIM';
+            lootClaimBtn.onclick = originalOnclick;
+        }, 100);
+    };
+    
+    lootOverlay.style.display = 'block';
+    
+    window.renderMarket();
+    window.renderProfile();
+    window.showNotify(`PURCHASED: ${item.name} (CASE)`, 'success');
 };
 
 // ========== ПРОФИЛЬ ==========
@@ -760,28 +771,30 @@ async function givePromoReward(promo) {
             window.showNotify(`🎁 +$${promo.reward_value}!`, 'success');
             break;
         case 'case':
+            // ПОКАЗЫВАЕМ КАРТОЧКУ С КЕЙСОМ
             const lootOverlay = document.getElementById('loot-overlay');
             const lootImage = document.getElementById('lootImage');
             const lootTitle = document.getElementById('lootTitle');
             const lootRarity = document.getElementById('lootRarity');
             const lootClaimBtn = document.getElementById('loot-claim-btn');
-            lootImage.src = `${GITHUB_BASE}case_reward.png`;
-            lootTitle.innerText = 'FREE CASE!';
+            
+            // Находим кейс в allCases
+            const caseData = allCases.find(c => c.id == parseInt(promo.reward_value));
+            lootImage.src = `${GITHUB_BASE}${caseData?.image_url || 'unknown.png'}`;
+            lootTitle.innerText = caseData?.name || 'FREE CASE';
             lootRarity.innerText = 'PROMO CODE';
+            lootRarity.style.color = '#ffaa00';
+            
+            // Временно меняем кнопку
+            const originalOnclick = lootClaimBtn.onclick;
             lootClaimBtn.innerText = '🔓 OPEN CASE';
-            const tempOpen = window.openCaseWithAnimation;
-            const tempCallback = () => {
-                window.openCaseWithAnimation = tempOpen;
-                lootClaimBtn.innerText = '💾 ЗАБРАТЬ';
-                lootClaimBtn.onclick = () => window.claimLoot();
-            };
-            window.openCaseWithAnimation = () => {
-                window.openCaseWithAnimation(parseInt(promo.reward_value));
-                tempCallback();
-            };
             lootClaimBtn.onclick = () => {
-                window.openCaseWithAnimation(parseInt(promo.reward_value));
                 lootOverlay.style.display = 'none';
+                window.openCaseWithAnimation(parseInt(promo.reward_value));
+                setTimeout(() => {
+                    lootClaimBtn.innerText = '💾 CLAIM';
+                    lootClaimBtn.onclick = originalOnclick;
+                }, 100);
             };
             lootOverlay.style.display = 'block';
             return;
@@ -796,7 +809,7 @@ async function givePromoReward(promo) {
     window.renderProfile();
 }
 
-// ========== ЗАДАНИЯ ==========
+// ========== ЗАДАНИЯ (ЧЕЛЛЕНДЖИ) ==========
 async function loadChallenges() {
     try {
         const { data: challenges } = await supabaseClient.from('challenges').select('*').eq('is_active', true);
@@ -967,7 +980,7 @@ async function loadAdminChallenges() {
 function toggleAdminSection(sectionId) {
     const content = document.getElementById(sectionId);
     const arrow = content.previousElementSibling.querySelector('.arrow');
-    if (content.style.display === 'none') {
+    if (content.style.display === 'none' || getComputedStyle(content).display === 'none') {
         content.style.display = 'block';
         arrow.classList.remove('collapsed');
     } else {
@@ -977,21 +990,16 @@ function toggleAdminSection(sectionId) {
 }
 
 window.showCreatePromoModal = function() {
-    // Закрываем все открытые модалки
     closeAllModals();
-    
     const overlay = document.createElement('div');
     overlay.className = 'modal-overlay';
     overlay.onclick = () => closeAllModals();
-    
     const modal = document.createElement('div');
     modal.className = 'admin-edit-modal';
     modal.innerHTML = `
         <h3 style="color:#00d4ff; margin-bottom:20px;">🎫 CREATE PROMOCODE</h3>
-        
         <label>CODE</label>
         <input type="text" id="promo-code" placeholder="EXAMPLE123">
-        
         <label>REWARD TYPE</label>
         <select id="promo-type" style="width:100%; padding:10px; margin:10px 0; background:#050510; border:1px solid #1a1a3a; color:#fff; border-radius:8px;">
             <option value="cp">⚡ CP (Cyber Points)</option>
@@ -999,75 +1007,58 @@ window.showCreatePromoModal = function() {
             <option value="case">📦 CASE (opens instantly)</option>
             <option value="item">🎁 ITEM (adds to inventory)</option>
         </select>
-        
         <label>VALUE</label>
         <input type="text" id="promo-value" placeholder="Amount or Case/Item ID">
-        
         <label>MAX USES (0 = unlimited)</label>
         <input type="number" id="promo-max-uses" placeholder="Max uses" value="1">
-        
         <label>PER USER LIMIT</label>
         <input type="number" id="promo-per-user" placeholder="Per user" value="1">
-        
         <label style="display:flex; align-items:center; gap:10px; margin:15px 0;">
             <input type="checkbox" id="promo-new-only" style="width:20px; height:20px; cursor:pointer; accent-color:#00d4ff;">
             <span style="font-family:'Orbitron'; font-size:12px; color:#00d4ff;">🔰 NEW PLAYERS ONLY (account < 7 days)</span>
         </label>
-        
         <div style="display:flex; gap:10px; margin-top:20px;">
             <button class="neon-btn-small" style="flex:1;" onclick="createPromoCode()">CREATE</button>
             <button class="back-btn" style="margin:0; flex:1;" onclick="closeAllModals()">CANCEL</button>
         </div>
     `;
-    
     document.body.appendChild(overlay);
     document.body.appendChild(modal);
 };
+
 window.showCreateChallengeModal = function() {
-    // Закрываем все открытые модалки
     closeAllModals();
-    
     const overlay = document.createElement('div');
     overlay.className = 'modal-overlay';
     overlay.onclick = () => closeAllModals();
-    
     const modal = document.createElement('div');
     modal.className = 'admin-edit-modal';
     modal.innerHTML = `
         <h3 style="color:#00d4ff; margin-bottom:20px;">🏆 CREATE CHALLENGE</h3>
-        
         <label>CHALLENGE NAME</label>
         <input type="text" id="challenge-name" placeholder="e.g., Case Opener">
-        
         <label>DESCRIPTION</label>
         <input type="text" id="challenge-desc" placeholder="e.g., Open 10 cases">
-        
         <label>CHALLENGE TYPE</label>
         <select id="challenge-type" style="width:100%; padding:10px; margin:10px 0; background:#050510; border:1px solid #1a1a3a; color:#fff; border-radius:8px;">
             <option value="open_cases">📦 OPEN CASES</option>
             <option value="sell_items">💰 SELL ITEMS</option>
             <option value="withdraw_items">📤 WITHDRAW ITEMS</option>
         </select>
-        
         <label>REQUIRED AMOUNT</label>
         <input type="number" id="challenge-amount" placeholder="Required amount" value="10">
-        
         <label>REWARD CP</label>
         <input type="number" id="challenge-reward" placeholder="Reward CP" value="50">
-        
         <div style="display:flex; gap:10px; margin-top:20px;">
             <button class="neon-btn-small" style="flex:1;" onclick="createChallenge()">CREATE</button>
             <button class="back-btn" style="margin:0; flex:1;" onclick="closeAllModals()">CANCEL</button>
         </div>
     `;
-    
     document.body.appendChild(overlay);
     document.body.appendChild(modal);
 };
 
 window.createPromoCode = async function() {
-    console.log("Creating promocode...");
-    
     const code = document.getElementById('promo-code')?.value.trim().toUpperCase();
     const reward_type = document.getElementById('promo-type')?.value;
     const reward_value = document.getElementById('promo-value')?.value.trim();
@@ -1075,11 +1066,8 @@ window.createPromoCode = async function() {
     const per_user_limit = parseInt(document.getElementById('promo-per-user')?.value) || 1;
     const only_new_players = document.getElementById('promo-new-only')?.checked ? 'true' : 'false';
     
-    if (!code) {
-        return window.showNotify("❌ Enter PROMO CODE", "error");
-    }
-    if (!reward_value) {
-        return window.showNotify("❌ Enter VALUE", "error");
+    if (!code || !reward_value) {
+        return window.showNotify("❌ Fill all fields", "error");
     }
     
     const { error } = await supabaseClient.from('promocodes').insert({
@@ -1088,7 +1076,6 @@ window.createPromoCode = async function() {
     });
     
     if (error) {
-        console.error(error);
         return window.showNotify("❌ Error: " + error.message, "error");
     }
     
@@ -1098,8 +1085,6 @@ window.createPromoCode = async function() {
 };
 
 window.createChallenge = async function() {
-    console.log("Creating challenge...");
-    
     const name = document.getElementById('challenge-name')?.value.trim();
     const description = document.getElementById('challenge-desc')?.value.trim();
     const challenge_type = document.getElementById('challenge-type')?.value;
@@ -1107,13 +1092,7 @@ window.createChallenge = async function() {
     const reward_cp = parseInt(document.getElementById('challenge-reward')?.value);
     
     if (!name) {
-        return window.showNotify("❌ Enter CHALLENGE NAME", "error");
-    }
-    if (!required_amount || required_amount <= 0) {
-        return window.showNotify("❌ Enter valid REQUIRED AMOUNT", "error");
-    }
-    if (!reward_cp || reward_cp <= 0) {
-        return window.showNotify("❌ Enter valid REWARD CP", "error");
+        return window.showNotify("❌ Fill challenge name", "error");
     }
     
     const { error } = await supabaseClient.from('challenges').insert({
@@ -1121,7 +1100,6 @@ window.createChallenge = async function() {
     });
     
     if (error) {
-        console.error(error);
         return window.showNotify("❌ Error: " + error.message, "error");
     }
     
@@ -1147,14 +1125,20 @@ function openAdminEditModal(user) {
     const modal = document.createElement('div');
     modal.className = 'admin-edit-modal';
     modal.innerHTML = `
-        <h3 style="color:#00d4ff;">EDIT USER: ${user.username}</h3>
-        <label>Balance ($)</label><input type="number" id="edit-balance" value="${user.score || 0}">
-        <label>Cyberpunk Points (CP)</label><input type="number" id="edit-cp" value="${user.CP_Point || 0}">
-        <label>Telegram</label><input type="text" id="edit-telegram" value="${user.TelegramUSER || ''}">
-        <label>Is Admin?</label><input type="checkbox" id="edit-admin" ${user.IsAdmin === 'true' ? 'checked' : ''}>
+        <h3 style="color:#00d4ff; margin-bottom:15px;">EDIT USER: ${user.username}</h3>
+        <label>Balance ($)</label>
+        <input type="number" id="edit-balance" value="${user.score || 0}">
+        <label>Cyberpunk Points (CP)</label>
+        <input type="number" id="edit-cp" value="${user.CP_Point || 0}">
+        <label>Telegram</label>
+        <input type="text" id="edit-telegram" value="${user.TelegramUSER || ''}">
+        <label style="display:flex; align-items:center; gap:10px; margin:10px 0;">
+            <input type="checkbox" id="edit-admin" style="width:20px; height:20px; cursor:pointer; accent-color:#00d4ff;" ${user.IsAdmin === 'true' ? 'checked' : ''}>
+            <span style="font-family:'Orbitron'; font-size:12px; color:#00d4ff;">Is Admin?</span>
+        </label>
         <div style="display:flex; gap:10px; margin-top:20px;">
-            <button class="neon-btn-small" onclick="saveAdminEdit('${user.id}')">SAVE</button>
-            <button class="back-btn" onclick="document.querySelector('.modal-overlay').remove(); this.closest('.admin-edit-modal').remove();">CANCEL</button>
+            <button class="neon-btn-small" style="flex:1;" onclick="saveAdminEdit('${user.id}')">SAVE</button>
+            <button class="back-btn" style="margin:0; flex:1;" onclick="this.closest('.admin-edit-modal').remove(); document.querySelector('.modal-overlay').remove();">CANCEL</button>
         </div>
     `;
     document.body.appendChild(overlay);
@@ -1223,9 +1207,7 @@ window.switchTab = function(tab) {
     const loginPanel = document.getElementById('login-panel');
     const registerPanel = document.getElementById('register-panel');
     const btns = document.querySelectorAll('.tab-btn');
-    
     btns.forEach(btn => btn.classList.remove('active'));
-    
     if (tab === 'login') {
         loginPanel.style.display = 'block';
         registerPanel.style.display = 'none';
