@@ -95,16 +95,6 @@ window.login = async function() {
         document.getElementById('top-bar').style.display = 'flex';
         document.getElementById('h-balance').innerText = currentUser.score || 0;
         document.getElementById('h-cp').innerText = currentUser.CP_Point || 0;
-        // Показ кнопки админки
-const adminBtn = document.getElementById('admin-nav-btn');
-if (adminBtn) {
-    console.log("IsAdmin value:", currentUser.IsAdmin);
-    if (currentUser.IsAdmin === true || currentUser.IsAdmin === 'true') {
-        adminBtn.style.display = 'block';
-    } else {
-        adminBtn.style.display = 'none';
-    }
-}
         
         // Показ кнопки админки
         const adminBtn = document.getElementById('admin-nav-btn');
@@ -538,13 +528,13 @@ window.renderMarket = async function() {
 // ========== КУПИТЬ ЛИМИТКУ ==========
 window.buyLimited = async function(id, price) {
     if (!currentUser) return;
-    if ((currentUser.cyberpunk_points || 0) < price) {
+    if ((currentUser.CP_Point || 0) < price) {
         return window.showNotify("INSUFFICIENT CP", "error");
     }
     const { data: item } = await supabaseClient.from('cases_meta').select('*').eq('id', id).single();
     if (!item || item.stock <= 0) return window.showNotify("SOLD OUT", "error");
     const newStock = item.stock - 1;
-    const newCP = (currentUser.cyberpunk_points || 0) - price;
+    const newCP = (currentUser.CP_Point || 0) - price;
     const itemFull = allItems[item.name] || { price: 100 };
     const newInventory = [...(currentUser.inventory || []), {
         id: Date.now(),
@@ -555,7 +545,7 @@ window.buyLimited = async function(id, price) {
     await supabaseClient.from('cases_meta').update({ stock: newStock }).eq('id', id);
     const { error } = await supabaseClient.from('profiles').update({
         inventory: newInventory,
-        cyberpunk_points: newCP
+        CP_Point: newCP
     }).eq('id', currentUser.id);
     if (!error) {
         window.showNotify(`PURCHASED: ${item.name}`, 'success');
@@ -569,7 +559,7 @@ window.renderProfile = function() {
     if (!currentUser) return;
     document.getElementById('p-username').innerText = currentUser.username;
     document.getElementById('p-worth').innerText = currentUser.score || 0;
-    document.getElementById('p-cp-val').innerText = currentUser.cyberpunk_points || 0;
+    document.getElementById('p-cp-val').innerText = currentUser.CP_Point || 0;
     const list = document.getElementById('inventory-list');
     const template = document.getElementById('inv-item-template');
     list.innerHTML = '';
@@ -705,7 +695,7 @@ window.withdrawItem = async function(id, itemDisplayName) {
 📦 <b>Item:</b> <i>${itemDisplayName}</i>
 🎮 <b>Roblox Nick:</b> <code>${nick.trim()}</code>
 💰 <b>Balance:</b> $${currentUser.score || 0}
-⚡ <b>CP:</b> ${currentUser.cyberpunk_points || 0}
+⚡ <b>CP:</b> ${currentUser.CP_Point || 0}
 🕐 <b>Time:</b> ${timestamp}
 ━━━━━━━━━━━━━━━━━━━━
 <code>Status: PENDING</code>`;
@@ -744,7 +734,7 @@ window.renderAdminPanel = async function() {
         const row = tbody.insertRow();
         row.insertCell(0).innerText = user.username;
         row.insertCell(1).innerHTML = `<span style="color:#00ffcc">$${user.score || 0}</span>`;
-        row.insertCell(2).innerHTML = `<span style="color:#ffaa00">⚡${user.cyberpunk_points || 0}</span>`;
+        row.insertCell(2).innerHTML = `<span style="color:#ffaa00">⚡${user.CP_Point || 0}</span>`;
         const invCell = row.insertCell(3);
         if (user.inventory && user.inventory.length > 0) {
             const itemsDiv = document.createElement('div');
@@ -794,7 +784,7 @@ function openAdminEditModal(user) {
         <label>Balance ($)</label>
         <input type="number" id="edit-balance" value="${user.score || 0}">
         <label>Cyberpunk Points (CP)</label>
-        <input type="number" id="edit-cp" value="${user.cyberpunk_points || 0}">
+        <input type="number" id="edit-cp" value="${user.CP_Point || 0}">
         <label>Telegram Username</label>
         <input type="text" id="edit-telegram" value="${user.TelegramUSER || ''}">
         <label>Is Admin?</label>
@@ -815,7 +805,7 @@ window.saveAdminEdit = async function(userId) {
     const telegram = document.getElementById('edit-telegram').value || null;
     const isAdmin = document.getElementById('edit-admin').checked;
     const { error } = await supabaseClient.from('profiles')
-        .update({ score: balance, cyberpunk_points: cp, TelegramUSER: telegram, is_admin: isAdmin })
+        .update({ score: balance, CP_Point: cp, TelegramUSER: telegram, is_admin: isAdmin })
         .eq('id', userId);
     if (error) {
         window.showNotify("❌ UPDATE ERROR", "error");
@@ -826,7 +816,7 @@ window.saveAdminEdit = async function(userId) {
         if (currentUser.is_admin) window.renderAdminPanel();
         if (currentUser.id === userId) {
             currentUser.score = balance;
-            currentUser.cyberpunk_points = cp;
+            currentUser.CP_Point = cp;
             currentUser.TelegramUSER = telegram;
             currentUser.is_admin = isAdmin;
             window.renderProfile();
@@ -863,7 +853,7 @@ window.navTo = (id) => {
     if (id === 'cases') window.renderAllCases();
     if (id === 'market') window.renderMarket();
     if (id === 'admin') {
-        if (currentUser && currentUser.is_admin) {
+        if (currentUser && currentUser.IsAdmin === true)
             window.renderAdminPanel();
         } else {
             window.navTo('profile');
@@ -880,7 +870,7 @@ function subscribeUpdates() {
             if (currentUser && payload.new.id === currentUser.id) {
                 currentUser = payload.new;
                 document.getElementById('h-balance').innerText = currentUser.score || 0;
-                document.getElementById('h-cp').innerText = currentUser.cyberpunk_points || 0;
+                document.getElementById('h-cp').innerText = currentUser.CP_Point || 0;
                 if (document.getElementById('page-profile').classList.contains('active')) {
                     window.renderProfile();
                 }
