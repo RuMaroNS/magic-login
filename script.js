@@ -95,6 +95,16 @@ window.login = async function() {
         document.getElementById('top-bar').style.display = 'flex';
         document.getElementById('h-balance').innerText = currentUser.score || 0;
         document.getElementById('h-cp').innerText = currentUser.CP_Point || 0;
+        // Показ кнопки админки
+const adminBtn = document.getElementById('admin-nav-btn');
+if (adminBtn) {
+    console.log("IsAdmin value:", currentUser.IsAdmin);
+    if (currentUser.IsAdmin === true || currentUser.IsAdmin === 'true') {
+        adminBtn.style.display = 'block';
+    } else {
+        adminBtn.style.display = 'none';
+    }
+}
         
         // Показ кнопки админки
         const adminBtn = document.getElementById('admin-nav-btn');
