@@ -1,150 +1,164 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Magic Cases</title>
     <link rel="stylesheet" href="style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-    <div class="bg"></div>
+    <div class="cyber-bg">
+        <div class="grid-overlay"></div>
+        <div class="scanlines"></div>
+    </div>
 
     <div id="notification-container"></div>
 
-    <!-- TOP BAR -->
-    <div class="top-bar" id="top-bar" style="display:none;">
-        <div class="logo">🎁 Magic Cases</div>
-        <div class="user-stats">
-            <div class="stat stat-money">💰 <span id="h-balance">0</span></div>
-            <div class="stat stat-points">⚡ <span id="h-cp">0</span> CP</div>
-        </div>
+    <div class="live-header">
+        <div class="live-tag">LIVE</div>
+        <div id="global-live-feed" class="live-track">🔥 NEW CASES AVAILABLE • MARKET UPDATED • PROMOCODES ACTIVE 🔥</div>
     </div>
 
-    <!-- LOGIN SCREEN -->
-    <div id="auth-screen" class="auth-screen">
+    <div id="top-bar" class="currency-panel" style="display:none;">
+        <div class="currency-badge cash">💰 <span id="h-balance">0</span></div>
+        <div class="currency-badge cp">⚡ <span id="h-cp">0</span> CP</div>
+    </div>
+
+    <!-- AUTH SCREEN -->
+    <div id="auth-screen" class="full-screen">
         <div class="auth-card">
-            <h1>🔐 Login</h1>
+            <h1 class="glitch-text">LOGIN</h1>
             <div class="tabs">
-                <button class="tab-btn active" onclick="switchTab('login')">Login</button>
-                <button class="tab-btn" onclick="switchTab('register')">Register</button>
+                <button class="tab-btn active" onclick="switchTab('login')">LOGIN</button>
+                <button class="tab-btn" onclick="switchTab('register')">REGISTER</button>
             </div>
             <div id="login-panel">
-                <input type="text" id="login_username" placeholder="Username">
-                <input type="password" id="login_password" placeholder="Password">
-                <button class="btn-primary" onclick="window.login()">Sign In</button>
-                <p class="help-text">Play via Telegram: <a href="https://t.me/StealABekonCasesBot" target="_blank">@StealABekonCasesBot</a></p>
+                <div class="input-group">
+                    <input type="text" id="login_username" placeholder="USERNAME">
+                    <input type="password" id="login_password" placeholder="PASSWORD">
+                </div>
+                <button class="neon-btn-main" onclick="window.login()">LOGIN</button>
+                <div class="help-text">
+                    <p>Play via Telegram: <a href="https://t.me/StealABekonCasesBot" target="_blank">@StealABekonCasesBot</a></p>
+                </div>
             </div>
             <div id="register-panel" style="display:none;">
-                <input type="text" id="reg_username" placeholder="Username">
-                <input type="password" id="reg_password" placeholder="Password">
-                <input type="text" id="reg_telegram" placeholder="Telegram (optional)">
-                <button class="btn-primary" onclick="window.register()">Create Account</button>
+                <div class="input-group">
+                    <input type="text" id="reg_username" placeholder="USERNAME">
+                    <input type="password" id="reg_password" placeholder="PASSWORD">
+                    <input type="text" id="reg_telegram" placeholder="TELEGRAM (OPTIONAL)">
+                </div>
+                <button class="neon-btn-main" onclick="window.register()">CREATE ACCOUNT</button>
             </div>
         </div>
     </div>
 
-    <!-- MAIN GAME INTERFACE -->
+    <!-- GAME INTERFACE -->
     <div id="game-interface" style="display:none;">
-        <!-- NAVIGATION -->
-        <nav class="nav">
-            <button class="nav-btn" onclick="window.navTo('cases')">📦 Cases</button>
-            <button class="nav-btn" onclick="window.navTo('market')">🏪 Market</button>
-            <button class="nav-btn" onclick="window.navTo('profile')">👤 Profile</button>
-            <button id="admin-nav-btn" class="nav-btn" onclick="window.navTo('admin')" style="display:none;">🛡️ Admin</button>
-        </nav>
-
-        <!-- CASES PAGE -->
         <div id="page-cases" class="page active">
-            <h2 class="page-title">Available Cases</h2>
-            <div id="cases-grid" class="grid"></div>
+            <h2 class="section-title">🎁 AVAILABLE CASES</h2>
+            <div id="cases-grid" class="main-grid"></div>
         </div>
 
-        <!-- CASE DETAIL PAGE -->
         <div id="page-case-info" class="page">
             <div id="case-detail-content"></div>
-            <button class="btn-back" onclick="window.navTo('cases')">← Back to Cases</button>
+            <button class="back-btn" onclick="window.navTo('cases')">← BACK</button>
         </div>
 
-        <!-- MARKET PAGE -->
         <div id="page-market" class="page">
-            <h2 class="page-title">Limited Items</h2>
-            <div id="limited-grid" class="grid"></div>
+            <h2 class="section-title">🏪 LIMITED ITEMS</h2>
+            <div id="limited-grid" class="main-grid"></div>
         </div>
 
-        <!-- PROFILE PAGE -->
         <div id="page-profile" class="page">
-            <div class="profile-card">
-                <div class="profile-header">
-                    <div class="avatar">👤</div>
-                    <div>
-                        <h2 id="p-username">Loading...</h2>
-                        <span class="online">● Online</span>
+            <div class="profile-container">
+                <div class="user-card">
+                    <div class="card-header">
+                        <div class="user-avatar"><div class="avatar-glow"></div></div>
+                        <div class="user-main-info">
+                            <h2 id="p-username">LOADING...</h2>
+                            <div class="status-badge"><span class="pulse-dot"></span> ONLINE</div>
+                        </div>
                     </div>
-                </div>
-                <div class="profile-stats">
-                    <div class="stat-box">
-                        <span class="stat-label">Balance</span>
-                        <span class="stat-value">💰 <span id="p-worth">0</span></span>
-                    </div>
-                    <div class="stat-box">
-                        <span class="stat-label">Cyber Points</span>
-                        <span class="stat-value">⚡ <span id="p-cp-val">0</span> CP</span>
+                    <div class="card-stats">
+                        <div class="stat-box">
+                            <span class="label">BALANCE</span>
+                            <span class="value">💰 <span id="p-worth">0</span></span>
+                        </div>
+                        <div class="stat-box">
+                            <span class="label">CYBER POINTS</span>
+                            <span class="value">⚡ <span id="p-cp-val">0</span> CP</span>
+                        </div>
                     </div>
                 </div>
 
                 <!-- PROMO CODE -->
-                <div class="section">
-                    <h3>🎫 Promo Code</h3>
-                    <div class="input-group">
-                        <input type="text" id="promo-code-input" placeholder="Enter promo code">
-                        <button class="btn-secondary" onclick="window.activatePromoCode()">Activate</button>
+                <div class="promo-section">
+                    <div class="inventory-header">
+                        <span class="line"></span>
+                        <h3>🎫 PROMO CODE</h3>
+                        <span class="line"></span>
                     </div>
-                </div>
-
-                <!-- TELEGRAM LINK -->
-                <div class="section">
-                    <h3>📱 Telegram</h3>
-                    <div class="input-group">
-                        <input type="text" id="telegram-input" placeholder="@username">
-                        <button class="btn-secondary" onclick="window.updateTelegram()">Save</button>
+                    <div class="promo-input-group">
+                        <input type="text" id="promo-code-input" placeholder="ENTER PROMO CODE">
+                        <button class="neon-btn-small" onclick="window.activatePromoCode()">ACTIVATE</button>
                     </div>
-                </div>
-
-                <!-- CHALLENGES -->
-                <div class="section">
-                    <h3>🏆 Challenges</h3>
-                    <div id="challenges-list" class="challenges-list"></div>
+                    
+                    <!-- TELEGRAM LINK -->
+                    <div class="inventory-header" style="margin-top:20px;">
+                        <span class="line"></span>
+                        <h3>📱 TELEGRAM</h3>
+                        <span class="line"></span>
+                    </div>
+                    <div class="promo-input-group">
+                        <input type="text" id="telegram-input" placeholder="@USERNAME">
+                        <button class="neon-btn-small" onclick="window.updateTelegram()">SAVE</button>
+                    </div>
+                    
+                    <!-- CHALLENGES -->
+                    <div class="inventory-header" style="margin-top:20px;">
+                        <span class="line"></span>
+                        <h3>🏆 CHALLENGES</h3>
+                        <span class="line"></span>
+                    </div>
+                    <div id="challenges-list" class="challenges-grid"></div>
                 </div>
 
                 <!-- INVENTORY -->
-                <div class="section">
-                    <h3>📦 Inventory</h3>
-                    <div id="inventory-list" class="grid"></div>
+                <div class="inventory-section">
+                    <div class="inventory-header">
+                        <span class="line"></span>
+                        <h3>📦 INVENTORY</h3>
+                        <span class="line"></span>
+                    </div>
+                    <div id="inventory-list" class="main-grid"></div>
                 </div>
             </div>
         </div>
 
         <!-- ADMIN PAGE -->
         <div id="page-admin" class="page">
-            <div class="admin-container">
-                <h2 class="page-title">Admin Panel</h2>
+            <div class="admin-panel-container">
+                <h2 class="section-title">ADMIN PANEL</h2>
                 
                 <div class="admin-section">
                     <div class="admin-section-header" onclick="toggleAdminSection('users-section')">
-                        <span>👥 Users</span>
+                        <span>👥 USERS</span>
                         <span class="arrow">▼</span>
                     </div>
                     <div id="users-section" class="admin-section-content">
                         <div class="admin-stats">
-                            <div class="stat-card"><h4>Total Users</h4><div class="value" id="total-users">0</div></div>
-                            <div class="stat-card"><h4>Total Items</h4><div class="value" id="total-items">0</div></div>
+                            <div class="admin-stat-card"><h4>TOTAL USERS</h4><div class="value" id="total-users">0</div></div>
+                            <div class="admin-stat-card"><h4>TOTAL ITEMS</h4><div class="value" id="total-items">0</div></div>
                         </div>
-                        <input type="text" id="search-user" placeholder="Search by username..." class="search-input" onkeyup="window.filterUsers()">
-                        <div class="table-wrapper">
-                            <table class="data-table">
-                                <thead><tr><th>Username</th><th>Balance</th><th>CP</th><th>Inventory</th><th>Last Login</th><th>Telegram</th><th>Actions</th></tr></thead>
+                        <div class="admin-search">
+                            <input type="text" id="search-user" placeholder="Search by username...">
+                        </div>
+                        <div style="overflow-x: auto;">
+                            <table class="users-table">
+                                <thead><tr><th>Username</th><th>Balance</th><th>CP</th><th>Inventory</th><th>Last Login</th><th>Telegram</th><th>Actions</th><tr></thead>
                                 <tbody id="users-table-body"></tbody>
                             </table>
                         </div>
@@ -153,35 +167,42 @@
 
                 <div class="admin-section">
                     <div class="admin-section-header" onclick="toggleAdminSection('promocodes-section')">
-                        <span>🎫 Promocodes</span>
+                        <span>🎫 PROMOCODES</span>
                         <span class="arrow">▼</span>
                     </div>
                     <div id="promocodes-section" class="admin-section-content">
-                        <button class="btn-primary" onclick="showCreatePromoModal()">+ Create Promocode</button>
-                        <div id="promocodes-list" class="promo-list"></div>
+                        <button class="neon-btn-small" onclick="showCreatePromoModal()">+ CREATE</button>
+                        <div id="promocodes-list" style="margin-top:15px;"></div>
                     </div>
                 </div>
 
                 <div class="admin-section">
                     <div class="admin-section-header" onclick="toggleAdminSection('challenges-section')">
-                        <span>🏆 Challenges</span>
+                        <span>🏆 CHALLENGES</span>
                         <span class="arrow">▼</span>
                     </div>
                     <div id="challenges-section" class="admin-section-content">
-                        <button class="btn-primary" onclick="showCreateChallengeModal()">+ Create Challenge</button>
-                        <div id="challenges-admin-list" class="challenge-list"></div>
+                        <button class="neon-btn-small" onclick="showCreateChallengeModal()">+ CREATE</button>
+                        <div id="challenges-admin-list" style="margin-top:15px;"></div>
                     </div>
                 </div>
             </div>
         </div>
+
+        <nav class="cyber-nav">
+            <button onclick="window.navTo('cases')">CASES</button>
+            <button onclick="window.navTo('market')">MARKET</button>
+            <button onclick="window.navTo('profile')">PROFILE</button>
+            <button id="admin-nav-btn" onclick="window.navTo('admin')" style="display:none;">ADMIN</button>
+        </nav>
     </div>
 
     <!-- ROULETTE OVERLAY -->
-    <div id="roulette-overlay" class="roulette-overlay" style="display:none;">
-        <div class="roulette-modal">
+    <div id="roulette-overlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.98); z-index:10000; backdrop-filter:blur(8px);">
+        <div class="roulette-container">
             <div class="roulette-header">
-                <span>🔓 Opening case...</span>
-                <span class="loader">Spinning</span>
+                <span class="roulette-title">🔓 OPENING CASE</span>
+                <span class="roulette-loader">SPINNING</span>
             </div>
             <div class="roulette-window">
                 <div class="roulette-track" id="rouletteTrack"></div>
@@ -189,78 +210,74 @@
             </div>
             <div class="roulette-result" id="rouletteResult">
                 <span class="result-icon">🎲</span>
-                <span class="result-text">Spinning...</span>
+                <span class="result-text">SPINNING...</span>
             </div>
-            <div class="progress-bar-wrapper">
+            <div class="roulette-progress">
                 <div class="progress-bar" id="rouletteProgress"></div>
             </div>
         </div>
     </div>
-
-    <!-- LOOT REWARD OVERLAY -->
-    <div id="loot-overlay" class="loot-overlay" style="display:none;">
-        <div class="loot-modal">
+    
+    <!-- LOOT OVERLAY -->
+    <div id="loot-overlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.95); z-index:10001; backdrop-filter:blur(10px);">
+        <div class="loot-container">
             <div class="loot-rays" id="lootRays"></div>
             <div class="loot-content">
+                <div class="loot-glow"></div>
                 <img class="loot-image" id="lootImage" src="">
                 <h2 class="loot-title" id="lootTitle"></h2>
-                <div class="loot-rarity" id="lootRarity">Common</div>
-                <button class="btn-primary" id="loot-claim-btn" onclick="window.claimLoot()">💾 Claim</button>
+                <div class="loot-rarity" id="lootRarity">COMMON</div>
+                <button class="loot-claim-btn" id="loot-claim-btn" onclick="window.claimLoot()">💾 CLAIM</button>
             </div>
         </div>
     </div>
 
-    <!-- CREATE PROMOCODE MODAL -->
-    <div id="promo-modal" class="modal" style="display:none;">
-        <div class="modal-content">
-            <h3>Create Promocode</h3>
-            <input type="text" id="promo-code" placeholder="Code">
-            <select id="promo-type">
-                <option value="cp">CP (Cyber Points)</option>
-                <option value="money">Money ($)</option>
-                <option value="case">Case (opens instantly)</option>
-                <option value="item">Item (adds to inventory)</option>
-            </select>
-            <input type="text" id="promo-value" placeholder="Value">
-            <input type="number" id="promo-max-uses" placeholder="Max uses (0 = unlimited)" value="1">
-            <input type="number" id="promo-per-user" placeholder="Per user limit" value="1">
-            <label><input type="checkbox" id="promo-new-only"> New players only (account < 7 days)</label>
-            <div class="modal-buttons">
-                <button class="btn-primary" onclick="createPromoCode()">Create</button>
-                <button class="btn-secondary" onclick="closeModal('promo-modal')">Cancel</button>
-            </div>
+    <!-- MODALS -->
+    <div id="promo-modal" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:linear-gradient(135deg,#0a0a1a,#050510); border:2px solid #00d4ff; border-radius:20px; padding:30px; z-index:20000; min-width:350px;">
+        <h3 style="color:#00d4ff;">CREATE PROMOCODE</h3>
+        <input type="text" id="promo-code" placeholder="CODE">
+        <select id="promo-type">
+            <option value="cp">CP</option>
+            <option value="money">MONEY</option>
+            <option value="case">CASE</option>
+            <option value="item">ITEM</option>
+        </select>
+        <input type="text" id="promo-value" placeholder="VALUE">
+        <input type="number" id="promo-max-uses" placeholder="MAX USES (0 = unlimited)" value="1">
+        <input type="number" id="promo-per-user" placeholder="PER USER LIMIT" value="1">
+        <label><input type="checkbox" id="promo-new-only"> NEW PLAYERS ONLY</label>
+        <div style="display:flex; gap:10px; margin-top:20px;">
+            <button class="neon-btn-small" onclick="createPromoCode()">CREATE</button>
+            <button class="back-btn" onclick="document.getElementById('promo-modal').style.display='none'">CANCEL</button>
         </div>
     </div>
 
-    <!-- CREATE CHALLENGE MODAL -->
-    <div id="challenge-modal" class="modal" style="display:none;">
-        <div class="modal-content">
-            <h3>Create Challenge</h3>
-            <input type="text" id="challenge-name" placeholder="Challenge name">
-            <input type="text" id="challenge-desc" placeholder="Description">
-            <select id="challenge-type">
-                <option value="open_cases">Open Cases</option>
-                <option value="sell_items">Sell Items</option>
-                <option value="withdraw_items">Withdraw Items</option>
-            </select>
-            <input type="number" id="challenge-amount" placeholder="Required amount" value="10">
-            <input type="number" id="challenge-reward" placeholder="Reward CP" value="50">
-            <div class="modal-buttons">
-                <button class="btn-primary" onclick="createChallenge()">Create</button>
-                <button class="btn-secondary" onclick="closeModal('challenge-modal')">Cancel</button>
-            </div>
+    <div id="challenge-modal" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:linear-gradient(135deg,#0a0a1a,#050510); border:2px solid #00d4ff; border-radius:20px; padding:30px; z-index:20000; min-width:350px;">
+        <h3 style="color:#00d4ff;">CREATE CHALLENGE</h3>
+        <input type="text" id="challenge-name" placeholder="NAME">
+        <input type="text" id="challenge-desc" placeholder="DESCRIPTION">
+        <select id="challenge-type">
+            <option value="open_cases">OPEN CASES</option>
+            <option value="sell_items">SELL ITEMS</option>
+            <option value="withdraw_items">WITHDRAW ITEMS</option>
+        </select>
+        <input type="number" id="challenge-amount" placeholder="REQUIRED AMOUNT" value="10">
+        <input type="number" id="challenge-reward" placeholder="REWARD CP" value="50">
+        <div style="display:flex; gap:10px; margin-top:20px;">
+            <button class="neon-btn-small" onclick="createChallenge()">CREATE</button>
+            <button class="back-btn" onclick="document.getElementById('challenge-modal').style.display='none'">CANCEL</button>
         </div>
     </div>
 
     <template id="inv-item-template">
-        <div class="card">
+        <div class="mega-card inv-item">
             <img class="item-img" src="">
             <h4 class="item-name"></h4>
-            <div class="card-buttons">
-                <button class="btn-sell">Sell</button>
-                <button class="btn-withdraw">Withdraw</button>
+            <div class="inv-btns">
+                <button class="sell-btn">SELL</button>
+                <button class="with-btn">WITHDRAW</button>
             </div>
-            <div class="item-status" style="display:none;">On request...</div>
+            <div class="item-status-text" style="display:none;">ON REQUEST...</div>
         </div>
     </template>
 
