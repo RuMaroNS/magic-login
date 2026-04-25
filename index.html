@@ -27,33 +27,33 @@
     </div>
 
     <div id="auth-screen" class="full-screen">
-    <div class="auth-card">
-        <div style="display: flex; margin-bottom: 20px; border-bottom: 1px solid #00d4ff;">
-            <button id="login-tab-btn" style="flex:1; background:none; border:none; color:#00d4ff; font-family:'Orbitron'; padding:10px; cursor:pointer; border-bottom:2px solid #00d4ff;">LOGIN</button>
-            <button id="register-tab-btn" style="flex:1; background:none; border:none; color:#555; font-family:'Orbitron'; padding:10px; cursor:pointer;">REGISTER</button>
-        </div>
-        
-        <div id="login-panel">
-            <div class="input-group">
-                <input type="text" id="login_username" placeholder="USERNAME">
-                <input type="password" id="login_password" placeholder="PASSWORD">
+        <div class="auth-card">
+            <div class="tabs">
+                <h3 class="login-tab"><a class="active" href="#login-tab-content">LOGIN</a></h3>
+                <h3 class="signup-tab"><a href="#signup-tab-content">REGISTER</a></h3>
             </div>
-            <button class="neon-btn-main" onclick="window.login()">INITIALIZE</button>
-            <div class="help-text" style="margin-top:15px; font-size:11px;">
-                <p>Play via Telegram: <a href="https://t.me/StealABekonCasesBot" target="_blank">@StealABekonCasesBot</a></p>
+            <div class="tabs-content">
+                <div id="login-tab-content" class="active">
+                    <div class="input-group">
+                        <input type="text" id="login_username" placeholder="USERNAME">
+                        <input type="password" id="login_password" placeholder="PASSWORD">
+                    </div>
+                    <button class="neon-btn-main" onclick="window.login()">INITIALIZE</button>
+                    <div class="help-text">
+                        <p>Play via Telegram bot: <a href="https://t.me/StealABekonCasesBot" target="_blank">@StealABekonCasesBot</a></p>
+                    </div>
+                </div>
+                <div id="signup-tab-content">
+                    <div class="input-group">
+                        <input type="text" id="reg_username" placeholder="USERNAME">
+                        <input type="password" id="reg_password" placeholder="PASSWORD">
+                        <input type="text" id="reg_telegram" placeholder="TELEGRAM USERNAME (optional)">
+                    </div>
+                    <button class="neon-btn-main" onclick="window.register()">CREATE ACCOUNT</button>
+                </div>
             </div>
-        </div>
-        
-        <div id="register-panel" style="display:none;">
-            <div class="input-group">
-                <input type="text" id="reg_username" placeholder="USERNAME">
-                <input type="password" id="reg_password" placeholder="PASSWORD">
-                <input type="text" id="reg_telegram" placeholder="TELEGRAM USERNAME (optional)">
-            </div>
-            <button class="neon-btn-main" onclick="window.register()">CREATE ACCOUNT</button>
         </div>
     </div>
-</div>
 
     <div id="game-interface" style="display:none;">
         <div id="page-cases" class="page active">
@@ -92,6 +92,37 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- ПРОМОКОД И TELEGRAM -->
+                <div class="promo-section">
+                    <div class="inventory-header">
+                        <span class="line"></span>
+                        <h3>PROMO CODE</h3>
+                        <span class="line"></span>
+                    </div>
+                    <div class="promo-input-group">
+                        <input type="text" id="promo-code-input" placeholder="ENTER PROMO CODE">
+                        <button class="neon-btn-small" onclick="window.activatePromoCode()">ACTIVATE</button>
+                    </div>
+                    
+                    <div class="inventory-header" style="margin-top:20px;">
+                        <span class="line"></span>
+                        <h3>TELEGRAM LINK</h3>
+                        <span class="line"></span>
+                    </div>
+                    <div class="promo-input-group">
+                        <input type="text" id="telegram-input" placeholder="@username">
+                        <button class="neon-btn-small" onclick="window.updateTelegram()">SAVE</button>
+                    </div>
+                    
+                    <div class="inventory-header" style="margin-top:20px;">
+                        <span class="line"></span>
+                        <h3>CHALLENGES</h3>
+                        <span class="line"></span>
+                    </div>
+                    <div id="challenges-list" class="challenges-grid"></div>
+                </div>
+
                 <div class="inventory-section">
                     <div class="inventory-header">
                         <span class="line"></span>
@@ -106,20 +137,50 @@
         <div id="page-admin" class="page">
             <div class="admin-panel-container">
                 <h2 class="section-title">ADMIN PANEL</h2>
-                <div class="admin-stats" id="admin-stats">
-                    <div class="admin-stat-card"><h4>TOTAL USERS</h4><div class="value" id="total-users">0</div></div>
-                    <div class="admin-stat-card"><h4>TOTAL ITEMS</h4><div class="value" id="total-items">0</div></div>
+                
+                <!-- АККОРДЕОН РАЗДЕЛЫ -->
+                <div class="admin-section">
+                    <div class="admin-section-header" onclick="toggleAdminSection('users-section')">
+                        <span>👥 USERS</span>
+                        <span class="arrow">▼</span>
+                    </div>
+                    <div id="users-section" class="admin-section-content">
+                        <div class="admin-stats">
+                            <div class="admin-stat-card"><h4>TOTAL USERS</h4><div class="value" id="total-users">0</div></div>
+                            <div class="admin-stat-card"><h4>TOTAL ITEMS</h4><div class="value" id="total-items">0</div></div>
+                        </div>
+                        <div class="admin-search">
+                            <input type="text" id="search-user" placeholder="Search by username..." onkeyup="window.filterUsers()">
+                        </div>
+                        <div style="overflow-x: auto;">
+                            <table class="users-table">
+                                <thead><tr><th>Username</th><th>Balance</th><th>CP</th><th>Inventory</th><th>Last Login</th><th>Telegram</th><th>Actions</th></tr></thead>
+                                <tbody id="users-table-body"></tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
-                <div class="admin-search">
-                    <input type="text" id="search-user" placeholder="Search by username..." onkeyup="window.filterUsers()">
+
+                <div class="admin-section">
+                    <div class="admin-section-header" onclick="toggleAdminSection('promocodes-section')">
+                        <span>🎫 PROMOCODES</span>
+                        <span class="arrow">▼</span>
+                    </div>
+                    <div id="promocodes-section" class="admin-section-content">
+                        <button class="neon-btn-small" onclick="showCreatePromoModal()">+ CREATE PROMOCODE</button>
+                        <div id="promocodes-list" style="margin-top:15px;"></div>
+                    </div>
                 </div>
-                <div style="overflow-x: auto;">
-                    <table class="users-table" id="users-table">
-                        <thead>
-                            <tr><th>Username</th><th>Balance</th><th>CP</th><th>Inventory</th><th>Last Login</th><th>Telegram</th><th>Actions</th></tr>
-                        </thead>
-                        <tbody id="users-table-body"></tbody>
-                    </table>
+
+                <div class="admin-section">
+                    <div class="admin-section-header" onclick="toggleAdminSection('challenges-section')">
+                        <span>🏆 CHALLENGES</span>
+                        <span class="arrow">▼</span>
+                    </div>
+                    <div id="challenges-section" class="admin-section-content">
+                        <button class="neon-btn-small" onclick="showCreateChallengeModal()">+ CREATE CHALLENGE</button>
+                        <div id="challenges-admin-list" style="margin-top:15px;"></div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -161,8 +222,46 @@
                 <img class="loot-image" id="lootImage" src="">
                 <h2 class="loot-title" id="lootTitle"></h2>
                 <div class="loot-rarity" id="lootRarity">COMMON</div>
-                <button class="loot-claim-btn" onclick="window.claimLoot()">💾 ЗАБРАТЬ</button>
+                <button class="loot-claim-btn" id="loot-claim-btn" onclick="window.claimLoot()">💾 ЗАБРАТЬ</button>
             </div>
+        </div>
+    </div>
+
+    <!-- МОДАЛКА СОЗДАНИЯ ПРОМОКОДА -->
+    <div id="promo-modal" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:linear-gradient(135deg,#0a0a1a,#050510); border:2px solid #00d4ff; border-radius:20px; padding:30px; z-index:20000; min-width:350px;">
+        <h3 style="color:#00d4ff;">CREATE PROMOCODE</h3>
+        <input type="text" id="promo-code" placeholder="CODE" style="width:100%; padding:10px; margin:10px 0; background:#050510; border:1px solid #1a1a3a; color:#fff;">
+        <select id="promo-type" style="width:100%; padding:10px; margin:10px 0; background:#050510; border:1px solid #1a1a3a; color:#fff;">
+            <option value="cp">CP (Cyber Points)</option>
+            <option value="money">MONEY ($)</option>
+            <option value="case">CASE (open instantly)</option>
+            <option value="item">ITEM (add to inventory)</option>
+        </select>
+        <input type="text" id="promo-value" placeholder="Value (amount or case/item ID)" style="width:100%; padding:10px; margin:10px 0; background:#050510; border:1px solid #1a1a3a; color:#fff;">
+        <input type="number" id="promo-max-uses" placeholder="Max uses (0 = unlimited)" value="1" style="width:100%; padding:10px; margin:10px 0; background:#050510; border:1px solid #1a1a3a; color:#fff;">
+        <input type="number" id="promo-per-user" placeholder="Per user limit" value="1" style="width:100%; padding:10px; margin:10px 0; background:#050510; border:1px solid #1a1a3a; color:#fff;">
+        <label><input type="checkbox" id="promo-new-only"> Only for new players (account < 7 days)</label>
+        <div style="display:flex; gap:10px; margin-top:20px;">
+            <button class="neon-btn-small" onclick="createPromoCode()">CREATE</button>
+            <button class="back-btn" onclick="document.getElementById('promo-modal').style.display='none'">CANCEL</button>
+        </div>
+    </div>
+
+    <!-- МОДАЛКА СОЗДАНИЯ ЧЕЛЛЕНДЖА -->
+    <div id="challenge-modal" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:linear-gradient(135deg,#0a0a1a,#050510); border:2px solid #00d4ff; border-radius:20px; padding:30px; z-index:20000; min-width:350px;">
+        <h3 style="color:#00d4ff;">CREATE CHALLENGE</h3>
+        <input type="text" id="challenge-name" placeholder="Challenge name" style="width:100%; padding:10px; margin:10px 0; background:#050510; border:1px solid #1a1a3a; color:#fff;">
+        <input type="text" id="challenge-desc" placeholder="Description" style="width:100%; padding:10px; margin:10px 0; background:#050510; border:1px solid #1a1a3a; color:#fff;">
+        <select id="challenge-type" style="width:100%; padding:10px; margin:10px 0; background:#050510; border:1px solid #1a1a3a; color:#fff;">
+            <option value="open_cases">Open Cases</option>
+            <option value="sell_items">Sell Items</option>
+            <option value="withdraw_items">Withdraw Items</option>
+        </select>
+        <input type="number" id="challenge-amount" placeholder="Required amount" value="10" style="width:100%; padding:10px; margin:10px 0; background:#050510; border:1px solid #1a1a3a; color:#fff;">
+        <input type="number" id="challenge-reward" placeholder="Reward CP" value="50" style="width:100%; padding:10px; margin:10px 0; background:#050510; border:1px solid #1a1a3a; color:#fff;">
+        <div style="display:flex; gap:10px; margin-top:20px;">
+            <button class="neon-btn-small" onclick="createChallenge()">CREATE</button>
+            <button class="back-btn" onclick="document.getElementById('challenge-modal').style.display='none'">CANCEL</button>
         </div>
     </div>
 
