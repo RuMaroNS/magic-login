@@ -150,7 +150,7 @@ window.register = async function() {
     const newUser = {
         username: username,
         password: password,
-        score: 0,
+        score: 100,
         CP_Point: 0,
         inventory: [],
         TelegramUSER: telegramUser,
