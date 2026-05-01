@@ -61,7 +61,7 @@ window.onload = async () => {
     }
 };
 
-// ========== ЛОГИН (БЕЗ PROMPT ТЕЛЕГРАМ) ==========
+// ========== ЛОГИН ==========
 window.login = async function() {
     const u = document.getElementById('login_username').value;
     const p = document.getElementById('login_password').value;
@@ -97,8 +97,6 @@ window.login = async function() {
         const adminBtn = document.getElementById('admin-nav-btn');
         if (adminBtn) adminBtn.style.display = currentUser.IsAdmin === 'true' ? 'block' : 'none';
         
-        // УБРАЛ PROMPT ПРО TELEGRAM
-        
         window.renderAllCases();
         window.renderMarket();
         loadChallenges();
@@ -114,7 +112,7 @@ window.login = async function() {
 window.register = async function() {
     const username = document.getElementById('reg_username').value.trim();
     const password = document.getElementById('reg_password').value.trim();
-    const telegramUser = document.getElementById('reg_telegram').value.trim() || null;
+    const robloxUser = document.getElementById('reg_roblox').value.trim() || null;
     
     if (!username || !password) {
         return window.showNotify("⚠️ USERNAME AND PASSWORD REQUIRED", "error");
@@ -141,7 +139,7 @@ window.register = async function() {
         score: 100,
         CP_Point: 0,
         inventory: [],
-        TelegramUSER: telegramUser,
+        RobloxUSER: robloxUser,
         IsAdmin: 'false',
         last_login: new Date().toISOString()
     };
@@ -167,19 +165,16 @@ window.register = async function() {
     }
 };
 
-// Функция отправки заявки на вывод (использует ник из профиля)
+// ========== ЗАПРОС ВЫВОДА (БЕРЁТ НИК ИЗ БД) ==========
 async function requestWithdrawal(itemName, mutation) {
-    // 1. Проверяем, авторизован ли пользователь и есть ли у него ник
     if (!currentUser || !currentUser.RobloxUSER) {
-        window.showNotify("❌ Ник Roblox не найден в профиле! Заполните его.", "error");
+        window.showNotify("❌ ROBLOX USERNAME NOT SET IN PROFILE!", "error");
         return false;
     }
 
-    const username = currentUser.RobloxUSER; // Берем ник прямо из БД
+    const username = currentUser.RobloxUSER;
 
     try {
-        console.log("Отправка вывода для:", username, itemName, mutation);
-
         const { data, error } = await supabaseClient
             .from('withdrawals')
             .insert([
@@ -192,17 +187,17 @@ async function requestWithdrawal(itemName, mutation) {
             ]);
 
         if (error) {
-            console.error("Ошибка Supabase:", error);
-            window.showNotify("❌ Ошибка сервера: " + error.message, "error");
+            console.error("Supabase error:", error);
+            window.showNotify("❌ SERVER ERROR: " + error.message, "error");
             return false;
         }
 
-        window.showNotify("✅ Заявка создана! Ожидайте выдачу в игре.", "success");
+        window.showNotify("✅ WITHDRAWAL REQUEST CREATED!", "success");
         return true;
 
     } catch (err) {
-        console.error("Критическая ошибка:", err);
-        window.showNotify("❌ Произошла ошибка связи.", "error");
+        console.error("Critical error:", err);
+        window.showNotify("❌ CONNECTION ERROR", "error");
         return false;
     }
 }
@@ -230,7 +225,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-// ========== ФУНКЦИЯ ВЫБОРА ПРЕДМЕТА ПО ШАНСАМ ==========
 function getRandomItemFromLoot(lootArray) {
     if (!lootArray || lootArray.length === 0) return null;
     let totalChance = 0;
@@ -520,7 +514,6 @@ window.openCaseWithAnimation = async function(caseId) {
         startSlowdown();
     }, 3500);
     
-    // Прогресс задания
     await updateChallengeProgress('open_cases', 1);
 };
 
@@ -548,7 +541,7 @@ window.renderMarket = async function() {
     }).join('');
 };
 
-// ========== ПОКУПКА ЛИМИТКИ (ДАЁТ КЕЙС, УМЕНЬШАЕТ СТОК) ==========
+// ========== ПОКУПКА ЛИМИТКИ ==========
 window.buyLimited = async function(id, price) {
     if (!currentUser) return;
     if ((currentUser.CP_Point || 0) < price) {
@@ -557,7 +550,6 @@ window.buyLimited = async function(id, price) {
     const { data: item } = await supabaseClient.from('cases_meta').select('*').eq('id', id).single();
     if (!item || item.stock <= 0) return window.showNotify("SOLD OUT", "error");
     
-    // Уменьшаем сток
     const newStock = item.stock - 1;
     const newCP = (currentUser.CP_Point || 0) - price;
     
@@ -565,7 +557,6 @@ window.buyLimited = async function(id, price) {
     await supabaseClient.from('profiles').update({ CP_Point: newCP }).eq('id', currentUser.id);
     currentUser.CP_Point = newCP;
     
-    // Даём КЕЙС (не предмет) — показываем карточку получения
     const lootOverlay = document.getElementById('loot-overlay');
     const lootImage = document.getElementById('lootImage');
     const lootTitle = document.getElementById('lootTitle');
@@ -577,7 +568,6 @@ window.buyLimited = async function(id, price) {
     lootRarity.innerText = 'CASE';
     lootRarity.style.color = '#ffaa00';
     
-    // Временно меняем кнопку на "ОТКРЫТЬ"
     const originalOnclick = lootClaimBtn.onclick;
     lootClaimBtn.innerText = '🔓 OPEN CASE';
     lootClaimBtn.onclick = () => {
@@ -636,15 +626,11 @@ window.renderProfile = function() {
                     const sellPrice = itemFull.price || 100;
                     sBtn.onclick = () => window.sellItem(item.id, sellPrice, itemFull.display_name);
                     wBtn.onclick = async () => {
-    // Вызываем функцию, передавая данные предмета. 
-    // Никнейм функция возьмет сама из currentUser.RobloxUSER
-    const success = await requestWithdrawal(itemFull.display_name, item.mutation || "None");
-    
-    // Если в базу всё успешно записалось — вызываем твою визуальную часть
-    if (success) {
-        window.withdrawItem(item.id, itemFull.display_name);
-    }
-};
+                        const success = await requestWithdrawal(itemFull.display_name, item.mutation || "None");
+                        if (success) {
+                            window.withdrawItem(item.id, itemFull.display_name);
+                        }
+                    };
                 }
             } else {
                 clone.querySelector('.item-img').src = 'https://placehold.co/150x150?text=UNKNOWN';
@@ -684,23 +670,18 @@ window.closeAllModals = function() {
     modals.forEach(el => el.remove());
 };
 
-// ========== ВЫВОД ==========
+// ========== ВЫВОД (ОБНОВЛЁННЫЙ) ==========
 window.withdrawItem = async function(id, itemDisplayName) {
     if (!currentUser) return;
 
-    // 1. Проверяем наличие ника в БД (profiles.RobloxUSER)
     const nick = currentUser.RobloxUSER;
     if (!nick || nick.trim() === "") {
         return window.showNotify("❌ ROBLOX USERNAME NOT SET IN PROFILE", "error");
     }
 
-    // 2. Ищем предмет, чтобы получить его мутацию (если есть)
     const item = currentUser.inventory.find(i => i.id === id);
     const mutation = item ? (item.mutation || "None") : "None";
 
-    window.showNotify("📤 SENDING REQUEST...", "info");
-
-    // 3. Отправляем заявку в таблицу 'withdrawals' (для Roblox Server)
     const { error: dbError } = await supabaseClient
         .from('withdrawals')
         .insert([{
@@ -715,7 +696,6 @@ window.withdrawItem = async function(id, itemDisplayName) {
         return window.showNotify("❌ DATABASE ERROR: " + dbError.message, "error");
     }
 
-    // 4. Обновляем статус в профиле (inventory)
     const newInventory = currentUser.inventory.map(item => 
         item.id === id ? { ...item, status: 'processing' } : item
     );
@@ -733,52 +713,25 @@ window.withdrawItem = async function(id, itemDisplayName) {
     }
 };
 
-// ========== TELEGRAM ==========
-async function initTelegramBot() {
-    if (telegramInitialized) return true;
-    try {
-        const response = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/getMe`);
-        const data = await response.json();
-        if (data.ok) {
-            console.log(`✅ Telegram bot initialized: @${data.result.username}`);
-            telegramInitialized = true;
-            return true;
-        }
-    } catch (error) {
-        console.error("Telegram error:", error);
+// ========== ОБНОВЛЕНИЕ ROBLOX USERNAME ==========
+window.updateRoblox = async function() {
+    const roblox = document.getElementById('roblox-input').value.trim();
+    if (!roblox) {
+        window.showNotify("❌ PLEASE ENTER ROBLOX USERNAME", "error");
+        return;
     }
-    return false;
-}
-
-async function sendToTelegram(message) {
-    if (!TELEGRAM_BOT_TOKEN) return false;
-    try {
-        const response = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ chat_id: TELEGRAM_CHAT_ID, text: message, parse_mode: 'HTML' })
-        });
-        const data = await response.json();
-        return data.ok;
-    } catch (error) {
-        console.error("Telegram send error:", error);
-        return false;
-    }
-}
-
-// ========== ПРОМОКОДЫ ==========
-window.updateTelegram = async function() {
-    const tg = document.getElementById('telegram-input').value.trim();
-    if (!tg) return;
     const { error } = await supabaseClient.from('profiles')
-        .update({ TelegramUSER: tg })
+        .update({ RobloxUSER: roblox })
         .eq('id', currentUser.id);
     if (!error) {
-        currentUser.TelegramUSER = tg;
-        window.showNotify("✅ TELEGRAM LINKED", "success");
+        currentUser.RobloxUSER = roblox;
+        window.showNotify("✅ ROBLOX USERNAME SAVED", "success");
+    } else {
+        window.showNotify("❌ ERROR SAVING", "error");
     }
 };
 
+// ========== ПРОМОКОДЫ ==========
 window.activatePromoCode = async function() {
     const code = document.getElementById('promo-code-input').value.trim().toUpperCase();
     if (!code) return;
@@ -827,21 +780,18 @@ async function givePromoReward(promo) {
             window.showNotify(`🎁 +$${promo.reward_value}!`, 'success');
             break;
         case 'case':
-            // ПОКАЗЫВАЕМ КАРТОЧКУ С КЕЙСОМ
             const lootOverlay = document.getElementById('loot-overlay');
             const lootImage = document.getElementById('lootImage');
             const lootTitle = document.getElementById('lootTitle');
             const lootRarity = document.getElementById('lootRarity');
             const lootClaimBtn = document.getElementById('loot-claim-btn');
             
-            // Находим кейс в allCases
             const caseData = allCases.find(c => c.id == parseInt(promo.reward_value));
             lootImage.src = `${GITHUB_BASE}${caseData?.image_url || 'unknown.png'}`;
             lootTitle.innerText = caseData?.name || 'FREE CASE';
             lootRarity.innerText = 'PROMO CODE';
             lootRarity.style.color = '#ffaa00';
             
-            // Временно меняем кнопку
             const originalOnclick = lootClaimBtn.onclick;
             lootClaimBtn.innerText = '🔓 OPEN CASE';
             lootClaimBtn.onclick = () => {
@@ -865,7 +815,7 @@ async function givePromoReward(promo) {
     window.renderProfile();
 }
 
-// ========== ЗАДАНИЯ (ЧЕЛЛЕНДЖИ) ==========
+// ========== ЗАДАНИЯ ==========
 async function loadChallenges() {
     try {
         const { data: challenges } = await supabaseClient.from('challenges').select('*').eq('is_active', true);
@@ -992,7 +942,7 @@ async function loadAdminUsers() {
             invCell.innerText = 'Empty';
         }
         row.insertCell(4).innerText = user.last_login ? new Date(user.last_login).toLocaleString() : 'Never';
-        row.insertCell(5).innerText = user.TelegramUSER || 'Not set';
+        row.insertCell(5).innerText = user.RobloxUSER || 'Not set';
         const actionsCell = row.insertCell(6);
         const editBtn = document.createElement('button');
         editBtn.innerText = 'EDIT';
@@ -1186,8 +1136,8 @@ function openAdminEditModal(user) {
         <input type="number" id="edit-balance" value="${user.score || 0}">
         <label>Cyberpunk Points (CP)</label>
         <input type="number" id="edit-cp" value="${user.CP_Point || 0}">
-        <label>Telegram</label>
-        <input type="text" id="edit-telegram" value="${user.TelegramUSER || ''}">
+        <label>Roblox Username</label>
+        <input type="text" id="edit-roblox" value="${user.RobloxUSER || ''}">
         <label style="display:flex; align-items:center; gap:10px; margin:10px 0;">
             <input type="checkbox" id="edit-admin" style="width:20px; height:20px; cursor:pointer; accent-color:#00d4ff;" ${user.IsAdmin === 'true' ? 'checked' : ''}>
             <span style="font-family:'Orbitron'; font-size:12px; color:#00d4ff;">Is Admin?</span>
@@ -1204,10 +1154,10 @@ function openAdminEditModal(user) {
 window.saveAdminEdit = async function(userId) {
     const balance = parseInt(document.getElementById('edit-balance').value) || 0;
     const cp = parseInt(document.getElementById('edit-cp').value) || 0;
-    const telegram = document.getElementById('edit-telegram').value || null;
+    const roblox = document.getElementById('edit-roblox').value || null;
     const isAdmin = document.getElementById('edit-admin').checked ? 'true' : 'false';
     const { error } = await supabaseClient.from('profiles')
-        .update({ score: balance, CP_Point: cp, TelegramUSER: telegram, IsAdmin: isAdmin })
+        .update({ score: balance, CP_Point: cp, RobloxUSER: roblox, IsAdmin: isAdmin })
         .eq('id', userId);
     if (error) return window.showNotify("UPDATE ERROR", "error");
     window.showNotify("USER UPDATED", "success");
@@ -1217,7 +1167,7 @@ window.saveAdminEdit = async function(userId) {
     if (currentUser.id === userId) {
         currentUser.score = balance;
         currentUser.CP_Point = cp;
-        currentUser.TelegramUSER = telegram;
+        currentUser.RobloxUSER = roblox;
         currentUser.IsAdmin = isAdmin;
         window.renderProfile();
         const adminBtn = document.getElementById('admin-nav-btn');
