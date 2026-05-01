@@ -108,7 +108,7 @@ window.login = async function() {
     }
 };
 
-// ========== РЕГИСТРАЦИЯ ==========
+// ========== РЕГИСТРАЦИЯ (исправленная) ==========
 window.register = async function() {
     const username = document.getElementById('reg_username').value.trim();
     const password = document.getElementById('reg_password').value.trim();
@@ -586,14 +586,24 @@ window.buyLimited = async function(id, price) {
     window.showNotify(`PURCHASED: ${item.name} (CASE)`, 'success');
 };
 
-// ========== ПРОФИЛЬ ==========
+// ========== ПРОФИЛЬ (исправленный) ==========
 window.renderProfile = function() {
     if (!currentUser) return;
-    document.getElementById('p-username').innerText = currentUser.username;
-    document.getElementById('p-worth').innerText = currentUser.score || 0;
-    document.getElementById('p-cp-val').innerText = currentUser.CP_Point || 0;
+    
+    // Проверяем существование элементов перед установкой значений
+    const pUsername = document.getElementById('p-username');
+    const pWorth = document.getElementById('p-worth');
+    const pCpVal = document.getElementById('p-cp-val');
+    const robloxInput = document.getElementById('roblox-input');
+    
+    if (pUsername) pUsername.innerText = currentUser.username;
+    if (pWorth) pWorth.innerText = currentUser.score || 0;
+    if (pCpVal) pCpVal.innerText = currentUser.CP_Point || 0;
+    if (robloxInput) robloxInput.value = currentUser.RobloxUSER || '';
     
     const list = document.getElementById('inventory-list');
+    if (!list) return;
+    
     const template = document.getElementById('inv-item-template');
     list.innerHTML = '';
     const inventory = currentUser.inventory || [];
@@ -610,22 +620,26 @@ window.renderProfile = function() {
             if (itemFull) {
                 const rarity = itemFull.rarity || 'common';
                 const rarityColors = { common: '#aaa', rare: '#3399ff', epic: '#aa33ff', legendary: '#ffaa00' };
-                clone.querySelector('.item-name').style.color = rarityColors[rarity] || '#fff';
+                const itemNameEl = clone.querySelector('.item-name');
+                if (itemNameEl) itemNameEl.style.color = rarityColors[rarity] || '#fff';
                 const imgUrl = `${GITHUB_BASE}${itemFull.image_url || 'unknown.png'}`;
-                clone.querySelector('.item-img').src = imgUrl;
-                clone.querySelector('.item-img').onerror = function() { this.src = 'https://placehold.co/150x150?text=NO_IMG'; };
-                clone.querySelector('.item-name').innerText = itemFull.display_name;
+                const itemImg = clone.querySelector('.item-img');
+                if (itemImg) {
+                    itemImg.src = imgUrl;
+                    itemImg.onerror = function() { this.src = 'https://placehold.co/150x150?text=NO_IMG'; };
+                }
+                if (itemNameEl) itemNameEl.innerText = itemFull.display_name;
                 const sBtn = clone.querySelector('.sell-btn');
                 const wBtn = clone.querySelector('.with-btn');
                 const statusT = clone.querySelector('.item-status-text');
                 if (item.status === 'processing') {
-                    sBtn.style.display = 'none';
-                    wBtn.style.display = 'none';
-                    statusT.style.display = 'block';
+                    if (sBtn) sBtn.style.display = 'none';
+                    if (wBtn) wBtn.style.display = 'none';
+                    if (statusT) statusT.style.display = 'block';
                 } else {
                     const sellPrice = itemFull.price || 100;
-                    sBtn.onclick = () => window.sellItem(item.id, sellPrice, itemFull.display_name);
-                    wBtn.onclick = async () => {
+                    if (sBtn) sBtn.onclick = () => window.sellItem(item.id, sellPrice, itemFull.display_name);
+                    if (wBtn) wBtn.onclick = async () => {
                         const success = await requestWithdrawal(itemFull.display_name, item.mutation || "None");
                         if (success) {
                             window.withdrawItem(item.id, itemFull.display_name);
@@ -633,14 +647,15 @@ window.renderProfile = function() {
                     };
                 }
             } else {
-                clone.querySelector('.item-img').src = 'https://placehold.co/150x150?text=UNKNOWN';
-                clone.querySelector('.item-name').innerText = itemChar;
+                const itemImg = clone.querySelector('.item-img');
+                const itemNameEl = clone.querySelector('.item-name');
+                if (itemImg) itemImg.src = 'https://placehold.co/150x150?text=UNKNOWN';
+                if (itemNameEl) itemNameEl.innerText = itemChar;
             }
             list.appendChild(clone);
         });
     }
     
-    document.getElementById('roblox-input').value = currentUser.RobloxUSER || '';
     loadChallenges();
 };
 
@@ -715,19 +730,30 @@ window.withdrawItem = async function(id, itemDisplayName) {
 
 // ========== ОБНОВЛЕНИЕ ROBLOX USERNAME ==========
 window.updateRoblox = async function() {
-    const roblox = document.getElementById('roblox-input').value.trim();
+    if (!currentUser) return;
+    
+    const robloxInput = document.getElementById('roblox-input');
+    if (!robloxInput) {
+        console.error("roblox-input element not found");
+        return;
+    }
+    
+    const roblox = robloxInput.value.trim();
     if (!roblox) {
         window.showNotify("❌ PLEASE ENTER ROBLOX USERNAME", "error");
         return;
     }
+    
     const { error } = await supabaseClient.from('profiles')
         .update({ RobloxUSER: roblox })
         .eq('id', currentUser.id);
+    
     if (!error) {
         currentUser.RobloxUSER = roblox;
-        window.showNotify("✅ ROBLOX USERNAME SAVED", "success");
+        window.showNotify("✅ ROBLOX USERNAME SAVED!", "success");
     } else {
-        window.showNotify("❌ ERROR SAVING", "error");
+        console.error("Update error:", error);
+        window.showNotify("❌ ERROR SAVING: " + (error.message || "Unknown error"), "error");
     }
 };
 
