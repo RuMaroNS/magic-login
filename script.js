@@ -167,6 +167,39 @@ window.register = async function() {
     }
 };
 
+// Функция отправки заявки на вывод
+async function requestWithdrawal(username, itemName, mutation) {
+    try {
+        // Проверка: отправил ли сайт запрос
+        console.log("Отправка запроса на вывод:", username, itemName, mutation);
+
+        const { data, error } = await supabaseClient
+            .from('withdrawals')
+            .insert([
+                { 
+                    username: username, 
+                    item_name: itemName, 
+                    mutation: mutation, 
+                    status: 'processing' // Сразу ставим статус "в обработке"
+                }
+            ]);
+
+        if (error) {
+            console.error("Ошибка Supabase:", error);
+            window.showNotify("❌ Ошибка отправки: " + error.message, "error");
+            return false;
+        }
+
+        window.showNotify("✅ Заявка создана! Ожидайте выдачу в игре.", "success");
+        return true;
+
+    } catch (err) {
+        console.error("Критическая ошибка:", err);
+        window.showNotify("❌ Произошла ошибка связи.", "error");
+        return false;
+    }
+}
+
 // ========== ПЕРЕКЛЮЧЕНИЕ ВКЛАДОК ==========
 document.addEventListener('DOMContentLoaded', function() {
     const loginBtn = document.getElementById('login-tab-btn');
