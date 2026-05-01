@@ -654,7 +654,7 @@ window.renderProfile = function() {
         });
     }
     
-    document.getElementById('telegram-input').value = currentUser.TelegramUSER || '';
+    document.getElementById('roblox-input').value = currentUser.RobloxUSER || '';
     loadChallenges();
 };
 
