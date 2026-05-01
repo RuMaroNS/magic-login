@@ -640,7 +640,7 @@ window.renderProfile = function() {
                     const sellPrice = itemFull.price || 100;
                     if (sBtn) sBtn.onclick = () => window.sellItem(item.id, sellPrice, itemFull.display_name);
                     if (wBtn) wBtn.onclick = async () => {
-                        const success = await requestWithdrawal(itemFull.display_name, item.mutation || "None");
+                        const success = await requestWithdrawal(itemFull.display_name, item.mutation || "Normal");
                         if (success) {
                             window.withdrawItem(item.id, itemFull.display_name);
                         }
@@ -695,7 +695,7 @@ window.withdrawItem = async function(id, itemDisplayName) {
     }
 
     const item = currentUser.inventory.find(i => i.id === id);
-    const mutation = item ? (item.mutation || "None") : "None";
+    const mutation = item ? (item.mutation || "Normal") : "Normal";
 
     const { error: dbError } = await supabaseClient
         .from('withdrawals')
