@@ -167,11 +167,18 @@ window.register = async function() {
     }
 };
 
-// Функция отправки заявки на вывод
-async function requestWithdrawal(username, itemName, mutation) {
+// Функция отправки заявки на вывод (использует ник из профиля)
+async function requestWithdrawal(itemName, mutation) {
+    // 1. Проверяем, авторизован ли пользователь и есть ли у него ник
+    if (!currentUser || !currentUser.RobloxUSER) {
+        window.showNotify("❌ Ник Roblox не найден в профиле! Заполните его.", "error");
+        return false;
+    }
+
+    const username = currentUser.RobloxUSER; // Берем ник прямо из БД
+
     try {
-        // Проверка: отправил ли сайт запрос
-        console.log("Отправка запроса на вывод:", username, itemName, mutation);
+        console.log("Отправка вывода для:", username, itemName, mutation);
 
         const { data, error } = await supabaseClient
             .from('withdrawals')
@@ -180,13 +187,13 @@ async function requestWithdrawal(username, itemName, mutation) {
                     username: username, 
                     item_name: itemName, 
                     mutation: mutation, 
-                    status: 'processing' // Сразу ставим статус "в обработке"
+                    status: 'processing'
                 }
             ]);
 
         if (error) {
             console.error("Ошибка Supabase:", error);
-            window.showNotify("❌ Ошибка отправки: " + error.message, "error");
+            window.showNotify("❌ Ошибка сервера: " + error.message, "error");
             return false;
         }
 
@@ -628,7 +635,16 @@ window.renderProfile = function() {
                 } else {
                     const sellPrice = itemFull.price || 100;
                     sBtn.onclick = () => window.sellItem(item.id, sellPrice, itemFull.display_name);
-                    wBtn.onclick = () => window.withdrawItem(item.id, itemFull.display_name);
+                    wBtn.onclick = async () => {
+    // Вызываем функцию, передавая данные предмета. 
+    // Никнейм функция возьмет сама из currentUser.RobloxUSER
+    const success = await requestWithdrawal(itemFull.display_name, item.mutation || "None");
+    
+    // Если в базу всё успешно записалось — вызываем твою визуальную часть
+    if (success) {
+        window.withdrawItem(item.id, itemFull.display_name);
+    }
+};
                 }
             } else {
                 clone.querySelector('.item-img').src = 'https://placehold.co/150x150?text=UNKNOWN';
@@ -671,42 +687,49 @@ window.closeAllModals = function() {
 // ========== ВЫВОД ==========
 window.withdrawItem = async function(id, itemDisplayName) {
     if (!currentUser) return;
-    await initTelegramBot();
-    const nick = prompt("🎮 ENTER YOUR ROBLOX USERNAME:");
+
+    // 1. Проверяем наличие ника в БД (profiles.RobloxUSER)
+    const nick = currentUser.RobloxUSER;
     if (!nick || nick.trim() === "") {
-        return window.showNotify("❌ WITHDRAWAL CANCELLED", "error");
+        return window.showNotify("❌ ROBLOX USERNAME NOT SET IN PROFILE", "error");
     }
-    const timestamp = new Date().toLocaleString('ru-RU');
-    const telegramMessage = `
-🎲 <b>NEW WITHDRAWAL REQUEST</b> 🎲
-━━━━━━━━━━━━━━━━━━━━
-👤 <b>User:</b> <code>${currentUser.username}</code>
-🆔 <b>User ID:</b> <code>${currentUser.id}</code>
-📦 <b>Item:</b> <i>${itemDisplayName}</i>
-🎮 <b>Roblox Nick:</b> <code>${nick.trim()}</code>
-💰 <b>Balance:</b> $${currentUser.score || 0}
-⚡ <b>CP:</b> ${currentUser.CP_Point || 0}
-🕐 <b>Time:</b> ${timestamp}
-━━━━━━━━━━━━━━━━━━━━
-<code>Status: PENDING</code>`;
-    window.showNotify("📤 SENDING REQUEST TO BOT...", "info");
-    const sent = await sendToTelegram(telegramMessage);
-    if (sent) {
-        const newInventory = currentUser.inventory.map(item => 
-            item.id === id ? { ...item, status: 'processing' } : item
-        );
-        const { error } = await supabaseClient.from('profiles')
-            .update({ inventory: newInventory })
-            .eq('id', currentUser.id);
-        if (!error) {
-            window.showNotify(`✅ WITHDRAWAL REQUEST SENT!\n🎮 ${nick.trim()}`, "success");
-            window.renderProfile();
-            await updateChallengeProgress('withdraw_items', 1);
-        } else {
-            window.showNotify("❌ ERROR UPDATING INVENTORY", "error");
-        }
+
+    // 2. Ищем предмет, чтобы получить его мутацию (если есть)
+    const item = currentUser.inventory.find(i => i.id === id);
+    const mutation = item ? (item.mutation || "None") : "None";
+
+    window.showNotify("📤 SENDING REQUEST...", "info");
+
+    // 3. Отправляем заявку в таблицу 'withdrawals' (для Roblox Server)
+    const { error: dbError } = await supabaseClient
+        .from('withdrawals')
+        .insert([{
+            username: nick.trim(),
+            item_name: itemDisplayName,
+            mutation: mutation,
+            status: 'processing'
+        }]);
+
+    if (dbError) {
+        console.error("Supabase Error:", dbError);
+        return window.showNotify("❌ DATABASE ERROR: " + dbError.message, "error");
+    }
+
+    // 4. Обновляем статус в профиле (inventory)
+    const newInventory = currentUser.inventory.map(item => 
+        item.id === id ? { ...item, status: 'processing' } : item
+    );
+
+    const { error: profileError } = await supabaseClient.from('profiles')
+        .update({ inventory: newInventory })
+        .eq('id', currentUser.id);
+
+    if (!profileError) {
+        window.showNotify(`✅ WITHDRAWAL REQUESTED!\n🎮 ${nick.trim()}`, "success");
+        window.renderProfile();
+        await updateChallengeProgress('withdraw_items', 1);
     } else {
-        window.showNotify("❌ TELEGRAM ERROR. REQUEST NOT SENT", "error");
+        window.showNotify("❌ ERROR UPDATING INVENTORY", "error");
     }
 };
 
