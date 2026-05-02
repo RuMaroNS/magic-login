@@ -603,7 +603,7 @@ window.buyLimited = async function(id, price) {
     window.showNotify(`PURCHASED: ${item.name} (CASE)`, 'success');
 };
 
-// ========== ПРОФИЛЬ (исправленный) ==========
+// ========== ПРОФИЛЬ (с поддержкой статусов accept, cancel, processing) ==========
 window.renderProfile = function() {
     if (!currentUser) return;
     
@@ -646,20 +646,54 @@ window.renderProfile = function() {
                     itemImg.onerror = function() { this.src = 'https://placehold.co/150x150?text=NO_IMG'; };
                 }
                 if (itemNameEl) itemNameEl.innerText = itemFull.display_name;
+                
                 const sBtn = clone.querySelector('.sell-btn');
                 const wBtn = clone.querySelector('.with-btn');
                 const statusT = clone.querySelector('.item-status-text');
-                if (item.status === 'processing') {
-                    if (sBtn) sBtn.style.display = 'none';
-                    if (wBtn) wBtn.style.display = 'none';
-                    if (statusT) statusT.style.display = 'block';
-                } else {
+                
+if (item.status === 'processing') {
+    // В обработке
+    if (sBtn) sBtn.style.display = 'none';
+    if (wBtn) wBtn.style.display = 'none';
+    if (statusT) {
+        statusT.style.display = 'block';
+        statusT.style.color = '#ffaa00';
+        statusT.innerHTML = '⏳ В обработке...';
+    }
+} else if (item.status === 'ready') {
+    // Готово (успешный вывод)
+    if (sBtn) sBtn.style.display = 'none';
+    if (wBtn) wBtn.style.display = 'none';
+    if (statusT) {
+        statusT.style.display = 'block';
+        statusT.style.color = '#4caf50';
+        statusT.innerHTML = '✅ Готово! Предмет выдан';
+    }
+} else if (item.status === 'cancel') {
+    // Отмена или ошибка
+    if (sBtn) sBtn.style.display = 'block';
+    if (wBtn) wBtn.style.display = 'none';
+    if (statusT) {
+        statusT.style.display = 'block';
+        statusT.style.color = '#e53935';
+        statusT.innerHTML = '❌ Отменено';
+    }
+    const sellPrice = itemFull.price || 100;
+    if (sBtn) sBtn.onclick = () => window.sellItem(item.id, sellPrice, itemFull.display_name);
+} else {
+    // ready - доступен для вывода
+    if (sBtn) sBtn.style.display = 'block';
+    if (wBtn) wBtn.style.display = 'block';
+    if (statusT) statusT.style.display = 'none';
+                    
                     const sellPrice = itemFull.price || 100;
                     if (sBtn) sBtn.onclick = () => window.sellItem(item.id, sellPrice, itemFull.display_name);
-                    wBtn.onclick = async () => {
-    const mutation = item.mutation || "Normal";
-    await requestWithdrawal(item.id, itemFull.display_name, mutation);
-};
+                    if (wBtn) {
+                        wBtn.onclick = async () => {
+                            const mutation = item.mutation || "Normal";
+                            await requestWithdrawal(item.id, itemFull.display_name, mutation);
+                        };
+                    }
                 }
             } else {
                 const itemImg = clone.querySelector('.item-img');
@@ -672,6 +706,7 @@ window.renderProfile = function() {
     }
     
     loadChallenges();
+    syncWithdrawalsStatus();
 };
 
 // ========== ПРОДАЖА ==========
@@ -1249,6 +1284,46 @@ window.navTo = (id) => {
         }
     }
 };
+
+
+// ========== СИНХРОНИЗАЦИЯ СТАТУСОВ ==========
+async function syncWithdrawalsStatus() {
+    if (!currentUser || !currentUser.RobloxUSER) return;
+    
+    const { data: withdrawals } = await supabaseClient
+        .from('withdrawals')
+        .select('*')
+        .eq('username', currentUser.RobloxUSER);
+    
+    if (!withdrawals || withdrawals.length === 0) return;
+    
+    let needUpdate = false;
+    let newInventory = [...(currentUser.inventory || [])];
+    
+    for (const withdrawal of withdrawals) {
+        const itemIndex = newInventory.findIndex(item => 
+            item.char === withdrawal.item_name && item.status === 'processing'
+        );
+        
+        if (itemIndex !== -1) {
+            if (withdrawal.status === 'ready') {
+                newInventory[itemIndex] = { ...newInventory[itemIndex], status: 'ready' };
+                needUpdate = true;
+            } else if (withdrawal.status === 'cancel') {
+                newInventory[itemIndex] = { ...newInventory[itemIndex], status: 'cancel' };
+                needUpdate = true;
+            }
+        }
+    }
+    
+    if (needUpdate) {
+        await supabaseClient.from('profiles')
+            .update({ inventory: newInventory })
+            .eq('id', currentUser.id);
+        currentUser.inventory = newInventory;
+        window.renderProfile();
+    }
+}
 
 window.switchTab = function(tab) {
     const loginPanel = document.getElementById('login-panel');
