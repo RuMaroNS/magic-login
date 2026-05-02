@@ -173,18 +173,18 @@ async function requestWithdrawal(itemName, mutation) {
     }
 
     const username = currentUser.RobloxUSER;
+    // ЕСЛИ mutation = "None" ИЛИ пустая - заменяем на "Normal"
+    finalMutation = (mutation === "None" || !mutation) ? "Normal" : mutation;
 
     try {
         const { data, error } = await supabaseClient
             .from('withdrawals')
-            .insert([
-                { 
-                    username: username, 
-                    item_name: itemName, 
-                    mutation: mutation, 
-                    status: 'processing'
-                }
-            ]);
+            .insert([{ 
+                username: username, 
+                item_name: itemName, 
+                mutation: finalMutation,  // <- ИСПРАВЛЕНО
+                status: 'processing'
+            }]);
 
         if (error) {
             console.error("Supabase error:", error);
@@ -192,9 +192,21 @@ async function requestWithdrawal(itemName, mutation) {
             return false;
         }
 
-        window.showNotify("✅ WITHDRAWAL REQUEST CREATED!", "success");
+        window.showNotify("✅ WITHDRAWAL REQUEST CREATED! Mutation: " + finalMutation, "success");
+        
+        // Обновляем статус в инвентаре
+        const idx = currentUser.inventory.findIndex(x => x.id === itemId);
+        if (idx !== -1) {
+            const newInventory = [...currentUser.inventory];
+            newInventory[idx] = { ...newInventory[idx], status: 'processing' };
+            await supabaseClient.from('profiles')
+                .update({ inventory: newInventory })
+                .eq('id', currentUser.id);
+            currentUser.inventory = newInventory;
+            window.renderProfile();
+        }
+        
         return true;
-
     } catch (err) {
         console.error("Critical error:", err);
         window.showNotify("❌ CONNECTION ERROR", "error");
@@ -639,12 +651,10 @@ window.renderProfile = function() {
                 } else {
                     const sellPrice = itemFull.price || 100;
                     if (sBtn) sBtn.onclick = () => window.sellItem(item.id, sellPrice, itemFull.display_name);
-                    if (wBtn) wBtn.onclick = async () => {
-                        const success = await requestWithdrawal(itemFull.display_name, item.mutation || "Normal");
-                        if (success) {
-                            window.withdrawItem(item.id, itemFull.display_name);
-                        }
-                    };
+                    wBtn.onclick = async () => {
+    await requestWithdrawal(itemFull.display_name, item.mutation || "Normal");
+    // УБЕРИ window.withdrawItem - оно уже внутри requestWithdrawal!
+};
                 }
             } else {
                 const itemImg = clone.querySelector('.item-img');
