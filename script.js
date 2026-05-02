@@ -166,35 +166,39 @@ window.register = async function() {
 };
 
 // ========== ЗАПРОС ВЫВОДА (БЕРЁТ НИК ИЗ БД) ==========
-async function requestWithdrawal(itemName, mutation) {
+// Функция отправки заявки на вывод
+async function requestWithdrawal(itemId, itemName, mutation) {
+    // 1. Проверяем, авторизован ли пользователь и есть ли у него ник
     if (!currentUser || !currentUser.RobloxUSER) {
-        window.showNotify("❌ ROBLOX USERNAME NOT SET IN PROFILE!", "error");
+        window.showNotify("❌ Roblox ник не найден в профиле! Заполните его.", "error");
         return false;
     }
 
-    const username = currentUser.RobloxUSER;
-    // ЕСЛИ mutation = "None" ИЛИ пустая - заменяем на "Normal"
-    finalMutation = (mutation === "None" || !mutation) ? "Normal" : mutation;
+    const username = currentUser.RobloxUSER; // Берем ник прямо из БД
 
     try {
+        console.log("Отправка вывода для:", username, itemName, mutation);
+
         const { data, error } = await supabaseClient
             .from('withdrawals')
-            .insert([{ 
-                username: username, 
-                item_name: itemName, 
-                mutation: finalMutation,  // <- ИСПРАВЛЕНО
-                status: 'processing'
-            }]);
+            .insert([
+                { 
+                    username: username, 
+                    item_name: itemName, 
+                    mutation: mutation || "Normal",
+                    status: 'processing'
+                }
+            ]);
 
         if (error) {
-            console.error("Supabase error:", error);
-            window.showNotify("❌ SERVER ERROR: " + error.message, "error");
+            console.error("Ошибка Supabase:", error);
+            window.showNotify("❌ Ошибка сервера: " + error.message, "error");
             return false;
         }
 
-        window.showNotify("✅ WITHDRAWAL REQUEST CREATED! Mutation: " + finalMutation, "success");
+        window.showNotify("✅ Заявка создана! Ожидайте выдачу в игре.", "success");
         
-        // Обновляем статус в инвентаре
+        // Обновляем статус предмета в инвентаре
         const idx = currentUser.inventory.findIndex(x => x.id === itemId);
         if (idx !== -1) {
             const newInventory = [...currentUser.inventory];
@@ -207,9 +211,10 @@ async function requestWithdrawal(itemName, mutation) {
         }
         
         return true;
+
     } catch (err) {
-        console.error("Critical error:", err);
-        window.showNotify("❌ CONNECTION ERROR", "error");
+        console.error("Критическая ошибка:", err);
+        window.showNotify("❌ Произошла ошибка связи.", "error");
         return false;
     }
 }
@@ -652,8 +657,8 @@ window.renderProfile = function() {
                     const sellPrice = itemFull.price || 100;
                     if (sBtn) sBtn.onclick = () => window.sellItem(item.id, sellPrice, itemFull.display_name);
                     wBtn.onclick = async () => {
-    await requestWithdrawal(itemFull.display_name, item.mutation || "Normal");
-    // УБЕРИ window.withdrawItem - оно уже внутри requestWithdrawal!
+    const mutation = item.mutation || "Normal";
+    await requestWithdrawal(item.id, itemFull.display_name, mutation);
 };
                 }
             } else {
