@@ -65,6 +65,7 @@
         <div id="page-case-info" class="page">
             <div id="case-detail-content"></div>
             <button class="back-btn" onclick="window.navTo('cases')">← BACK</button>
+            <button class="fast-drop-btn" onclick="window.fastDropCase('${caseData.id}')">⚡ FAST DROP ($${caseData.price})</button>
         </div>
 
         <div id="page-market" class="page">
@@ -75,13 +76,23 @@
         <div id="page-profile" class="page">
             <div class="profile-container">
                 <div class="user-card">
-                    <div class="card-header">
-                        <div class="user-avatar"><div class="avatar-glow"></div></div>
+                    <div class="user-avatar" id="profile-avatar-container">
+    <img id="profile-avatar-img" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">
+    <div class="avatar-glow"></div>
+</div>
                         <div class="user-main-info">
                             <h2 id="p-username">LOADING...</h2>
                             <div class="status-badge"><span class="pulse-dot"></span> ONLINE</div>
                         </div>
                     </div>
+                <div class="avatar-upload-section">
+    <div class="avatar-preview" id="avatar-preview-container">
+        <img id="avatar-preview-img" src="">
+    </div>
+    <p style="font-size:12px; color:#e53935;">📸 AVATAR SYSTEM</p>
+    <p class="avatar-instruction">Upload to: GitHub /Avatars/ folder<br>Filename: <strong id="avatar-filename-hint">USERNAME.png</strong></p>
+    <button class="neon-btn-small" onclick="window.refreshAvatar()">🔄 REFRESH AVATAR</button>
+</div>
                     <div class="card-stats">
                         <div class="stat-box">
                             <span class="label">BALANCE</span>
@@ -138,6 +149,18 @@
             </div>
         </div>
 
+        <div id="page-leaderstats" class="page">
+    <div class="leaderboard-container">
+        <div class="leaderboard-card">
+            <div class="leaderboard-header">🏆 TOP 10 PLAYERS 🏆</div>
+            <div class="leaderboard-list" id="leaderboard-list">
+                <div style="text-align:center; padding:20px;">Loading leaderboard...</div>
+            </div>
+            <div class="min-requirement">⚠️ Minimum 1,000 coins to enter Top 10</div>
+        </div>
+    </div>
+</div>
+
         <!-- ADMIN PAGE -->
         <div id="page-admin" class="page">
             <div class="admin-panel-container">
@@ -193,6 +216,7 @@
             <button onclick="window.navTo('cases')">CASES</button>
             <button onclick="window.navTo('market')">MARKET</button>
             <button onclick="window.navTo('profile')">PROFILE</button>
+            <button onclick="window.navTo('leaderstats')">LEADERSTATS</button>
             <button id="admin-nav-btn" onclick="window.navTo('admin')" style="display:none;">ADMIN</button>
         </nav>
     </div>
