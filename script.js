@@ -1323,26 +1323,42 @@ window.refreshAvatar = function() {
 };
 
 // ========== LEADERBOARD ==========
+// Обновляем renderLeaderboard для работы с real-time
+const originalRenderLeaderboard = window.renderLeaderboard;
 window.renderLeaderboard = async function() {
+    if (!currentUser) return;
+    
+    // Получаем топ игроков по score
     const { data: users } = await supabaseClient
         .from('profiles')
-        .select('username, score, last_login')
+        .select('id, username, score')
         .gte('score', 1000)
         .order('score', { ascending: false })
         .limit(10);
     
-    const container = document.getElementById('leaderboard-list');
-    if (!container) return;
     if (!users || users.length === 0) {
-        container.innerHTML = '<div style="text-align:center; padding:20px; color:#888;">⚠️ No players with 1000+ coins</div>';
+        document.getElementById('leaderboard-list').innerHTML = '<div style="text-align:center; padding:20px; color:#888;">⚠️ No players with 1000+ coins</div>';
         return;
     }
     
-    const now = new Date();
+    // Получаем онлайн статусы для этих пользователей
+    const userIds = users.map(u => u.id);
+    const { data: onlineStatuses } = await supabaseClient
+        .from('online_status')
+        .select('user_id, is_online, last_seen')
+        .in('user_id', userIds);
+    
+    const onlineMap = {};
+    onlineStatuses?.forEach(s => {
+        // Онлайн если is_online true И last_seen был меньше 2 минут назад
+        const isActuallyOnline = s.is_online && (new Date() - new Date(s.last_seen)) < 120000;
+        onlineMap[s.user_id] = isActuallyOnline;
+    });
+    
     let html = '';
     for (let i = 0; i < users.length; i++) {
         const u = users[i];
-        const isOnline = (now - new Date(u.last_login)) < 3600000;
+        const isOnline = onlineMap[u.id] || false;
         const rank = i + 1;
         let rankClass = rank === 1 ? 'top1' : (rank === 2 ? 'top2' : (rank === 3 ? 'top3' : ''));
         const avatarExists = await window.checkAvatarExists(u.username);
@@ -1362,7 +1378,7 @@ window.renderLeaderboard = async function() {
             </div>
         `;
     }
-    container.innerHTML = html;
+    document.getElementById('leaderboard-list').innerHTML = html;
 };
 
 // ========== FAST DROP ==========
@@ -1488,6 +1504,102 @@ window.switchTab = function(tab) {
         btns[1].classList.add('active');
     }
 };
+
+// ========== REAL-TIME ONLINE СИСТЕМА ==========
+
+// При логине/выходе обновляем статус
+async function setUserOnline(isOnline = true) {
+    if (!currentUser) return;
+    
+    const { error } = await supabaseClient
+        .from('online_status')
+        .upsert({
+            user_id: currentUser.id,
+            username: currentUser.username,
+            last_seen: new Date().toISOString(),
+            is_online: isOnline
+        });
+    
+    if (error) console.error("Online status error:", error);
+}
+
+// При каждом действии обновляем last_seen
+async function pingOnline() {
+    if (!currentUser) return;
+    
+    await supabaseClient
+        .from('online_status')
+        .update({ last_seen: new Date().toISOString() })
+        .eq('user_id', currentUser.id);
+}
+
+// Подписываемся на изменения онлайн статусов в реальном времени
+function subscribeToOnlineStatus() {
+    supabaseClient
+        .channel('online-status-channel')
+        .on(
+            'postgres_changes',
+            { event: '*', schema: 'public', table: 'online_status' },
+            (payload) => {
+                // Когда обновляется онлайн — перерисовываем лидерборд
+                if (document.getElementById('page-leaderstats').classList.contains('active')) {
+                    window.renderLeaderboard();
+                }
+            }
+        )
+        .subscribe();
+    
+    // Также подписываемся на изменения в profiles (last_login)
+    supabaseClient
+        .channel('profiles-online-channel')
+        .on(
+            'postgres_changes',
+            { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${currentUser?.id}` },
+            (payload) => {
+                if (payload.new && document.getElementById('page-leaderstats').classList.contains('active')) {
+                    window.renderLeaderboard();
+                }
+            }
+        )
+        .subscribe();
+}
+
+// При закрытии вкладки/страницы — помечаем оффлайн
+window.addEventListener('beforeunload', () => {
+    if (currentUser) {
+        supabaseClient
+            .from('online_status')
+            .update({ is_online: false, last_seen: new Date().toISOString() })
+            .eq('user_id', currentUser.id);
+    }
+});
+
+// При каждом клике/действии — пингуем
+document.addEventListener('click', () => pingOnline());
+document.addEventListener('keydown', () => pingOnline());
+
+// Модифицируем login — при входе ставим онлайн
+const originalLogin = window.login;
+window.login = async function() {
+    await originalLogin();
+    if (currentUser) {
+        await setUserOnline(true);
+        subscribeToOnlineStatus();
+        pingOnline();
+    }
+};
+
+// Добавляем ping во все действия
+const actionsToPing = ['openCaseWithAnimation', 'fastDropCase', 'sellItem', 'buyLimited', 'activatePromoCode', 'withdrawItem', 'updateRoblox'];
+actionsToPing.forEach(actionName => {
+    const originalAction = window[actionName];
+    if (originalAction) {
+        window[actionName] = async function(...args) {
+            await pingOnline();
+            return originalAction.apply(this, args);
+        };
+    }
+});
 
 window.closeModal = function(modalId) {
     document.getElementById(modalId).style.display = 'none';
