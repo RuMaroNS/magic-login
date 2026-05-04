@@ -1,4 +1,4 @@
-const SB_URL = 'https://wbkygibviddkdjxbahbg.supabase.co';
+ const SB_URL = 'https://wbkygibviddkdjxbahbg.supabase.co';
 const SB_KEY = 'sb_publishable_l5wIAt6RrAl4Uo8uZKerRQ_xBYDS-Kv';
 const supabaseClient = supabase.createClient(SB_URL, SB_KEY);
 const GITHUB_BASE = "https://raw.githubusercontent.com/RuMaroNs/magic-login/main/img/";
@@ -468,6 +468,7 @@ function showLootWin(selectedLoot) {
         common: { color: '#aaa', text: 'COMMON', icon: '⬜' },
         rare: { color: '#3399ff', text: 'RARE', icon: '🔵' },
         epic: { color: '#aa33ff', text: 'EPIC', icon: '🟣' },
+        mythic: { color: '#ff00aa', text: 'MYTHIC', icon: '✨' }, // Добавьте эту строку!
         legendary: { color: '#ffaa00', text: 'LEGENDARY', icon: '🌟' }
     };
     const config = rarityConfig[rarity];
