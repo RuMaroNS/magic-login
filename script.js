@@ -1283,6 +1283,137 @@ window.filterUsers = function() {
     });
 };
 
+// ========== AVATAR SYSTEM ==========
+const AVATAR_BASE_URL = "https://raw.githubusercontent.com/RuMaroNs/magic-login/main/img/Avatars/";
+
+window.getAvatarUrl = function(username) {
+    if (!username) return null;
+    return `${AVATAR_BASE_URL}${encodeURIComponent(username)}.png`;
+};
+
+window.checkAvatarExists = async function(username) {
+    try {
+        const response = await fetch(window.getAvatarUrl(username), { method: 'HEAD' });
+        return response.ok;
+    } catch { return false; }
+};
+
+window.updateProfileAvatar = async function() {
+    if (!currentUser) return;
+    const avatarImg = document.getElementById('profile-avatar-img');
+    const previewImg = document.getElementById('avatar-preview-img');
+    const hint = document.getElementById('avatar-filename-hint');
+    if (hint) hint.innerText = `${currentUser.username}.png`;
+    
+    const exists = await window.checkAvatarExists(currentUser.username);
+    if (exists) {
+        const url = window.getAvatarUrl(currentUser.username);
+        if (avatarImg) avatarImg.src = url;
+        if (previewImg) previewImg.src = url;
+    } else {
+        const fallback = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%23333'/%3E%3Ctext x='50' y='67' font-size='40' text-anchor='middle' fill='white'%3E${currentUser.username.charAt(0).toUpperCase()}%3C/text%3E%3C/svg%3E`;
+        if (avatarImg) avatarImg.src = fallback;
+        if (previewImg) previewImg.src = fallback;
+    }
+};
+
+window.refreshAvatar = function() {
+    window.updateProfileAvatar();
+    window.showNotify("🔄 Avatar refreshed!", "success");
+};
+
+// ========== LEADERBOARD ==========
+window.renderLeaderboard = async function() {
+    const { data: users } = await supabaseClient
+        .from('profiles')
+        .select('username, score, last_login')
+        .gte('score', 1000)
+        .order('score', { ascending: false })
+        .limit(10);
+    
+    const container = document.getElementById('leaderboard-list');
+    if (!container) return;
+    if (!users || users.length === 0) {
+        container.innerHTML = '<div style="text-align:center; padding:20px; color:#888;">⚠️ No players with 1000+ coins</div>';
+        return;
+    }
+    
+    const now = new Date();
+    let html = '';
+    for (let i = 0; i < users.length; i++) {
+        const u = users[i];
+        const isOnline = (now - new Date(u.last_login)) < 3600000;
+        const rank = i + 1;
+        let rankClass = rank === 1 ? 'top1' : (rank === 2 ? 'top2' : (rank === 3 ? 'top3' : ''));
+        const avatarExists = await window.checkAvatarExists(u.username);
+        
+        html += `
+            <div class="leader-row">
+                <div class="leader-rank ${rankClass}">#${rank}</div>
+                <div class="leader-avatar">
+                    ${avatarExists ? `<img class="leader-avatar-img" src="${window.getAvatarUrl(u.username)}">` : `<div style="width:48px;height:48px;border-radius:50%;background:#444;display:flex;align-items:center;justify-content:center;font-weight:bold;">${u.username.charAt(0)}</div>`}
+                    <div class="online-indicator ${isOnline ? 'online' : 'offline'}"></div>
+                </div>
+                <div class="leader-info">
+                    <div class="leader-name">${u.username}</div>
+                    <div class="leader-stats">${isOnline ? '🟢 ONLINE' : '⚫ OFFLINE'}</div>
+                </div>
+                <div class="leader-score">💰 ${window.formatNumber(u.score)}</div>
+            </div>
+        `;
+    }
+    container.innerHTML = html;
+};
+
+// ========== FAST DROP ==========
+window.fastDropCase = async function(caseId) {
+    if (!currentUser) return;
+    const caseData = allCases.find(c => c.id == caseId);
+    if (!caseData) return;
+    if ((currentUser.score || 0) < caseData.price) {
+        return window.showNotify("INSUFFICIENT FUNDS", "error");
+    }
+    let lootItems = caseData.loot || [];
+    if (typeof lootItems === 'string') {
+        try { lootItems = JSON.parse(lootItems); } catch(e) { lootItems = []; }
+    }
+    if (lootItems.length === 0) return window.showNotify("NO LOOT IN THIS CASE", "error");
+    
+    const selected = getRandomItemFromLoot(lootItems);
+    if (selected) {
+        const newScore = (currentUser.score || 0) - caseData.price;
+        const newItem = { id: Date.now(), char: selected.name, status: 'ready' };
+        const newInv = [...(currentUser.inventory || []), newItem];
+        
+        const { error } = await supabaseClient.from('profiles').update({
+            inventory: newInv, score: newScore
+        }).eq('id', currentUser.id);
+        
+        if (!error) {
+            currentUser.score = newScore;
+            currentUser.inventory = newInv;
+            const itemFull = allItems[selected.name];
+            window.showNotify(`⚡ FAST DROP! +${itemFull?.display_name || selected.name}`, 'success');
+            window.renderProfile();
+            document.getElementById('h-balance').innerText = window.formatNumber(newScore);
+            await updateChallengeProgress('open_cases', 1);
+        } else {
+            window.showNotify("ERROR", "error");
+        }
+    }
+};
+
+// Обновляем рендер профиля
+const oldRenderProfile = window.renderProfile;
+window.renderProfile = function() { oldRenderProfile(); window.updateProfileAvatar(); };
+
+// Авто-обновление последнего входа
+setInterval(() => {
+    if (currentUser) {
+        supabaseClient.from('profiles').update({ last_login: new Date().toISOString() }).eq('id', currentUser.id);
+    }
+}, 60000);
+
 // ========== НАВИГАЦИЯ ==========
 window.navTo = (id) => {
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -1291,6 +1422,7 @@ window.navTo = (id) => {
     if (id === 'profile') window.renderProfile();
     if (id === 'cases') window.renderAllCases();
     if (id === 'market') window.renderMarket();
+    if (id === 'leaderstats') window.renderLeaderboard();
     if (id === 'admin') {
         if (currentUser && currentUser.IsAdmin === 'true') {
             window.renderAdminPanel();
