@@ -33,6 +33,21 @@ window.showNotify = function(text, type = "success") {
     }, 3000);
 };
 
+window.formatNumber = function(num) {
+    if (!num || num < 1000) return (num || 0).toString();
+    
+    const suffixes = ["K", "M", "B", "T", "Qa", "Qn"];
+    // Определяем степень числа (логарифм по основанию 10)
+    const magnitude = Math.floor(Math.log10(num) / 3);
+    const suffix = suffixes[magnitude - 1];
+    
+    // Делим число на 1000 в нужной степени
+    const scaled = num / Math.pow(1000, magnitude);
+    
+    // Округляем до 1 знака и убираем .0, если оно есть
+    return (Math.round(scaled * 10) / 10).toFixed(1).replace(/\.0$/, '') + suffix;
+};
+
 async function loadItemsMeta() {
     const { data } = await supabaseClient.from('items_meta').select('*');
     if (data) {
@@ -91,8 +106,8 @@ window.login = async function() {
         document.getElementById('auth-screen').style.display = 'none';
         document.getElementById('game-interface').style.display = 'block';
         document.getElementById('top-bar').style.display = 'flex';
-        document.getElementById('h-balance').innerText = currentUser.score || 0;
-        document.getElementById('h-cp').innerText = currentUser.CP_Point || 0;
+document.getElementById('h-balance').innerText = window.formatNumber(currentUser.score || 0);
+document.getElementById('h-cp').innerText = window.formatNumber(currentUser.CP_Point || 0);
         
         const adminBtn = document.getElementById('admin-nav-btn');
         if (adminBtn) adminBtn.style.display = currentUser.IsAdmin === 'true' ? 'block' : 'none';
@@ -296,7 +311,7 @@ window.claimLoot = async function() {
             window.showNotify(`🎁 YOU GOT: ${itemFull?.display_name || window.pendingLoot.char}`, 'success');
             window.renderProfile();
             window.renderAllCases();
-            document.getElementById('h-balance').innerText = newScore;
+document.getElementById('h-balance').innerText = window.formatNumber(newScore);
         } else {
             window.showNotify("ERROR SAVING ITEM", "error");
         }
@@ -615,8 +630,8 @@ window.renderProfile = function() {
     const robloxInput = document.getElementById('roblox-input');
     
     if (pUsername) pUsername.innerText = currentUser.username;
-    if (pWorth) pWorth.innerText = currentUser.score || 0;
-    if (pCpVal) pCpVal.innerText = currentUser.CP_Point || 0;
+if (pWorth) pWorth.innerText = window.formatNumber(currentUser.score || 0);
+if (pCpVal) pCpVal.innerText = window.formatNumber(currentUser.CP_Point || 0);
     if (robloxInput) robloxInput.value = currentUser.RobloxUSER || '';
     
     const list = document.getElementById('inventory-list');
@@ -1353,8 +1368,8 @@ function subscribeUpdates() {
         payload => {
             if (currentUser && payload.new.id === currentUser.id) {
                 currentUser = payload.new;
-                document.getElementById('h-balance').innerText = currentUser.score || 0;
-                document.getElementById('h-cp').innerText = currentUser.CP_Point || 0;
+document.getElementById('h-balance').innerText = window.formatNumber(currentUser.score || 0);
+document.getElementById('h-cp').innerText = window.formatNumber(currentUser.CP_Point || 0);
                 if (document.getElementById('page-profile').classList.contains('active')) {
                     window.renderProfile();
                 }
