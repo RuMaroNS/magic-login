@@ -81,7 +81,7 @@ body {
 .currency-badge.cash { color: #4caf50; }
 .currency-badge.cp { color: #ff9800; }
 
-/* УВЕДОМЛЕНИЯ */
+/* УВЕДОМЛЕНИЯ ОБЫЧНЫЕ */
 #notification-container {
     position: fixed;
     top: 100px;
@@ -123,6 +123,29 @@ body {
 @keyframes n-p {
     from { width: 100%; }
     to { width: 0%; }
+}
+
+/* ГЛОБАЛЬНЫЕ УВЕДОМЛЕНИЯ (ОТ АДМИНА) */
+.global-toast {
+    background: linear-gradient(135deg, #e53935, #c62828);
+    border-radius: 30px;
+    padding: 10px 20px;
+    color: white;
+    font-weight: bold;
+    font-size: 14px;
+    box-shadow: 0 0 15px rgba(229,57,53,0.5);
+    animation: globalFade 4s ease forwards;
+    pointer-events: none;
+    text-align: center;
+    backdrop-filter: blur(4px);
+    border: 1px solid rgba(255,255,255,0.3);
+}
+
+@keyframes globalFade {
+    0% { opacity: 0; transform: translateY(-20px); }
+    10% { opacity: 1; transform: translateY(0); }
+    90% { opacity: 1; transform: translateY(0); }
+    100% { opacity: 0; transform: translateY(-20px); display: none; }
 }
 
 /* AUTH SCREEN */
