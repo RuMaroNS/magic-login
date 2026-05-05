@@ -4,6 +4,7 @@ const supabaseClient = supabase.createClient(SB_URL, SB_KEY);
 const GITHUB_BASE = "https://raw.githubusercontent.com/RuMaroNs/magic-login/main/img/";
 const TELEGRAM_BOT_TOKEN = '8630026221:AAGfuIfKQPdxSkyhU3IVCnRtRkKrlzKD0nk'
 const TELEGRAM_CHAT_ID = '6176762600'
+const AVATAR_BASE_URL = "https://raw.githubusercontent.com/RuMaroNs/magic-login/main/img/Avatars/";
 
 let currentUser = null;
 let allCases = [];
@@ -1283,104 +1284,6 @@ window.filterUsers = function() {
     });
 };
 
-// ========== AVATAR SYSTEM ==========
-const AVATAR_BASE_URL = "https://raw.githubusercontent.com/RuMaroNs/magic-login/main/img/Avatars/";
-
-window.getAvatarUrl = function(username) {
-    if (!username) return null;
-    return `${AVATAR_BASE_URL}${encodeURIComponent(username)}.png`;
-};
-
-window.checkAvatarExists = async function(username) {
-    try {
-        const response = await fetch(window.getAvatarUrl(username), { method: 'HEAD' });
-        return response.ok;
-    } catch { return false; }
-};
-
-window.updateProfileAvatar = async function() {
-    if (!currentUser) return;
-    const avatarImg = document.getElementById('profile-avatar-img');
-    const previewImg = document.getElementById('avatar-preview-img');
-    const hint = document.getElementById('avatar-filename-hint');
-    if (hint) hint.innerText = `${currentUser.username}.png`;
-    
-    const exists = await window.checkAvatarExists(currentUser.username);
-    if (exists) {
-        const url = window.getAvatarUrl(currentUser.username);
-        if (avatarImg) avatarImg.src = url;
-        if (previewImg) previewImg.src = url;
-    } else {
-        const fallback = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='%23333'/%3E%3Ctext x='50' y='67' font-size='40' text-anchor='middle' fill='white'%3E${currentUser.username.charAt(0).toUpperCase()}%3C/text%3E%3C/svg%3E`;
-        if (avatarImg) avatarImg.src = fallback;
-        if (previewImg) previewImg.src = fallback;
-    }
-};
-
-window.refreshAvatar = function() {
-    window.updateProfileAvatar();
-    window.showNotify("🔄 Avatar refreshed!", "success");
-};
-
-// ========== LEADERBOARD ==========
-// Обновляем renderLeaderboard для работы с real-time
-const originalRenderLeaderboard = window.renderLeaderboard;
-window.renderLeaderboard = async function() {
-    if (!currentUser) return;
-    
-    // Получаем топ игроков по score
-    const { data: users } = await supabaseClient
-        .from('profiles')
-        .select('id, username, score')
-        .gte('score', 1000)
-        .order('score', { ascending: false })
-        .limit(10);
-    
-    if (!users || users.length === 0) {
-        document.getElementById('leaderboard-list').innerHTML = '<div style="text-align:center; padding:20px; color:#888;">⚠️ No players with 1000+ coins</div>';
-        return;
-    }
-    
-    // Получаем онлайн статусы для этих пользователей
-    const userIds = users.map(u => u.id);
-    const { data: onlineStatuses } = await supabaseClient
-        .from('online_status')
-        .select('user_id, is_online, last_seen')
-        .in('user_id', userIds);
-    
-    const onlineMap = {};
-    onlineStatuses?.forEach(s => {
-        // Онлайн если is_online true И last_seen был меньше 2 минут назад
-        const isActuallyOnline = s.is_online && (new Date() - new Date(s.last_seen)) < 120000;
-        onlineMap[s.user_id] = isActuallyOnline;
-    });
-    
-    let html = '';
-    for (let i = 0; i < users.length; i++) {
-        const u = users[i];
-        const isOnline = onlineMap[u.id] || false;
-        const rank = i + 1;
-        let rankClass = rank === 1 ? 'top1' : (rank === 2 ? 'top2' : (rank === 3 ? 'top3' : ''));
-        const avatarExists = await window.checkAvatarExists(u.username);
-        
-        html += `
-            <div class="leader-row">
-                <div class="leader-rank ${rankClass}">#${rank}</div>
-                <div class="leader-avatar">
-                    ${avatarExists ? `<img class="leader-avatar-img" src="${window.getAvatarUrl(u.username)}">` : `<div style="width:48px;height:48px;border-radius:50%;background:#444;display:flex;align-items:center;justify-content:center;font-weight:bold;">${u.username.charAt(0)}</div>`}
-                    <div class="online-indicator ${isOnline ? 'online' : 'offline'}"></div>
-                </div>
-                <div class="leader-info">
-                    <div class="leader-name">${u.username}</div>
-                    <div class="leader-stats">${isOnline ? '🟢 ONLINE' : '⚫ OFFLINE'}</div>
-                </div>
-                <div class="leader-score">💰 ${window.formatNumber(u.score)}</div>
-            </div>
-        `;
-    }
-    document.getElementById('leaderboard-list').innerHTML = html;
-};
-
 // ========== FAST DROP ==========
 window.fastDropCase = async function(caseId) {
     if (!currentUser) return;
@@ -1603,6 +1506,225 @@ actionsToPing.forEach(actionName => {
 
 window.closeModal = function(modalId) {
     document.getElementById(modalId).style.display = 'none';
+};
+
+// ========== SUPABASE STORAGE AVATAR UPLOAD ==========
+
+// Обновлённая функция получения аватарки (сначала проверяет Storage, потом GitHub)
+window.getAvatarUrl = function(username) {
+    if (!username) return null;
+    // Сначала пробуем Supabase Storage
+    const supabaseUrl = supabaseClient.storage.from('avatars').getPublicUrl(`avatars/${username}.png`).data.publicUrl;
+    return supabaseUrl;
+};
+
+// Проверка существования аватарки (сначала Storage, потом GitHub как fallback)
+window.checkAvatarExists = async function(username) {
+    if (!username) return false;
+    
+    // Проверяем Supabase Storage
+    const supabaseUrl = supabaseClient.storage.from('avatars').getPublicUrl(`avatars/${username}.png`).data.publicUrl;
+    try {
+        const response = await fetch(supabaseUrl, { method: 'HEAD' });
+        if (response.ok) return true;
+    } catch(e) {}
+    
+    // Fallback: проверяем GitHub (старые аватарки)
+    const githubUrl = `${AVATAR_BASE_URL}${encodeURIComponent(username)}.png`;
+    try {
+        const response = await fetch(githubUrl, { method: 'HEAD' });
+        return response.ok;
+    } catch { return false; }
+};
+
+// Обновлённая функция отображения аватарки
+window.updateProfileAvatar = async function() {
+    if (!currentUser) return;
+    const avatarImg = document.getElementById('profile-avatar-img');
+    const previewImg = document.getElementById('avatar-preview-img');
+    const hint = document.getElementById('avatar-filename-hint');
+    if (hint) hint.innerText = `${currentUser.username}.png`;
+    
+    const exists = await window.checkAvatarExists(currentUser.username);
+    if (exists) {
+        // Сначала пробуем Supabase Storage
+        let url = supabaseClient.storage.from('avatars').getPublicUrl(`avatars/${currentUser.username}.png`).data.publicUrl;
+        // Проверяем, есть ли в профиле сохранённый URL
+        if (currentUser.avatar_url && currentUser.avatar_url.startsWith('http')) {
+            url = currentUser.avatar_url;
+        }
+        if (avatarImg) avatarImg.src = url;
+        if (previewImg) previewImg.src = url;
+    } else {
+        // Fallback: буква в кружке
+        const letter = currentUser.username.charAt(0).toUpperCase();
+        const colors = ['#e53935', '#ff9800', '#4caf50', '#2196f3', '#9c27b0'];
+        const color = colors[currentUser.username.length % colors.length];
+        const fallback = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='${color}'/%3E%3Ctext x='50' y='67' font-size='40' text-anchor='middle' fill='white' font-weight='bold'%3E${letter}%3C/text%3E%3C/svg%3E`;
+        if (avatarImg) avatarImg.src = fallback;
+        if (previewImg) previewImg.src = fallback;
+    }
+};
+
+// Функция загрузки аватарки в Supabase Storage
+async function uploadAvatarToSupabase(file) {
+    if (!currentUser) return false;
+    
+    // Проверка размера (макс 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+        window.showNotify("❌ File too large! Max 2MB", "error");
+        return false;
+    }
+    
+    // Проверка типа
+    const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg'];
+    if (!allowedTypes.includes(file.type)) {
+        window.showNotify("❌ Only PNG or JPG images allowed!", "error");
+        return false;
+    }
+    
+    // Показываем прогресс
+    let progressBar = document.querySelector('.upload-progress-bar');
+    if (!progressBar) {
+        const progressDiv = document.createElement('div');
+        progressDiv.className = 'upload-progress';
+        progressDiv.innerHTML = '<div class="upload-progress-bar"></div>';
+        document.querySelector('.avatar-upload-section')?.appendChild(progressDiv);
+        progressBar = progressDiv.querySelector('.upload-progress-bar');
+    }
+    if (progressBar) progressBar.style.width = '30%';
+    
+    const fileExt = file.type === 'image/png' ? 'png' : 'jpg';
+    const fileName = `${currentUser.username}.${fileExt}`;
+    const filePath = `avatars/${fileName}`;
+    
+    try {
+        // Сначала удаляем старый аватар, если есть
+        await supabaseClient.storage.from('avatars').remove([filePath]);
+        
+        if (progressBar) progressBar.style.width = '60%';
+        
+        // Загружаем новый
+        const { error: uploadError } = await supabaseClient.storage
+            .from('avatars')
+            .upload(filePath, file, { upsert: true });
+        
+        if (uploadError) throw uploadError;
+        
+        if (progressBar) progressBar.style.width = '90%';
+        
+        // Получаем публичный URL
+        const { data: urlData } = supabaseClient.storage
+            .from('avatars')
+            .getPublicUrl(filePath);
+        
+        // Сохраняем URL в профиль
+        const { error: updateError } = await supabaseClient
+            .from('profiles')
+            .update({ avatar_url: urlData.publicUrl })
+            .eq('id', currentUser.id);
+        
+        if (updateError) throw updateError;
+        
+        currentUser.avatar_url = urlData.publicUrl;
+        
+        if (progressBar) {
+            progressBar.style.width = '100%';
+            setTimeout(() => progressBar.style.width = '0%', 1000);
+        }
+        
+        window.updateProfileAvatar();
+        window.showNotify("✅ Avatar uploaded successfully!", "success");
+        return true;
+        
+    } catch (error) {
+        console.error("Upload error:", error);
+        window.showNotify("❌ Upload failed: " + error.message, "error");
+        if (progressBar) progressBar.style.width = '0%';
+        return false;
+    }
+}
+
+// Обработчик выбора файла
+document.addEventListener('DOMContentLoaded', () => {
+    const fileInput = document.getElementById('avatar-file-input');
+    if (fileInput) {
+        fileInput.addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            if (!currentUser) {
+                window.showNotify("❌ Please login first", "error");
+                return;
+            }
+            await uploadAvatarToSupabase(file);
+            fileInput.value = ''; // Очищаем input
+        });
+    }
+});
+
+// Обновляем leaderboard для работы с новыми аватарками
+const originalRenderLeaderboard2 = window.renderLeaderboard;
+window.renderLeaderboard = async function() {
+    if (!currentUser) return;
+    
+    const { data: users } = await supabaseClient
+        .from('profiles')
+        .select('id, username, score, avatar_url')
+        .gte('score', 1000)
+        .order('score', { ascending: false })
+        .limit(10);
+    
+    if (!users || users.length === 0) {
+        document.getElementById('leaderboard-list').innerHTML = '<div style="text-align:center; padding:20px; color:#888;">⚠️ No players with 1000+ coins</div>';
+        return;
+    }
+    
+    const userIds = users.map(u => u.id);
+    const { data: onlineStatuses } = await supabaseClient
+        .from('online_status')
+        .select('user_id, is_online, last_seen')
+        .in('user_id', userIds);
+    
+    const onlineMap = {};
+    onlineStatuses?.forEach(s => {
+        const isActuallyOnline = s.is_online && (new Date() - new Date(s.last_seen)) < 120000;
+        onlineMap[s.user_id] = isActuallyOnline;
+    });
+    
+    let html = '';
+    for (let i = 0; i < users.length; i++) {
+        const u = users[i];
+        const isOnline = onlineMap[u.id] || false;
+        const rank = i + 1;
+        let rankClass = rank === 1 ? 'top1' : (rank === 2 ? 'top2' : (rank === 3 ? 'top3' : ''));
+        
+        // Получаем URL аватарки
+        let avatarUrl = null;
+        if (u.avatar_url && u.avatar_url.startsWith('http')) {
+            avatarUrl = u.avatar_url;
+        } else {
+            const exists = await window.checkAvatarExists(u.username);
+            if (exists) {
+                avatarUrl = supabaseClient.storage.from('avatars').getPublicUrl(`avatars/${u.username}.png`).data.publicUrl;
+            }
+        }
+        
+        html += `
+            <div class="leader-row">
+                <div class="leader-rank ${rankClass}">#${rank}</div>
+                <div class="leader-avatar">
+                    ${avatarUrl ? `<img class="leader-avatar-img" src="${avatarUrl}">` : `<div style="width:48px;height:48px;border-radius:50%;background:#444;display:flex;align-items:center;justify-content:center;font-weight:bold;">${u.username.charAt(0)}</div>`}
+                    <div class="online-indicator ${isOnline ? 'online' : 'offline'}"></div>
+                </div>
+                <div class="leader-info">
+                    <div class="leader-name">${u.username}</div>
+                    <div class="leader-stats">${isOnline ? '🟢 ONLINE' : '⚫ OFFLINE'}</div>
+                </div>
+                <div class="leader-score">💰 ${window.formatNumber(u.score)}</div>
+            </div>
+        `;
+    }
+    document.getElementById('leaderboard-list').innerHTML = html;
 };
 
 // ========== ПОДПИСКА ==========
