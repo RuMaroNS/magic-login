@@ -1,4 +1,4 @@
- const SB_URL = 'https://wbkygibviddkdjxbahbg.supabase.co';
+const SB_URL = 'https://wbkygibviddkdjxbahbg.supabase.co';
 const SB_KEY = 'sb_publishable_l5wIAt6RrAl4Uo8uZKerRQ_xBYDS-Kv';
 const supabaseClient = supabase.createClient(SB_URL, SB_KEY);
 const GITHUB_BASE = "https://raw.githubusercontent.com/RuMaroNs/magic-login/main/img/";
@@ -20,6 +20,18 @@ let isSlowingDown = false;
 let currentOffset = 0;
 let maxOffset = 0;
 
+// ---------- АНТИСПАМ ----------
+let lastActionTime = 0;
+function checkCooldown() {
+    const now = Date.now();
+    if (now - lastActionTime < 2000) {
+        window.showNotify("⏳ Не спеши и не перди! Повтори позже", "error");
+        return false;
+    }
+    lastActionTime = now;
+    return true;
+}
+
 // ========== УВЕДОМЛЕНИЯ ==========
 window.showNotify = function(text, type = "success") {
     const container = document.getElementById('notification-container');
@@ -34,18 +46,71 @@ window.showNotify = function(text, type = "success") {
     }, 3000);
 };
 
+// Глобальное уведомление (от админа) – появляется сверху по центру
+function showGlobalNotification(message) {
+    const container = document.getElementById('global-notify-container');
+    const toast = document.createElement('div');
+    toast.className = 'global-toast';
+    toast.innerText = message;
+    container.appendChild(toast);
+    setTimeout(() => {
+        toast.remove();
+    }, 4000);
+}
+
+// Отправка глобального уведомления (админ)
+window.sendGlobalNotification = async function() {
+    if (!currentUser || currentUser.IsAdmin !== 'true') return;
+    const input = document.getElementById('global-notify-text');
+    const message = input.value.trim();
+    if (!message) return;
+    
+    // Сохраняем в таблицу global_notifications (создайте её в Supabase: id, message, created_at)
+    const { error } = await supabaseClient
+        .from('global_notifications')
+        .insert({ message: message, created_at: new Date() });
+    if (error) {
+        console.error("Global notify error:", error);
+        return window.showNotify("❌ Ошибка отправки", "error");
+    }
+    input.value = '';
+    window.showNotify("✅ Уведомление отправлено всем!", "success");
+    // Сами себе тоже покажем
+    showGlobalNotification(message);
+};
+
+// Подписка на глобальные уведомления в реальном времени
+function subscribeGlobalNotifications() {
+    supabaseClient
+        .channel('global-notify')
+        .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'global_notifications' }, (payload) => {
+            const msg = payload.new.message;
+            showGlobalNotification(msg);
+        })
+        .subscribe();
+    
+    // Также загружаем последние 5 для истории в админке
+    loadNotificationsHistory();
+}
+
+async function loadNotificationsHistory() {
+    const { data } = await supabaseClient
+        .from('global_notifications')
+        .select('message, created_at')
+        .order('created_at', { ascending: false })
+        .limit(5);
+    const historyDiv = document.getElementById('notifications-history');
+    if (historyDiv && data) {
+        historyDiv.innerHTML = data.map(n => `<div>📢 ${new Date(n.created_at).toLocaleString()}: ${n.message}</div>`).join('');
+    }
+}
+
 window.formatNumber = function(num) {
     if (!num || num < 1000) return (num || 0).toString();
-    
     const suffixes = ["K", "M", "B", "T", "Qa", "Qn"];
-    // Определяем степень числа (логарифм по основанию 10)
     const magnitude = Math.floor(Math.log10(num) / 3);
     const suffix = suffixes[magnitude - 1];
-    
-    // Делим число на 1000 в нужной степени
     const scaled = num / Math.pow(1000, magnitude);
-    
-    // Округляем до 1 знака и убираем .0, если оно есть
     return (Math.round(scaled * 10) / 10).toFixed(1).replace(/\.0$/, '') + suffix;
 };
 
@@ -68,6 +133,7 @@ async function loadItemsMeta() {
 // ========== АВТО-ЛОГИН ==========
 window.onload = async () => {
     await loadItemsMeta();
+    subscribeGlobalNotifications(); // подписка на глобальные уведомления
     const savedU = localStorage.getItem('saved_login');
     const savedP = localStorage.getItem('saved_pass');
     if (savedU && savedP) {
@@ -107,8 +173,8 @@ window.login = async function() {
         document.getElementById('auth-screen').style.display = 'none';
         document.getElementById('game-interface').style.display = 'block';
         document.getElementById('top-bar').style.display = 'flex';
-document.getElementById('h-balance').innerText = window.formatNumber(currentUser.score || 0);
-document.getElementById('h-cp').innerText = window.formatNumber(currentUser.CP_Point || 0);
+        document.getElementById('h-balance').innerText = window.formatNumber(currentUser.score || 0);
+        document.getElementById('h-cp').innerText = window.formatNumber(currentUser.CP_Point || 0);
         
         const adminBtn = document.getElementById('admin-nav-btn');
         if (adminBtn) adminBtn.style.display = currentUser.IsAdmin === 'true' ? 'block' : 'none';
@@ -124,7 +190,7 @@ document.getElementById('h-cp').innerText = window.formatNumber(currentUser.CP_P
     }
 };
 
-// ========== РЕГИСТРАЦИЯ (исправленная) ==========
+// ========== РЕГИСТРАЦИЯ ==========
 window.register = async function() {
     const username = document.getElementById('reg_username').value.trim();
     const password = document.getElementById('reg_password').value.trim();
@@ -174,37 +240,27 @@ window.register = async function() {
         window.showNotify("✅ ACCOUNT CREATED! PLEASE LOGIN", "success");
         document.getElementById('login-panel').style.display = 'block';
         document.getElementById('register-panel').style.display = 'none';
-        document.getElementById('login-tab-btn').classList.add('active');
-        document.getElementById('register-tab-btn').classList.remove('active');
+        document.querySelectorAll('.tab-btn')[0].classList.add('active');
+        document.querySelectorAll('.tab-btn')[1].classList.remove('active');
         document.getElementById('login_username').value = username;
         document.getElementById('login_password').value = password;
     }
 };
 
-// ========== ЗАПРОС ВЫВОДА (БЕРЁТ НИК ИЗ БД) ==========
-// Функция отправки заявки на вывод
+// ========== ЗАПРОС ВЫВОДА (С АНТИСПАМОМ) ==========
 async function requestWithdrawal(itemId, itemName, mutation) {
-    // 1. Проверяем, авторизован ли пользователь и есть ли у него ник
+    if (!checkCooldown()) return false;
     if (!currentUser || !currentUser.RobloxUSER) {
         window.showNotify("❌ Roblox ник не найден в профиле! Заполните его.", "error");
         return false;
     }
 
-    const username = currentUser.RobloxUSER; // Берем ник прямо из БД
+    const username = currentUser.RobloxUSER;
 
     try {
-        console.log("Отправка вывода для:", username, itemName, mutation);
-
         const { data, error } = await supabaseClient
             .from('withdrawals')
-            .insert([
-                { 
-                    username: username, 
-                    item_name: itemName, 
-                    mutation: mutation || "Normal",
-                    status: 'processing'
-                }
-            ]);
+            .insert([{ username: username, item_name: itemName, mutation: mutation || "Normal", status: 'processing' }]);
 
         if (error) {
             console.error("Ошибка Supabase:", error);
@@ -214,7 +270,6 @@ async function requestWithdrawal(itemId, itemName, mutation) {
 
         window.showNotify("✅ Заявка создана! Ожидайте выдачу в игре.", "success");
         
-        // Обновляем статус предмета в инвентаре
         const idx = currentUser.inventory.findIndex(x => x.id === itemId);
         if (idx !== -1) {
             const newInventory = [...currentUser.inventory];
@@ -225,9 +280,7 @@ async function requestWithdrawal(itemId, itemName, mutation) {
             currentUser.inventory = newInventory;
             window.renderProfile();
         }
-        
         return true;
-
     } catch (err) {
         console.error("Критическая ошибка:", err);
         window.showNotify("❌ Произошла ошибка связи.", "error");
@@ -312,7 +365,7 @@ window.claimLoot = async function() {
             window.showNotify(`🎁 YOU GOT: ${itemFull?.display_name || window.pendingLoot.char}`, 'success');
             window.renderProfile();
             window.renderAllCases();
-document.getElementById('h-balance').innerText = window.formatNumber(newScore);
+            document.getElementById('h-balance').innerText = window.formatNumber(newScore);
         } else {
             window.showNotify("ERROR SAVING ITEM", "error");
         }
@@ -484,7 +537,7 @@ function showLootWin(selectedLoot) {
         common: { color: '#aaa', text: 'COMMON', icon: '⬜' },
         rare: { color: '#3399ff', text: 'RARE', icon: '🔵' },
         epic: { color: '#aa33ff', text: 'EPIC', icon: '🟣' },
-        mythic: { color: '#ff00aa', text: 'MYTHIC', icon: '✨' }, // Добавьте эту строку!
+        mythic: { color: '#ff00aa', text: 'MYTHIC', icon: '✨' },
         legendary: { color: '#ffaa00', text: 'LEGENDARY', icon: '🌟' }
     };
     const config = rarityConfig[rarity];
@@ -512,7 +565,9 @@ function showLootWin(selectedLoot) {
     };
 }
 
+// ОТКРЫТИЕ КЕЙСА С АНТИСПАМОМ
 window.openCaseWithAnimation = async function(caseId) {
+    if (!checkCooldown()) return;
     if (!currentUser) return;
     const caseData = allCases.find(c => c.id == caseId);
     if (!caseData) return;
@@ -575,8 +630,9 @@ window.renderMarket = async function() {
     }).join('');
 };
 
-// ========== ПОКУПКА ЛИМИТКИ ==========
+// ========== ПОКУПКА ЛИМИТКИ (с антиспамом?) – можно добавить, но обычно не спамят ==========
 window.buyLimited = async function(id, price) {
+    // Не ставим глобальный кулдаун, т.к. покупка не критична. Но можно добавить по желанию
     if (!currentUser) return;
     if ((currentUser.CP_Point || 0) < price) {
         return window.showNotify("INSUFFICIENT CP", "error");
@@ -620,19 +676,18 @@ window.buyLimited = async function(id, price) {
     window.showNotify(`PURCHASED: ${item.name} (CASE)`, 'success');
 };
 
-// ========== ПРОФИЛЬ (с поддержкой статусов accept, cancel, processing) ==========
+// ========== ПРОФИЛЬ (с поддержкой статусов) ==========
 window.renderProfile = function() {
     if (!currentUser) return;
     
-    // Проверяем существование элементов перед установкой значений
     const pUsername = document.getElementById('p-username');
     const pWorth = document.getElementById('p-worth');
     const pCpVal = document.getElementById('p-cp-val');
     const robloxInput = document.getElementById('roblox-input');
     
     if (pUsername) pUsername.innerText = currentUser.username;
-if (pWorth) pWorth.innerText = window.formatNumber(currentUser.score || 0);
-if (pCpVal) pCpVal.innerText = window.formatNumber(currentUser.CP_Point || 0);
+    if (pWorth) pWorth.innerText = window.formatNumber(currentUser.score || 0);
+    if (pCpVal) pCpVal.innerText = window.formatNumber(currentUser.CP_Point || 0);
     if (robloxInput) robloxInput.value = currentUser.RobloxUSER || '';
     
     const list = document.getElementById('inventory-list');
@@ -668,40 +723,36 @@ if (pCpVal) pCpVal.innerText = window.formatNumber(currentUser.CP_Point || 0);
                 const wBtn = clone.querySelector('.with-btn');
                 const statusT = clone.querySelector('.item-status-text');
                 
-if (item.status === 'processing') {
-    // В обработке
-    if (sBtn) sBtn.style.display = 'none';
-    if (wBtn) wBtn.style.display = 'none';
-    if (statusT) {
-        statusT.style.display = 'block';
-        statusT.style.color = '#ffaa00';
-        statusT.innerHTML = '⏳ В обработке...';
-    }
-} else if (item.status === 'ready') {
-    // Готово (успешный вывод)
-    if (sBtn) sBtn.style.display = 'none';
-    if (wBtn) wBtn.style.display = 'none';
-    if (statusT) {
-        statusT.style.display = 'block';
-        statusT.style.color = '#4caf50';
-        statusT.innerHTML = '✅ Готово! Предмет выдан';
-    }
-} else if (item.status === 'cancel') {
-    // Отмена или ошибка
-    if (sBtn) sBtn.style.display = 'block';
-    if (wBtn) wBtn.style.display = 'none';
-    if (statusT) {
-        statusT.style.display = 'block';
-        statusT.style.color = '#e53935';
-        statusT.innerHTML = '❌ Отменено';
-    }
-    const sellPrice = itemFull.price || 100;
-    if (sBtn) sBtn.onclick = () => window.sellItem(item.id, sellPrice, itemFull.display_name);
-} else {
-    // ready - доступен для вывода
-    if (sBtn) sBtn.style.display = 'block';
-    if (wBtn) wBtn.style.display = 'block';
-    if (statusT) statusT.style.display = 'none';
+                if (item.status === 'processing') {
+                    if (sBtn) sBtn.style.display = 'none';
+                    if (wBtn) wBtn.style.display = 'none';
+                    if (statusT) {
+                        statusT.style.display = 'block';
+                        statusT.style.color = '#ffaa00';
+                        statusT.innerHTML = '⏳ В обработке...';
+                    }
+                } else if (item.status === 'ready') {
+                    if (sBtn) sBtn.style.display = 'none';
+                    if (wBtn) wBtn.style.display = 'none';
+                    if (statusT) {
+                        statusT.style.display = 'block';
+                        statusT.style.color = '#4caf50';
+                        statusT.innerHTML = '✅ Готово! Предмет выдан';
+                    }
+                } else if (item.status === 'cancel') {
+                    if (sBtn) sBtn.style.display = 'block';
+                    if (wBtn) wBtn.style.display = 'none';
+                    if (statusT) {
+                        statusT.style.display = 'block';
+                        statusT.style.color = '#e53935';
+                        statusT.innerHTML = '❌ Отменено';
+                    }
+                    const sellPrice = itemFull.price || 100;
+                    if (sBtn) sBtn.onclick = () => window.sellItem(item.id, sellPrice, itemFull.display_name);
+                } else {
+                    if (sBtn) sBtn.style.display = 'block';
+                    if (wBtn) wBtn.style.display = 'block';
+                    if (statusT) statusT.style.display = 'none';
                     
                     const sellPrice = itemFull.price || 100;
                     if (sBtn) sBtn.onclick = () => window.sellItem(item.id, sellPrice, itemFull.display_name);
@@ -724,10 +775,12 @@ if (item.status === 'processing') {
     
     loadChallenges();
     syncWithdrawalsStatus();
+    window.updateProfileAvatar(); // обновляем аватарку в профиле
 };
 
-// ========== ПРОДАЖА ==========
+// ========== ПРОДАЖА (С АНТИСПАМОМ) ==========
 window.sellItem = async function(id, sellPrice, itemDisplayName) {
+    if (!checkCooldown()) return;
     const idx = currentUser.inventory.findIndex(x => x.id === id);
     if (idx === -1) return;
     const commissionRate = 0.8;
@@ -752,8 +805,9 @@ window.closeAllModals = function() {
     modals.forEach(el => el.remove());
 };
 
-// ========== ВЫВОД (ОБНОВЛЁННЫЙ) ==========
+// ========== ВЫВОД (уже с антиспамом через requestWithdrawal) ==========
 window.withdrawItem = async function(id, itemDisplayName) {
+    if (!checkCooldown()) return;
     if (!currentUser) return;
 
     const nick = currentUser.RobloxUSER;
@@ -824,7 +878,7 @@ window.updateRoblox = async function() {
     }
 };
 
-// ========== ПРОМОКОДЫ ==========
+// ========== ПРОМОКОДЫ (без антиспама, т.к. одноразовые) ==========
 window.activatePromoCode = async function() {
     const code = document.getElementById('promo-code-input').value.trim().toUpperCase();
     if (!code) return;
@@ -997,6 +1051,7 @@ window.renderAdminPanel = async function() {
     await loadAdminUsers();
     await loadAdminPromocodes();
     await loadAdminChallenges();
+    await loadNotificationsHistory(); // загружаем историю уведомлений
 };
 
 async function loadAdminUsers() {
@@ -1286,6 +1341,7 @@ window.filterUsers = function() {
 
 // ========== FAST DROP ==========
 window.fastDropCase = async function(caseId) {
+    if (!checkCooldown()) return;
     if (!currentUser) return;
     const caseData = allCases.find(c => c.id == caseId);
     if (!caseData) return;
@@ -1322,268 +1378,20 @@ window.fastDropCase = async function(caseId) {
     }
 };
 
-// Обновляем рендер профиля
-const oldRenderProfile = window.renderProfile;
-window.renderProfile = function() { oldRenderProfile(); window.updateProfileAvatar(); };
-
-// Авто-обновление последнего входа
-setInterval(() => {
-    if (currentUser) {
-        supabaseClient.from('profiles').update({ last_login: new Date().toISOString() }).eq('id', currentUser.id);
-    }
-}, 60000);
-
-// ========== НАВИГАЦИЯ ==========
-window.navTo = (id) => {
-    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-    const targetPage = document.getElementById('page-' + id);
-    if (targetPage) targetPage.classList.add('active');
-    if (id === 'profile') window.renderProfile();
-    if (id === 'cases') window.renderAllCases();
-    if (id === 'market') window.renderMarket();
-    if (id === 'leaderstats') window.renderLeaderboard();
-    if (id === 'admin') {
-        if (currentUser && currentUser.IsAdmin === 'true') {
-            window.renderAdminPanel();
-        } else {
-            window.navTo('profile');
-            window.showNotify("❌ ADMIN ACCESS ONLY", "error");
-        }
-    }
-};
-
-
-// ========== СИНХРОНИЗАЦИЯ СТАТУСОВ ==========
-async function syncWithdrawalsStatus() {
-    if (!currentUser || !currentUser.RobloxUSER) return;
-    
-    const { data: withdrawals } = await supabaseClient
-        .from('withdrawals')
-        .select('*')
-        .eq('username', currentUser.RobloxUSER);
-    
-    if (!withdrawals || withdrawals.length === 0) return;
-    
-    let needUpdate = false;
-    let newInventory = [...(currentUser.inventory || [])];
-    
-    for (const withdrawal of withdrawals) {
-        const itemIndex = newInventory.findIndex(item => 
-            item.char === withdrawal.item_name && item.status === 'processing'
-        );
-        
-        if (itemIndex !== -1) {
-            if (withdrawal.status === 'ready') {
-                newInventory[itemIndex] = { ...newInventory[itemIndex], status: 'ready' };
-                needUpdate = true;
-            } else if (withdrawal.status === 'cancel') {
-                newInventory[itemIndex] = { ...newInventory[itemIndex], status: 'cancel' };
-                needUpdate = true;
-            }
-        }
-    }
-    
-    if (needUpdate) {
-        await supabaseClient.from('profiles')
-            .update({ inventory: newInventory })
-            .eq('id', currentUser.id);
-        currentUser.inventory = newInventory;
-        window.renderProfile();
-    }
-}
-
-window.switchTab = function(tab) {
-    const loginPanel = document.getElementById('login-panel');
-    const registerPanel = document.getElementById('register-panel');
-    const btns = document.querySelectorAll('.tab-btn');
-    btns.forEach(btn => btn.classList.remove('active'));
-    if (tab === 'login') {
-        loginPanel.style.display = 'block';
-        registerPanel.style.display = 'none';
-        btns[0].classList.add('active');
-    } else {
-        loginPanel.style.display = 'none';
-        registerPanel.style.display = 'block';
-        btns[1].classList.add('active');
-    }
-};
-
-// ========== REAL-TIME ONLINE СИСТЕМА ==========
-
-// При логине/выходе обновляем статус
-async function setUserOnline(isOnline = true) {
-    if (!currentUser) return;
-    
-    const { error } = await supabaseClient
-        .from('online_status')
-        .upsert({
-            user_id: currentUser.id,
-            username: currentUser.username,
-            last_seen: new Date().toISOString(),
-            is_online: isOnline
-        });
-    
-    if (error) console.error("Online status error:", error);
-}
-
-// При каждом действии обновляем last_seen
-async function pingOnline() {
-    if (!currentUser) return;
-    
-    await supabaseClient
-        .from('online_status')
-        .update({ last_seen: new Date().toISOString() })
-        .eq('user_id', currentUser.id);
-}
-
-// Подписываемся на изменения онлайн статусов в реальном времени
-function subscribeToOnlineStatus() {
-    supabaseClient
-        .channel('online-status-channel')
-        .on(
-            'postgres_changes',
-            { event: '*', schema: 'public', table: 'online_status' },
-            (payload) => {
-                // Когда обновляется онлайн — перерисовываем лидерборд
-                if (document.getElementById('page-leaderstats').classList.contains('active')) {
-                    window.renderLeaderboard();
-                }
-            }
-        )
-        .subscribe();
-    
-    // Также подписываемся на изменения в profiles (last_login)
-    supabaseClient
-        .channel('profiles-online-channel')
-        .on(
-            'postgres_changes',
-            { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${currentUser?.id}` },
-            (payload) => {
-                if (payload.new && document.getElementById('page-leaderstats').classList.contains('active')) {
-                    window.renderLeaderboard();
-                }
-            }
-        )
-        .subscribe();
-}
-
-// При закрытии вкладки/страницы — помечаем оффлайн
-window.addEventListener('beforeunload', () => {
-    if (currentUser) {
-        supabaseClient
-            .from('online_status')
-            .update({ is_online: false, last_seen: new Date().toISOString() })
-            .eq('user_id', currentUser.id);
-    }
-});
-
-// При каждом клике/действии — пингуем
-document.addEventListener('click', () => pingOnline());
-document.addEventListener('keydown', () => pingOnline());
-
-// Модифицируем login — при входе ставим онлайн
-const originalLogin = window.login;
-window.login = async function() {
-    await originalLogin();
-    if (currentUser) {
-        await setUserOnline(true);
-        subscribeToOnlineStatus();
-        pingOnline();
-    }
-};
-
-// Добавляем ping во все действия
-const actionsToPing = ['openCaseWithAnimation', 'fastDropCase', 'sellItem', 'buyLimited', 'activatePromoCode', 'withdrawItem', 'updateRoblox'];
-actionsToPing.forEach(actionName => {
-    const originalAction = window[actionName];
-    if (originalAction) {
-        window[actionName] = async function(...args) {
-            await pingOnline();
-            return originalAction.apply(this, args);
-        };
-    }
-});
-
-window.closeModal = function(modalId) {
-    document.getElementById(modalId).style.display = 'none';
-};
-
-// ========== SUPABASE STORAGE AVATAR UPLOAD ==========
-
-// Обновлённая функция получения аватарки (сначала проверяет Storage, потом GitHub)
-window.getAvatarUrl = function(username) {
-    if (!username) return null;
-    // Сначала пробуем Supabase Storage
-    const supabaseUrl = supabaseClient.storage.from('avatars').getPublicUrl(`avatars/${username}.png`).data.publicUrl;
-    return supabaseUrl;
-};
-
-// Проверка существования аватарки (сначала Storage, потом GitHub как fallback)
-window.checkAvatarExists = async function(username) {
-    if (!username) return false;
-    
-    // Проверяем Supabase Storage
-    const supabaseUrl = supabaseClient.storage.from('avatars').getPublicUrl(`avatars/${username}.png`).data.publicUrl;
-    try {
-        const response = await fetch(supabaseUrl, { method: 'HEAD' });
-        if (response.ok) return true;
-    } catch(e) {}
-    
-    // Fallback: проверяем GitHub (старые аватарки)
-    const githubUrl = `${AVATAR_BASE_URL}${encodeURIComponent(username)}.png`;
-    try {
-        const response = await fetch(githubUrl, { method: 'HEAD' });
-        return response.ok;
-    } catch { return false; }
-};
-
-// Обновлённая функция отображения аватарки
-window.updateProfileAvatar = async function() {
-    if (!currentUser) return;
-    const avatarImg = document.getElementById('profile-avatar-img');
-    const previewImg = document.getElementById('avatar-preview-img');
-    const hint = document.getElementById('avatar-filename-hint');
-    if (hint) hint.innerText = `${currentUser.username}.png`;
-    
-    const exists = await window.checkAvatarExists(currentUser.username);
-    if (exists) {
-        // Сначала пробуем Supabase Storage
-        let url = supabaseClient.storage.from('avatars').getPublicUrl(`avatars/${currentUser.username}.png`).data.publicUrl;
-        // Проверяем, есть ли в профиле сохранённый URL
-        if (currentUser.avatar_url && currentUser.avatar_url.startsWith('http')) {
-            url = currentUser.avatar_url;
-        }
-        if (avatarImg) avatarImg.src = url;
-        if (previewImg) previewImg.src = url;
-    } else {
-        // Fallback: буква в кружке
-        const letter = currentUser.username.charAt(0).toUpperCase();
-        const colors = ['#e53935', '#ff9800', '#4caf50', '#2196f3', '#9c27b0'];
-        const color = colors[currentUser.username.length % colors.length];
-        const fallback = `data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ccircle cx='50' cy='50' r='50' fill='${color}'/%3E%3Ctext x='50' y='67' font-size='40' text-anchor='middle' fill='white' font-weight='bold'%3E${letter}%3C/text%3E%3C/svg%3E`;
-        if (avatarImg) avatarImg.src = fallback;
-        if (previewImg) previewImg.src = fallback;
-    }
-};
-
-// Функция загрузки аватарки в Supabase Storage
+// ========== АВАТАРКИ (с удалением старой и fallback на NoName.png) ==========
 async function uploadAvatarToSupabase(file) {
     if (!currentUser) return false;
     
-    // Проверка размера (макс 2MB)
     if (file.size > 2 * 1024 * 1024) {
         window.showNotify("❌ File too large! Max 2MB", "error");
         return false;
     }
-    
-    // Проверка типа
     const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg'];
     if (!allowedTypes.includes(file.type)) {
         window.showNotify("❌ Only PNG or JPG images allowed!", "error");
         return false;
     }
     
-    // Показываем прогресс
     let progressBar = document.querySelector('.upload-progress-bar');
     if (!progressBar) {
         const progressDiv = document.createElement('div');
@@ -1599,12 +1407,16 @@ async function uploadAvatarToSupabase(file) {
     const filePath = `avatars/${fileName}`;
     
     try {
-        // Сначала удаляем старый аватар, если есть
-        await supabaseClient.storage.from('avatars').remove([filePath]);
+        // Удаляем старую аватарку, если есть
+        const { data: existingFiles } = await supabaseClient.storage.from('avatars').list('avatars', { search: currentUser.username });
+        if (existingFiles && existingFiles.length > 0) {
+            for (const f of existingFiles) {
+                await supabaseClient.storage.from('avatars').remove([`avatars/${f.name}`]);
+            }
+        }
         
         if (progressBar) progressBar.style.width = '60%';
         
-        // Загружаем новый
         const { error: uploadError } = await supabaseClient.storage
             .from('avatars')
             .upload(filePath, file, { upsert: true });
@@ -1613,12 +1425,10 @@ async function uploadAvatarToSupabase(file) {
         
         if (progressBar) progressBar.style.width = '90%';
         
-        // Получаем публичный URL
         const { data: urlData } = supabaseClient.storage
             .from('avatars')
             .getPublicUrl(filePath);
         
-        // Сохраняем URL в профиль
         const { error: updateError } = await supabaseClient
             .from('profiles')
             .update({ avatar_url: urlData.publicUrl })
@@ -1636,7 +1446,6 @@ async function uploadAvatarToSupabase(file) {
         window.updateProfileAvatar();
         window.showNotify("✅ Avatar uploaded successfully!", "success");
         return true;
-        
     } catch (error) {
         console.error("Upload error:", error);
         window.showNotify("❌ Upload failed: " + error.message, "error");
@@ -1645,7 +1454,56 @@ async function uploadAvatarToSupabase(file) {
     }
 }
 
-// Обработчик выбора файла
+// Получение URL аватарки (приоритет: avatar_url из профиля -> Supabase Storage -> NoName.png)
+window.getAvatarUrl = function(username) {
+    if (!username) return null;
+    // Если в профиле есть прямой URL
+    if (currentUser && currentUser.avatar_url && currentUser.avatar_url.startsWith('http')) {
+        return currentUser.avatar_url;
+    }
+    // Пробуем Storage
+    const supabaseUrl = supabaseClient.storage.from('avatars').getPublicUrl(`avatars/${username}.png`).data.publicUrl;
+    return supabaseUrl;
+};
+
+// Проверка существования аватарки (Storage или NoName.png всегда существует как fallback)
+window.checkAvatarExists = async function(username) {
+    if (!username) return false;
+    const supabaseUrl = supabaseClient.storage.from('avatars').getPublicUrl(`avatars/${username}.png`).data.publicUrl;
+    try {
+        const response = await fetch(supabaseUrl, { method: 'HEAD' });
+        if (response.ok) return true;
+    } catch(e) {}
+    // Fallback: если нет своей, используем NoName.png (он точно есть в Storage)
+    return false;
+};
+
+// Обновление аватарки в профиле и в preview
+window.updateProfileAvatar = async function() {
+    if (!currentUser) return;
+    const avatarImg = document.getElementById('profile-avatar-img');
+    const previewImg = document document.getElementById('avatar-preview-img');
+    
+    let avatarUrl = null;
+    if (currentUser.avatar_url && currentUser.avatar_url.startsWith('http')) {
+        avatarUrl = currentUser.avatar_url;
+    } else {
+        // Пытаемся получить из Storage
+        const storageUrl = supabaseClient.storage.from('avatars').getPublicUrl(`avatars/${currentUser.username}.png`).data.publicUrl;
+        const exists = await window.checkAvatarExists(currentUser.username);
+        if (exists) {
+            avatarUrl = storageUrl;
+        } else {
+            // Если нет своей аватарки, используем NoName.png
+            avatarUrl = supabaseClient.storage.from('avatars').getPublicUrl(`avatars/NoName.png`).data.publicUrl;
+        }
+    }
+    
+    if (avatarImg) avatarImg.src = avatarUrl;
+    if (previewImg) previewImg.src = avatarUrl;
+};
+
+// Обработчик загрузки файла
 document.addEventListener('DOMContentLoaded', () => {
     const fileInput = document.getElementById('avatar-file-input');
     if (fileInput) {
@@ -1657,13 +1515,103 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
             await uploadAvatarToSupabase(file);
-            fileInput.value = ''; // Очищаем input
+            fileInput.value = '';
         });
     }
 });
 
-// Обновляем leaderboard для работы с новыми аватарками
-const originalRenderLeaderboard2 = window.renderLeaderboard;
+window.refreshAvatar = async function() {
+    await window.updateProfileAvatar();
+    window.showNotify("Avatar refreshed", "success");
+};
+
+// Обновляем рендер профиля, чтобы подтянуть аватарку
+const oldRenderProfile = window.renderProfile;
+window.renderProfile = function() { 
+    oldRenderProfile(); 
+    window.updateProfileAvatar(); 
+};
+
+// ========== РЕАЛЬНОЕ ВРЕМЯ, СТАТУСЫ ==========
+async function setUserOnline(isOnline = true) {
+    if (!currentUser) return;
+    const { error } = await supabaseClient
+        .from('online_status')
+        .upsert({
+            user_id: currentUser.id,
+            username: currentUser.username,
+            last_seen: new Date().toISOString(),
+            is_online: isOnline
+        });
+    if (error) console.error("Online status error:", error);
+}
+
+async function pingOnline() {
+    if (!currentUser) return;
+    await supabaseClient
+        .from('online_status')
+        .update({ last_seen: new Date().toISOString() })
+        .eq('user_id', currentUser.id);
+}
+
+function subscribeToOnlineStatus() {
+    supabaseClient
+        .channel('online-status-channel')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'online_status' }, () => {
+            if (document.getElementById('page-leaderstats').classList.contains('active')) {
+                window.renderLeaderboard();
+            }
+        })
+        .subscribe();
+    
+    supabaseClient
+        .channel('profiles-online-channel')
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${currentUser?.id}` }, () => {
+            if (document.getElementById('page-leaderstats').classList.contains('active')) {
+                window.renderLeaderboard();
+            }
+        })
+        .subscribe();
+}
+
+window.addEventListener('beforeunload', () => {
+    if (currentUser) {
+        supabaseClient
+            .from('online_status')
+            .update({ is_online: false, last_seen: new Date().toISOString() })
+            .eq('user_id', currentUser.id);
+    }
+});
+
+document.addEventListener('click', () => pingOnline());
+document.addEventListener('keydown', () => pingOnline());
+
+const originalLogin = window.login;
+window.login = async function() {
+    await originalLogin();
+    if (currentUser) {
+        await setUserOnline(true);
+        subscribeToOnlineStatus();
+        pingOnline();
+    }
+};
+
+const actionsToPing = ['openCaseWithAnimation', 'fastDropCase', 'sellItem', 'buyLimited', 'activatePromoCode', 'withdrawItem', 'updateRoblox'];
+actionsToPing.forEach(actionName => {
+    const originalAction = window[actionName];
+    if (originalAction) {
+        window[actionName] = async function(...args) {
+            await pingOnline();
+            return originalAction.apply(this, args);
+        };
+    }
+});
+
+window.closeModal = function(modalId) {
+    document.getElementById(modalId).style.display = 'none';
+};
+
+// ========== ЛИДЕРБОРД ==========
 window.renderLeaderboard = async function() {
     if (!currentUser) return;
     
@@ -1698,22 +1646,19 @@ window.renderLeaderboard = async function() {
         const rank = i + 1;
         let rankClass = rank === 1 ? 'top1' : (rank === 2 ? 'top2' : (rank === 3 ? 'top3' : ''));
         
-        // Получаем URL аватарки
-        let avatarUrl = null;
-        if (u.avatar_url && u.avatar_url.startsWith('http')) {
-            avatarUrl = u.avatar_url;
-        } else {
+        let avatarUrl = u.avatar_url && u.avatar_url.startsWith('http') ? u.avatar_url : null;
+        if (!avatarUrl) {
+            const storageUrl = supabaseClient.storage.from('avatars').getPublicUrl(`avatars/${u.username}.png`).data.publicUrl;
             const exists = await window.checkAvatarExists(u.username);
-            if (exists) {
-                avatarUrl = supabaseClient.storage.from('avatars').getPublicUrl(`avatars/${u.username}.png`).data.publicUrl;
-            }
+            if (exists) avatarUrl = storageUrl;
+            else avatarUrl = supabaseClient.storage.from('avatars').getPublicUrl(`avatars/NoName.png`).data.publicUrl;
         }
         
         html += `
             <div class="leader-row">
                 <div class="leader-rank ${rankClass}">#${rank}</div>
                 <div class="leader-avatar">
-                    ${avatarUrl ? `<img class="leader-avatar-img" src="${avatarUrl}">` : `<div style="width:48px;height:48px;border-radius:50%;background:#444;display:flex;align-items:center;justify-content:center;font-weight:bold;">${u.username.charAt(0)}</div>`}
+                    <img class="leader-avatar-img" src="${avatarUrl}" onerror="this.src='${supabaseClient.storage.from('avatars').getPublicUrl('avatars/NoName.png').data.publicUrl}'">
                     <div class="online-indicator ${isOnline ? 'online' : 'offline'}"></div>
                 </div>
                 <div class="leader-info">
@@ -1727,19 +1672,85 @@ window.renderLeaderboard = async function() {
     document.getElementById('leaderboard-list').innerHTML = html;
 };
 
-// ========== ПОДПИСКА ==========
+// ========== ПОДПИСКА НА ОБНОВЛЕНИЯ ПРОФИЛЯ ==========
 function subscribeUpdates() {
     supabaseClient.channel('any').on('postgres_changes', 
         { event: 'UPDATE', schema: 'public', table: 'profiles' }, 
         payload => {
             if (currentUser && payload.new.id === currentUser.id) {
                 currentUser = payload.new;
-document.getElementById('h-balance').innerText = window.formatNumber(currentUser.score || 0);
-document.getElementById('h-cp').innerText = window.formatNumber(currentUser.CP_Point || 0);
+                document.getElementById('h-balance').innerText = window.formatNumber(currentUser.score || 0);
+                document.getElementById('h-cp').innerText = window.formatNumber(currentUser.CP_Point || 0);
                 if (document.getElementById('page-profile').classList.contains('active')) {
                     window.renderProfile();
                 }
             }
         }
     ).subscribe();
+}
+
+// ========== НАВИГАЦИЯ ==========
+window.navTo = (id) => {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    const targetPage = document.getElementById('page-' + id);
+    if (targetPage) targetPage.classList.add('active');
+    if (id === 'profile') window.renderProfile();
+    if (id === 'cases') window.renderAllCases();
+    if (id === 'market') window.renderMarket();
+    if (id === 'leaderstats') window.renderLeaderboard();
+    if (id === 'admin') {
+        if (currentUser && currentUser.IsAdmin === 'true') {
+            window.renderAdminPanel();
+        } else {
+            window.navTo('profile');
+            window.showNotify("❌ ADMIN ACCESS ONLY", "error");
+        }
+    }
+};
+
+// Функция для вкладок (из HTML)
+function switchTab(tab) {
+    const loginPanel = document.getElementById('login-panel');
+    const registerPanel = document.getElementById('register-panel');
+    const btns = document.querySelectorAll('.tab-btn');
+    btns.forEach(btn => btn.classList.remove('active'));
+    if (tab === 'login') {
+        loginPanel.style.display = 'block';
+        registerPanel.style.display = 'none';
+        btns[0].classList.add('active');
+    } else {
+        loginPanel.style.display = 'none';
+        registerPanel.style.display = 'block';
+        btns[1].classList.add('active');
+    }
+}
+
+// Синхронизация статусов выводов
+async function syncWithdrawalsStatus() {
+    if (!currentUser || !currentUser.RobloxUSER) return;
+    const { data: withdrawals } = await supabaseClient
+        .from('withdrawals')
+        .select('*')
+        .eq('username', currentUser.RobloxUSER);
+    if (!withdrawals || withdrawals.length === 0) return;
+    
+    let needUpdate = false;
+    let newInventory = [...(currentUser.inventory || [])];
+    for (const withdrawal of withdrawals) {
+        const itemIndex = newInventory.findIndex(item => item.char === withdrawal.item_name && item.status === 'processing');
+        if (itemIndex !== -1) {
+            if (withdrawal.status === 'ready') {
+                newInventory[itemIndex] = { ...newInventory[itemIndex], status: 'ready' };
+                needUpdate = true;
+            } else if (withdrawal.status === 'cancel') {
+                newInventory[itemIndex] = { ...newInventory[itemIndex], status: 'cancel' };
+                needUpdate = true;
+            }
+        }
+    }
+    if (needUpdate) {
+        await supabaseClient.from('profiles').update({ inventory: newInventory }).eq('id', currentUser.id);
+        currentUser.inventory = newInventory;
+        window.renderProfile();
+    }
 }
