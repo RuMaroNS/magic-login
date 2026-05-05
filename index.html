@@ -15,6 +15,8 @@
     </div>
 
     <div id="notification-container"></div>
+    <!-- контейнер для глобальных уведомлений (от админа) -->
+    <div id="global-notify-container" style="position: fixed; top: 80px; left: 50%; transform: translateX(-50%); z-index: 10050; display: flex; flex-direction: column; gap: 10px; pointer-events: none;"></div>
 
     <div class="live-header">
         <div class="live-tag">LIVE</div>
@@ -210,6 +212,22 @@
                     <div id="challenges-section" class="admin-section-content">
                         <button class="neon-btn-small" onclick="showCreateChallengeModal()">+ CREATE</button>
                         <div id="challenges-admin-list" style="margin-top:15px;"></div>
+                    </div>
+                </div>
+                <!-- НОВЫЙ РАЗДЕЛ: ГЛОБАЛЬНЫЕ УВЕДОМЛЕНИЯ -->
+                <div class="admin-section">
+                    <div class="admin-section-header" onclick="toggleAdminSection('notifications-section')">
+                        <span>📢 GLOBAL NOTIFICATIONS</span>
+                        <span class="arrow">▼</span>
+                    </div>
+                    <div id="notifications-section" class="admin-section-content">
+                        <div class="promo-input-group" style="margin-bottom:15px;">
+                            <input type="text" id="global-notify-text" placeholder="Enter message for all players...">
+                            <button class="neon-btn-small" onclick="sendGlobalNotification()">SEND</button>
+                        </div>
+                        <div id="notifications-history" style="margin-top:10px; font-size:12px; color:#aaa;">
+                            <!-- история последних 5 уведомлений -->
+                        </div>
                     </div>
                 </div>
             </div>
