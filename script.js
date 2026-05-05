@@ -1016,7 +1016,7 @@ async function givePromoReward(promo) {
             lootOverlay.style.display = 'block';
             return;
         case 'item':
-            const newItem = { id: Date.now(), char: promo.reward_value, status: 'ready' };
+            const newItem = { id: Date.now(), char: promo.reward_value, };
             const newInventory = [...(currentUser.inventory || []), newItem];
             await supabaseClient.from('profiles').update({ inventory: newInventory }).eq('id', currentUser.id);
             currentUser.inventory = newInventory;
@@ -1421,7 +1421,7 @@ window.fastDropCase = async function(caseId) {
     const selected = getRandomItemFromLoot(lootItems);
     if (selected) {
         const newScore = (currentUser.score || 0) - caseData.price;
-        const newItem = { id: Date.now(), char: selected.name, status: 'ready' };
+        const newItem = { id: Date.now(), char: selected.name, };
         const newInv = [...(currentUser.inventory || []), newItem];
         
         const { error } = await supabaseClient.from('profiles').update({
