@@ -403,7 +403,10 @@ window.showCaseInfo = async function(id) {
         <div class="case-hero">
             <img src="${GITHUB_BASE}${caseData.image_url}" onerror="this.src='https://placehold.co/300x300?text=NO_IMG'">
             <h1>${caseData.name}</h1>
-            <button class="neon-btn-main" onclick="window.openCaseWithAnimation('${caseData.id}')">Open ($${caseData.price})</button>
+            <div style="display: flex; gap: 10px; justify-content: center; margin-bottom: 15px; flex-wrap: wrap;">
+                <button class="neon-btn-main" onclick="window.openCaseWithAnimation('${caseData.id}')">🎰 OPEN ($${caseData.price})</button>
+                <button class="fast-drop-btn" onclick="window.fastDropCase('${caseData.id}')">⚡ FAST OPEN ($${caseData.price})</button>
+            </div>
             <div class="loot-table">
                 <h3>📦 POSSIBLE LOOT</h3>
                 ${lootRows || '<div style="text-align:center; color:#555;">NO LOOT DATA</div>'}
@@ -795,6 +798,67 @@ window.sellItem = async function(id, sellPrice, itemDisplayName) {
         window.showNotify(`SOLD: ${itemDisplayName} +${playerGain}$ (20% FEE)`, "success");
         window.renderProfile();
         await updateChallengeProgress('sell_items', 1);
+    }
+};
+
+// ========== ПРОДАЖА ВСЕГО ИНВЕНТАРЯ ==========
+window.sellAllItems = async function() {
+    if (!checkCooldown()) return;
+    if (!currentUser) return;
+    
+    const inventory = currentUser.inventory || [];
+    const availableItems = inventory.filter(item => item.status !== 'processing' && item.status !== 'ready');
+    
+    if (availableItems.length === 0) {
+        return window.showNotify("❌ Нет предметов для продажи!", "error");
+    }
+    
+    if (!confirm(`Продать ВСЕ ${availableItems.length} предмет(ов) за 80% их стоимости?`)) return;
+    
+    let totalGain = 0;
+    const itemsToSell = [];
+    const itemsToKeep = [];
+    
+    for (const item of inventory) {
+        if (item.status === 'processing' || item.status === 'ready') {
+            itemsToKeep.push(item);
+            continue;
+        }
+        
+        let itemChar = item.char;
+        if (itemChar && itemChar.endsWith('.png')) itemChar = itemChar.replace('.png', '');
+        if (!itemChar && item.name) itemChar = item.name;
+        
+        const itemFull = allItems[itemChar];
+        if (itemFull) {
+            const sellPrice = itemFull.price || 100;
+            const playerGain = Math.floor(sellPrice * 0.8);
+            totalGain += playerGain;
+            itemsToSell.push(item);
+        } else {
+            itemsToKeep.push(item);
+        }
+    }
+    
+    if (itemsToSell.length === 0) {
+        return window.showNotify("❌ Нет продаваемых предметов!", "error");
+    }
+    
+    const newScore = (currentUser.score || 0) + totalGain;
+    
+    const { error } = await supabaseClient.from('profiles')
+        .update({ inventory: itemsToKeep, score: newScore })
+        .eq('id', currentUser.id);
+    
+    if (!error) {
+        currentUser.inventory = itemsToKeep;
+        currentUser.score = newScore;
+        window.showNotify(`💰 Продано ${itemsToSell.length} предметов! +${totalGain}$ (20% комиссия)`, "success");
+        window.renderProfile();
+        document.getElementById('h-balance').innerText = window.formatNumber(newScore);
+        await updateChallengeProgress('sell_items', itemsToSell.length);
+    } else {
+        window.showNotify("❌ Ошибка при продаже!", "error");
     }
 };
 
