@@ -44,14 +44,14 @@
                     <p>Play via Telegram: <a href="https://t.me/StealABekonCasesBot" target="_blank">@StealABekonCasesBot</a></p>
                 </div>
             </div>
-<div id="register-panel" style="display:none;">
-    <div class="input-group">
-        <input type="text" id="reg_username" placeholder="USERNAME">
-        <input type="password" id="reg_password" placeholder="PASSWORD">
-        <input type="text" id="reg_roblox" placeholder="ROBLOX USERNAME (OPTIONAL)">
-    </div>
-    <button class="neon-btn-main" onclick="window.register()">CREATE ACCOUNT</button>
-</div>
+            <div id="register-panel" style="display:none;">
+                <div class="input-group">
+                    <input type="text" id="reg_username" placeholder="USERNAME">
+                    <input type="password" id="reg_password" placeholder="PASSWORD">
+                    <input type="text" id="reg_roblox" placeholder="ROBLOX USERNAME (OPTIONAL)">
+                </div>
+                <button class="neon-btn-main" onclick="window.register()">CREATE ACCOUNT</button>
+            </div>
         </div>
     </div>
 
@@ -65,7 +65,6 @@
         <div id="page-case-info" class="page">
             <div id="case-detail-content"></div>
             <button class="back-btn" onclick="window.navTo('cases')">← BACK</button>
-            <button class="fast-drop-btn" onclick="window.fastDropCase('${caseData.id}')">⚡ FAST DROP ($${caseData.price})</button>
         </div>
 
         <div id="page-market" class="page">
@@ -76,23 +75,16 @@
         <div id="page-profile" class="page">
             <div class="profile-container">
                 <div class="user-card">
-                    <div class="user-avatar" id="profile-avatar-container">
-    <img id="profile-avatar-img" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">
-    <div class="avatar-glow"></div>
-</div>
+                    <div class="card-header">
+                        <div class="user-avatar" id="profile-avatar-container">
+                            <img id="profile-avatar-img" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">
+                            <div class="avatar-glow"></div>
+                        </div>
                         <div class="user-main-info">
                             <h2 id="p-username">LOADING...</h2>
                             <div class="status-badge"><span class="pulse-dot"></span> ONLINE</div>
                         </div>
                     </div>
-                <div class="avatar-upload-section">
-    <div class="avatar-preview" id="avatar-preview-container">
-        <img id="avatar-preview-img" src="">
-    </div>
-    <p style="font-size:12px; color:#e53935;">📸 AVATAR SYSTEM</p>
-    <p class="avatar-instruction">Upload to: GitHub /Avatars/ folder<br>Filename: <strong id="avatar-filename-hint">USERNAME.png</strong></p>
-    <button class="neon-btn-small" onclick="window.refreshAvatar()">🔄 REFRESH AVATAR</button>
-</div>
                     <div class="card-stats">
                         <div class="stat-box">
                             <span class="label">BALANCE</span>
@@ -103,6 +95,23 @@
                             <span class="value">⚡ <span id="p-cp-val">0</span> CP</span>
                         </div>
                     </div>
+                </div>
+
+                <!-- Avatar Upload Section -->
+                <div class="avatar-upload-section">
+                    <div class="avatar-preview" id="avatar-preview-container">
+                        <img id="avatar-preview-img" src="">
+                    </div>
+                    <input type="file" id="avatar-file-input" accept="image/png, image/jpeg, image/jpg" style="display:none;">
+                    <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+                        <button class="neon-btn-small" onclick="document.getElementById('avatar-file-input').click()">
+                            📸 UPLOAD AVATAR
+                        </button>
+                        <button class="neon-btn-small" onclick="window.refreshAvatar()">
+                            🔄 REFRESH
+                        </button>
+                    </div>
+                    <p class="avatar-instruction">Upload PNG or JPG (Max 2MB)</p>
                 </div>
 
                 <!-- PROMO CODE -->
@@ -117,18 +126,16 @@
                         <button class="neon-btn-small" onclick="window.activatePromoCode()">ACTIVATE</button>
                     </div>
                     
-<!-- ROBLOX USERNAME -->
-<div class="inventory-header" style="margin-top:20px;">
-    <span class="line"></span>
-    <h3>🎮 ROBLOX USERNAME</h3>
-    <span class="line"></span>
-</div>
-<div class="promo-input-group">
-    <input type="text" id="roblox-input" placeholder="YOUR ROBLOX USERNAME">
-    <button class="neon-btn-small" onclick="window.updateRoblox()">SAVE</button>
-</div>
+                    <div class="inventory-header" style="margin-top:20px;">
+                        <span class="line"></span>
+                        <h3>🎮 ROBLOX USERNAME</h3>
+                        <span class="line"></span>
+                    </div>
+                    <div class="promo-input-group">
+                        <input type="text" id="roblox-input" placeholder="YOUR ROBLOX USERNAME">
+                        <button class="neon-btn-small" onclick="window.updateRoblox()">SAVE</button>
+                    </div>
                     
-                    <!-- CHALLENGES -->
                     <div class="inventory-header" style="margin-top:20px;">
                         <span class="line"></span>
                         <h3>🏆 CHALLENGES</h3>
@@ -137,7 +144,6 @@
                     <div id="challenges-list" class="challenges-grid"></div>
                 </div>
 
-                <!-- INVENTORY -->
                 <div class="inventory-section">
                     <div class="inventory-header">
                         <span class="line"></span>
@@ -149,23 +155,22 @@
             </div>
         </div>
 
+        <!-- LEADERSTATS PAGE -->
         <div id="page-leaderstats" class="page">
-    <div class="leaderboard-container">
-        <div class="leaderboard-card">
-            <div class="leaderboard-header">🏆 TOP 10 PLAYERS 🏆</div>
-            <div class="leaderboard-list" id="leaderboard-list">
-                <div style="text-align:center; padding:20px;">Loading leaderboard...</div>
+            <div class="leaderboard-container">
+                <div class="leaderboard-card">
+                    <div class="leaderboard-header">🏆 TOP 10 PLAYERS 🏆</div>
+                    <div class="leaderboard-list" id="leaderboard-list">
+                        <div style="text-align:center; padding:20px;">Loading leaderboard...</div>
+                    </div>
+                    <div class="min-requirement">⚠️ Minimum 1,000 coins to enter Top 10</div>
+                </div>
             </div>
-            <div class="min-requirement">⚠️ Minimum 1,000 coins to enter Top 10</div>
         </div>
-    </div>
-</div>
 
-        <!-- ADMIN PAGE -->
         <div id="page-admin" class="page">
             <div class="admin-panel-container">
                 <h2 class="section-title">ADMIN PANEL</h2>
-                
                 <div class="admin-section">
                     <div class="admin-section-header" onclick="toggleAdminSection('users-section')">
                         <span>👥 USERS</span>
@@ -181,13 +186,12 @@
                         </div>
                         <div style="overflow-x: auto;">
                             <table class="users-table">
-                                <thead><tr><th>Username</th><th>Balance</th><th>CP</th><th>Inventory</th><th>Last Login</th><th>Telegram</th><th>Actions</th><tr></thead>
+                                <thead><tr><th>Username</th><th>Balance</th><th>CP</th><th>Inventory</th><th>Last Login</th><th>Telegram</th><th>Actions</th></tr></thead>
                                 <tbody id="users-table-body"></tbody>
                             </table>
                         </div>
                     </div>
                 </div>
-
                 <div class="admin-section">
                     <div class="admin-section-header" onclick="toggleAdminSection('promocodes-section')">
                         <span>🎫 PROMOCODES</span>
@@ -198,7 +202,6 @@
                         <div id="promocodes-list" style="margin-top:15px;"></div>
                     </div>
                 </div>
-
                 <div class="admin-section">
                     <div class="admin-section-header" onclick="toggleAdminSection('challenges-section')">
                         <span>🏆 CHALLENGES</span>
@@ -216,7 +219,7 @@
             <button onclick="window.navTo('cases')">CASES</button>
             <button onclick="window.navTo('market')">MARKET</button>
             <button onclick="window.navTo('profile')">PROFILE</button>
-            <button onclick="window.navTo('leaderstats')">LEADERSTATS</button>
+            <button onclick="window.navTo('leaderstats')">🏆 LEADERSTATS</button>
             <button id="admin-nav-btn" onclick="window.navTo('admin')" style="display:none;">ADMIN</button>
         </nav>
     </div>
@@ -255,8 +258,6 @@
             </div>
         </div>
     </div>
-
-    
 
     <template id="inv-item-template">
         <div class="mega-card inv-item">
