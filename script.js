@@ -1482,7 +1482,7 @@ window.checkAvatarExists = async function(username) {
 window.updateProfileAvatar = async function() {
     if (!currentUser) return;
     const avatarImg = document.getElementById('profile-avatar-img');
-    const previewImg = document document.getElementById('avatar-preview-img');
+    const previewImg = document.getElementById('avatar-preview-img');  // ← было "document document", исправлено
     
     let avatarUrl = null;
     if (currentUser.avatar_url && currentUser.avatar_url.startsWith('http')) {
