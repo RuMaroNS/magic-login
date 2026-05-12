@@ -19,6 +19,7 @@ let spinAnimationId = null;
 let isSlowingDown = false;
 let currentOffset = 0;
 let maxOffset = 0;
+let isSiteClosed = false;
 
 // ---------- АНТИСПАМ ----------
 let lastActionTime = 0;
@@ -1752,6 +1753,82 @@ function subscribeUpdates() {
         }
     ).subscribe();
 }
+
+// 1. Проверка статуса при загрузке
+async function checkSiteStatus() {
+    const { data, error } = await supabaseClient
+        .from('status_suite')
+        .select('is_closed')
+        .single();
+
+    if (data) {
+        isSiteClosed = data.is_closed;
+        applySiteStatus();
+    }
+}
+
+// 2. Логика применения блокировки
+function applySiteStatus() {
+    const maintenanceScreen = document.getElementById('maintenance-screen');
+    const isAdmin = currentUser && currentUser.IsAdmin === 'true';
+
+    // Если сайт закрыт И пользователь НЕ админ
+    if (isSiteClosed && !isAdmin) {
+        maintenanceScreen.style.display = 'flex';
+        document.getElementById('auth-screen').style.display = 'none';
+        document.getElementById('game-interface').style.display = 'none';
+        document.getElementById('top-bar').style.display = 'none';
+    } else {
+        maintenanceScreen.style.display = 'none';
+    }
+    
+    // Обновляем текст кнопки в админке
+    const btn = document.getElementById('toggle-site-btn');
+    if (btn) {
+        btn.innerText = isSiteClosed ? "ОТКРЫТЬ САЙТ (СЕЙЧАС ЗАКРЫТ)" : "ЗАКРЫТЬ САЙТ ДЛЯ ИГРОКОВ";
+        btn.style.background = isSiteClosed ? "#4caf50" : "#e53935";
+    }
+}
+
+// 3. Функция переключения (для админа)
+window.toggleSiteStatus = async function() {
+    if (!currentUser || currentUser.IsAdmin !== 'true') return;
+    
+    const newStatus = !isSiteClosed;
+    const { error } = await supabaseClient
+        .from('status_suite')
+        .update({ is_closed: newStatus })
+        .match({ id: 1 }); // Убедитесь, что ID совпадает с вашей строкой в БД
+
+    if (!error) {
+        isSiteClosed = newStatus;
+        applySiteStatus();
+        window.showNotify(isSiteClosed ? "Сайт закрыт для всех" : "Сайт открыт", "success");
+    }
+};
+
+// 4. Интеграция в существующий код
+const originalOnLoad = window.onload;
+window.onload = async () => {
+    await originalOnLoad();
+    await checkSiteStatus();
+    
+    // Подписка на изменения статуса сайта в реальном времени
+    supabaseClient
+        .channel('site-status')
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'status_suite' }, payload => {
+            isSiteClosed = payload.new.is_closed;
+            applySiteStatus();
+        })
+        .subscribe();
+};
+
+// В функцию login тоже добавляем проверку после входа
+const authLogin = window.login;
+window.login = async function() {
+    await authLogin();
+    applySiteStatus(); // Перепроверяем, так как теперь мы знаем, админ пользователь или нет
+};
 
 // ========== НАВИГАЦИЯ ==========
 window.navTo = (id) => {
