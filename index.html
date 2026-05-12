@@ -217,6 +217,18 @@
                         <div id="challenges-admin-list" style="margin-top:15px;"></div>
                     </div>
                 </div>
+                <div class="admin-section">
+    <div class="admin-section-header" onclick="toggleAdminSection('site-status-section')">
+        <span>⚙️ SITE CONTROL</span>
+        <span class="arrow">▼</span>
+    </div>
+    <div id="site-status-section" class="admin-section-content">
+        <p style="margin-bottom:10px; font-size:12px; color:#aaa;">Управление доступом к сайту:</p>
+        <button id="toggle-site-btn" class="neon-btn-main" onclick="window.toggleSiteStatus()">
+            ПРОВЕРКА СТАТУСА...
+        </button>
+    </div>
+</div>
                 <!-- НОВЫЙ РАЗДЕЛ: ГЛОБАЛЬНЫЕ УВЕДОМЛЕНИЯ -->
                 <div class="admin-section">
                     <div class="admin-section-header" onclick="toggleAdminSection('notifications-section')">
