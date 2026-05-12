@@ -1754,6 +1754,45 @@ function subscribeUpdates() {
     ).subscribe();
 }
 
+function applySiteStatus() {
+    const maintenanceScreen = document.getElementById('maintenance-screen');
+    const authScreen = document.getElementById('auth-screen');
+    
+    // Проверяем: залогинен ли пользователь и является ли он админом
+    const isAdmin = currentUser && currentUser.IsAdmin === 'true';
+
+    // Если сайт закрыт
+    if (isSiteClosed) {
+        if (isAdmin) {
+            // Если это админ — всегда скрываем экран ошибки и даем доступ
+            maintenanceScreen.style.display = 'none';
+        } else {
+            // Если не админ (или еще не залогинен) — показываем ошибку
+            maintenanceScreen.style.display = 'flex';
+            
+            // Скрываем всё остальное, чтобы нельзя было подсмотреть интерфейс
+            authScreen.style.display = 'none';
+            document.getElementById('game-interface').style.display = 'none';
+            document.getElementById('top-bar').style.display = 'none';
+        }
+    } else {
+        // Если сайт открыт — скрываем экран ошибки
+        maintenanceScreen.style.display = 'none';
+        
+        // Если пользователь не залогинен, возвращаем экран входа
+        if (!currentUser) {
+            authScreen.style.display = 'flex';
+        }
+    }
+    
+    // Обновление кнопки в админке
+    const btn = document.getElementById('toggle-site-btn');
+    if (btn) {
+        btn.innerText = isSiteClosed ? "ОТКРЫТЬ САЙТ (СЕЙЧАС ЗАКРЫТ)" : "ЗАКРЫТЬ САЙТ ДЛЯ ИГРОКОВ";
+        btn.style.background = isSiteClosed ? "#4caf50" : "#e53935";
+    }
+}
+
 // 1. Проверка статуса при загрузке
 async function checkSiteStatus() {
     const { data, error } = await supabaseClient
@@ -1764,29 +1803,6 @@ async function checkSiteStatus() {
     if (data) {
         isSiteClosed = data.is_closed;
         applySiteStatus();
-    }
-}
-
-// 2. Логика применения блокировки
-function applySiteStatus() {
-    const maintenanceScreen = document.getElementById('maintenance-screen');
-    const isAdmin = currentUser && currentUser.IsAdmin === 'true';
-
-    // Если сайт закрыт И пользователь НЕ админ
-    if (isSiteClosed && !isAdmin) {
-        maintenanceScreen.style.display = 'flex';
-        document.getElementById('auth-screen').style.display = 'none';
-        document.getElementById('game-interface').style.display = 'none';
-        document.getElementById('top-bar').style.display = 'none';
-    } else {
-        maintenanceScreen.style.display = 'none';
-    }
-    
-    // Обновляем текст кнопки в админке
-    const btn = document.getElementById('toggle-site-btn');
-    if (btn) {
-        btn.innerText = isSiteClosed ? "ОТКРЫТЬ САЙТ (СЕЙЧАС ЗАКРЫТ)" : "ЗАКРЫТЬ САЙТ ДЛЯ ИГРОКОВ";
-        btn.style.background = isSiteClosed ? "#4caf50" : "#e53935";
     }
 }
 
